@@ -8,7 +8,7 @@
 #define MCP9808_I2C_USER_BITS                 (0x00)
 
 // User defined address (for usage in read-write requests)
-#define MCP9808_I2C_USER_ADDR                 (static_cast<uint16_t>(MCP9808_I2C_BASE_ADDR | MCP9808_I2C_USER_BITS) >> 1)
+#define MCP9808_I2C_USER_ADDR                 (static_cast<uint16_t>(MCP9808_I2C_BASE_ADDR | MCP9808_I2C_USER_BITS))
 
 
 // Register addresses
