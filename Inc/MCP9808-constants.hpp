@@ -12,14 +12,25 @@
 
 
 // Register addresses
-#define MCP9808_REG_RFU                       (0x00)
-#define MCP9808_REG_CONFIG                    (0x01)
-#define MCP9808_REG_TUPPER                    (0x02)
-#define MCP9808_REG_TLOWER                    (0x03)
-#define MCP9808_REG_TCRIT                     (0x04)
-#define MCP9808_REG_TEMP                      (0x05)
-#define MCP9808_REG_MFGID                     (0x06)
-#define MCP9808_REG_DEVID                     (0x07)
-#define MCP9808_REG_RESOLUTION                (0x08)
+#define MCP9808_REG_RFU                       (0x00u)
+#define MCP9808_REG_CONFIG                    (0x01u)
+#define MCP9808_REG_TUPPER                    (0x02u)
+#define MCP9808_REG_TLOWER                    (0x03u)
+#define MCP9808_REG_TCRIT                     (0x04u)
+#define MCP9808_REG_TEMP                      (0x05u)
+#define MCP9808_REG_MFGID                     (0x06u)
+#define MCP9808_REG_DEVID                     (0x07u)
+#define MCP9808_REG_RESOLUTION                (0x08u)
+
+// Configuration masks (use these only for any configuration
+// operations so that you don't overwrite critical data)
+
+#define MCP9808_CONFIG_THYST_0C               (0x000U)
+#define MCP9808_CONFIG_THYST_1_5C             (0x200U)
+#define MCP9808_CONFIG_THYST_3C               (0x400U)
+#define MCP9808_CONFIG_THYST_6C               (0x600U)
+
+
+
 
 #endif //MCP9808DRIVER_MCP9808_CONSTANTS_HPP
