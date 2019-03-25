@@ -44,9 +44,27 @@ class MCP9808 {
 
         /**
         * Enter/exit low power mode (SHDN - shutdown mode)
-        * @param data the appropriate constant from MCP9808-constants.hpp
+        * @param setting the appropriate constant from MCP9808-constants.hpp
         */
-        void setLowPwrMode(uint16_t data);
+        void setLowPwrMode(uint16_t setting);
+
+        /**
+        * Set locking status of the critical temperature (TCRIT) register
+        * @param setting the appropriate constant from MCP9808-constants.hpp
+        */
+        void setCritTempLock(uint16_t setting);
+
+        /**
+        * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
+        * @param setting the appropriate constant from MCP9808-constants.hpp
+        */
+        void setTempWinLock(uint16_t setting);
+
+        /**
+         * Set the interrupts to be cleared on the next read attempt (namely, a temperature
+         * reading or a command in general)
+         */
+        void clearInterrupts();
 
         /**
          * Get the current temperature reading (in Celsius)

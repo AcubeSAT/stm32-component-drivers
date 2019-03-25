@@ -8,10 +8,21 @@ void MCP9808::setHystTemp(uint16_t temp) {
     setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_THYST_MASK, temp);
 }
 
-void MCP9808::setLowPwrMode(uint16_t data) {
-    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_SHDN_MASK, data);
+void MCP9808::setLowPwrMode(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_SHDN_MASK, setting);
 }
 
+void MCP9808::setCritTempLock(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_TCRIT_LOCK_MASK, setting);
+}
+
+void MCP9808::setTempWinLock(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_WINLOCK_MASK, setting);
+}
+
+void MCP9808::clearInterrupts() {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_IRQ_CLEAR_MASK, MCP9808_CONFIG_IRQ_CLEAR);
+}
 void MCP9808::getTemp(float32_t& result) {
     uint16_t data;
     uint8_t counter = 0;

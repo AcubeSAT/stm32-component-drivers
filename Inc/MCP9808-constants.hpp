@@ -29,40 +29,40 @@
 #define MCP9808_CONFIG_THYST_6C               (0x600u)
 
 // Low-power mode (SHDN)
-#define MCP9808_CONFIG_LOWPWR_ENABLE            (0b0000000100000000) // !
-#define MCP9808_CONFIG_LOWPWR_DISABLE           (0b0000000000000000) // !
+#define MCP9808_CONFIG_LOWPWR_ENABLE            (0x100) // !
+#define MCP9808_CONFIG_LOWPWR_DISABLE           (0x000) // !
 
 // TCRIT (critical temperature) register locking
-#define MCP9808_CONFIG_TCRIT_LOCK_ENABLE        (0b0000000010000000) // !
-#define MCP9808_CONFIG_TCRIT_LOCK_DISABLE       (0b0000000000000000) // !
+#define MCP9808_CONFIG_TCRIT_LOCK_ENABLE        (0x80) // !
+#define MCP9808_CONFIG_TCRIT_LOCK_DISABLE       (0x00) // !
 
 // WINLOCK (T_upper and T_lower temperature window) locking
-#define MCP9808_CONFIG_WINLOCK_ENABLE           (0b0000000001000000) // !
-#define MCP9808_CONFIG_WINLOCK_DISABLE          (0b0000000000000000) // !
+#define MCP9808_CONFIG_WINLOCK_ENABLE           (0x40) // !
+#define MCP9808_CONFIG_WINLOCK_DISABLE          (0x00) // !
 
 // Set interrupts to be cleared on next read of CONFIG register
-#define MCP9808_CONFIG_IRQ_CLEAR                (0b0000000000100000) // !
-#define MCP9808_CONFIG_IRQ_CLEAR_DISABLE        (0b0000000000000000) // ! (this one is maybe useless)
+#define MCP9808_CONFIG_IRQ_CLEAR                (0x20) // !
+#define MCP9808_CONFIG_IRQ_CLEAR_DISABLE        (0x00) // ! (this one is maybe useless)
 
 // Set alert output status (see datasheet p. 19)
-#define MCP9808_CONFIG_ALERT_STATUS_ENABLE      (0b0000000000010000) // !
-#define MCP9808_CONFIG_ALERT_STATUS_DISABLE     (0b0000000000000000) // !
+#define MCP9808_CONFIG_ALERT_STATUS_ENABLE      (0x10) // !
+#define MCP9808_CONFIG_ALERT_STATUS_DISABLE     (0x00) // !
 
 // Set alert output control
-#define MCP9808_CONFIG_ALERT_CONTROL_DISABLE    (0b0000000000001000) // !
-#define MCP9808_CONFIG_ALERT_CONTROL_ENABLE     (0b0000000000000000) // !
+#define MCP9808_CONFIG_ALERT_CONTROL_DISABLE    (0x08) // !
+#define MCP9808_CONFIG_ALERT_CONTROL_ENABLE     (0x00) // !
 
 // Set alert output selection
-#define MCP9808_CONFIG_ALERT_SELECT_CRITONLY    (0b0000000000000100) // !
-#define MCP9808_CONFIG_ALERT_SELECT_ALL         (0b0000000000000000) // !
+#define MCP9808_CONFIG_ALERT_SELECT_CRITONLY    (0x04)// !
+#define MCP9808_CONFIG_ALERT_SELECT_ALL         (0x00)// !
 
 // Set polarity of alerts
-#define MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_HI (0b0000000000000010) // !
-#define MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_LOW (0b0000000000000000) // !
+#define MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_HI  (0x02) // !
+#define MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_LOW (0x00)// !
 
 // Set alert output mode
-#define MCP9808_CONFIG_ALERT_MODE_IRQ           (0b0000000000000001)  // !
-#define MCP9808_CONFIG_ALERT_MODE_COMPARATOR    (0b0000000000000000)  // !
+#define MCP9808_CONFIG_ALERT_MODE_IRQ           (0x01)// !
+#define MCP9808_CONFIG_ALERT_MODE_COMPARATOR    (0x00)// !
 
 /**
  * System constants - INTERNAL USE ONLY!
