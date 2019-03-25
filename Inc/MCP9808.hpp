@@ -6,6 +6,26 @@
 #include <cstdint>
 #include <arm_math.h>
 
+/**
+ * MCP9808 temperature sensor driver
+ *
+ * This is a simple, (almost) feature-complete, documented (to the best of my ability) driver to use the
+ * MCP9808 sensor on STM32 microcontrollers. All STM32-specific functions are used solely within the file
+ * <b>MCP9808-internal.cpp</b> to allow for portability.
+ *
+ * Almost all settings are accessible via the provided functions, apart from whatever is a TODO,
+ * of course ;-) using the constants provided in each function's javadoc string.
+ * Tell me if I've missed something.
+ *
+ * For more details about the operation of the sensor, see the datasheet found at:
+ * http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf
+ *
+ * @todo Create a function which enables setting a custom address other than 0b000
+ * @todo Create functions for setting the T_LOWER, T_UPPER and T_CRIT registers
+ *
+ * @author Grigoris Pavlakis <grigpavl@ece.auth.gr>
+ */
+
 class MCP9808 {
     /**
      * I2C handle provided by ST
@@ -85,13 +105,13 @@ class MCP9808 {
 
         /**
          * Set the polarity of the emitted alert (active-low or active-high)
-         * @param setting one of: CONFIG_ALERT_POLARITY_ACTIVE_HI, CONFIG_ALERT_POLARITY_ACTIVE_LOW
+         * @param setting one of: MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_HI, MCP9808_CONFIG_ALERT_POLARITY_ACTIVE_LOW
          */
         void setAlertPolarity(uint16_t setting);
 
         /**
          * Set the alert mode (comparator or interrupt output)
-         * @param setting one of: CONFIG_ALERT_MODE_IRQ, CONFIG_ALERT_MODE_COMPARATOR
+         * @param setting one of: MCP9808_CONFIG_ALERT_MODE_IRQ, MCP9808_CONFIG_ALERT_MODE_COMPARATOR
          */
         void setAlertMode(uint16_t setting);
 
@@ -100,6 +120,12 @@ class MCP9808 {
         * reading or a command in general)
         */
         void clearInterrupts();
+
+        /**
+         * Set the measurement resolution.
+         * @param setting one of: MCP9808_RES_0_50C, MCP9808_RES_0_25C, MCP9808_RES_0_125C, MCP9808_RES_0_0625C
+         */
+        void setResolution(uint16_t setting);
 
         /**
          * Get the current temperature reading (in Celsius)

@@ -63,6 +63,12 @@
 #define MCP9808_CONFIG_ALERT_MODE_IRQ                   (0x01)
 #define MCP9808_CONFIG_ALERT_MODE_COMPARATOR            (0x00)
 
+// Set measurement resolution
+#define MCP9808_RES_0_50C                               (0x00)
+#define MCP9808_RES_0_25C                               (0x01)
+#define MCP9808_RES_0_125C                              (0x02)
+#define MCP9808_RES_0_0625C                             (0x03)
+
 /**
  * System constants - INTERNAL USE ONLY!
  */
@@ -90,5 +96,7 @@
 #define MCP9808_CONFIG_ALERT_SELECT_MASK                (0xFFFBu)
 #define MCP9808_CONFIG_ALERT_POLARITY_MASK              (0xFFFDu)
 #define MCP9808_CONFIG_ALERT_MODE_MASK                  (0xFFFEu)
+
+#define MCP9808_RES_MASK                                (0x00FC)
 
 #endif //MCP9808DRIVER_MCP9808_CONSTANTS_HPP

@@ -49,6 +49,14 @@ void MCP9808::setAlertMode(uint16_t setting) {
     setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_MODE_MASK, setting);
 }
 
+void MCP9808::setResolution(uint16_t setting) {
+    setReg(MCP9808_REG_RESOLUTION, MCP9808_RES_MASK, setting << 8);
+    // since the bits we're interested in are located in the less significant byte, and
+    // the I2C protocol reads MSB-first, while the register fits only 8 bits,
+    // we shift by 8 to bring them to the MSB and thus store them.
+
+}
+
 void MCP9808::getTemp(float32_t& result) {
     uint16_t data;
     uint8_t counter = 0;
