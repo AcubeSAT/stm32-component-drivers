@@ -38,32 +38,67 @@ class MCP9808 {
 
         /**
          * Set the hysteresis temperature (THYST)
-         * @param temp the hysteresis temperature (use the constants in MCP9808-constants.hpp)
+         * Available options are: 0, 1.5, 3, 6 degrees Celsius
+         * @param temp one of: MCP9808_CONFIG_THYST_0C, MCP9808_CONFIG_THYST_1_5C, MCP9808_CONFIG_THYST_3C,
+         * MCP9808_CONFIG_THYST_6C
          */
         void setHystTemp(uint16_t temp);
 
         /**
         * Enter/exit low power mode (SHDN - shutdown mode)
-        * @param setting the appropriate constant from MCP9808-constants.hpp
+        * @param setting one of: MCP9808_CONFIG_LOWPWR_ENABLE, MCP9808_CONFIG_LOWPWR_DISABLE
         */
         void setLowPwrMode(uint16_t setting);
 
         /**
         * Set locking status of the critical temperature (TCRIT) register
-        * @param setting the appropriate constant from MCP9808-constants.hpp
+        * @param setting one of: MCP9808_CONFIG_TCRIT_LOCK_ENABLE, MCP9808_CONFIG_TCRIT_LOCK_DISABLE
         */
         void setCritTempLock(uint16_t setting);
 
         /**
         * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
-        * @param setting the appropriate constant from MCP9808-constants.hpp
+        * @param setting one of: MCP9808_CONFIG_WINLOCK_ENABLE, MCP9808_CONFIG_WINLOCK_DISABLE
         */
         void setTempWinLock(uint16_t setting);
 
         /**
-         * Set the interrupts to be cleared on the next read attempt (namely, a temperature
-         * reading or a command in general)
+         * Enable or disable temperature alerts.
+         * If enabled, alert output is asserted as a comparator/interrupt or critical temperature output
+         * @param setting one of: MCP9808_CONFIG_ALERT_ENABLE, MCP9808_CONFIG_ALERT_DISABLE
          */
+        void setAlertStatus(uint16_t setting);
+
+        /**
+         * Enable or disable alert control mode.
+         * @param setting one of: MCP9808_CONFIG_ALERT_CONTROL_ENABLE, MCP9808_CONFIG_ALERT_CONTROL_DISABLE
+         */
+        void setAlertControl(uint16_t setting);
+
+        /**
+         * Select the event for which an alert will be emitted, if triggered.
+         * If set to MCP9808_CONFIG_ALERT_SELECT_CRITONLY, then an alert is emitted only when
+         * T_ambient > T_crit.
+         * @param setting one of: MCP9808_CONFIG_ALERT_SELECT_CRITONLY, CONFIG_ALERT_SELECT_ALL
+         */
+        void setAlertSelection(uint16_t setting);
+
+        /**
+         * Set the polarity of the emitted alert (active-low or active-high)
+         * @param setting one of: CONFIG_ALERT_POLARITY_ACTIVE_HI, CONFIG_ALERT_POLARITY_ACTIVE_LOW
+         */
+        void setAlertPolarity(uint16_t setting);
+
+        /**
+         * Set the alert mode (comparator or interrupt output)
+         * @param setting one of: CONFIG_ALERT_MODE_IRQ, CONFIG_ALERT_MODE_COMPARATOR
+         */
+        void setAlertMode(uint16_t setting);
+
+        /**
+        * Set the interrupts to be cleared on the next read attempt (namely, a temperature
+        * reading or a command in general)
+        */
         void clearInterrupts();
 
         /**

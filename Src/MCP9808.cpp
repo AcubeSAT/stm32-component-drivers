@@ -1,3 +1,6 @@
+
+#include <MCP9808.hpp>
+
 #include "MCP9808.hpp"
 
 MCP9808::MCP9808(I2C_HandleTypeDef* i2c) {
@@ -23,6 +26,29 @@ void MCP9808::setTempWinLock(uint16_t setting) {
 void MCP9808::clearInterrupts() {
     setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_IRQ_CLEAR_MASK, MCP9808_CONFIG_IRQ_CLEAR);
 }
+
+void MCP9808::setAlertStatus(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_STATUS_MASK, setting);
+}
+
+void MCP9808::setAlertControl(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_CONTROL_MASK, setting);
+}
+
+void MCP9808::setAlertSelection(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_SELECT_MASK, setting);
+
+}
+
+void MCP9808::setAlertPolarity(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_POLARITY_MASK, setting);
+
+}
+
+void MCP9808::setAlertMode(uint16_t setting) {
+    setReg(MCP9808_REG_CONFIG, MCP9808_CONFIG_ALERT_MODE_MASK, setting);
+}
+
 void MCP9808::getTemp(float32_t& result) {
     uint16_t data;
     uint8_t counter = 0;
