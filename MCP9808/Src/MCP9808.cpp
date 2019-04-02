@@ -1,4 +1,3 @@
-
 #include <MCP9808.hpp>
 
 #include "MCP9808.hpp"
@@ -59,7 +58,6 @@ void MCP9808::setResolution(uint16_t setting) {
 
 void MCP9808::getTemp(float32_t& result) {
     uint16_t data;
-    uint8_t counter = 0;
     readReg(MCP9808_REG_TEMP, data);
 
     // keep bit 12 only (the sign bit) and if it's 1, we start counting from -2^12
