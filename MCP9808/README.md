@@ -8,8 +8,8 @@ Make sure to have the STM32 HAL functions for I2C available and enabled!
 Just include the repo as a submodule (or clone it) in your project and 
 `#include "MCP9808.hpp"` wherever you need to.
 
-For more details refer to the documentation (or the docstrings inside
-`MCP9808.hpp`, whatever floats your boat)
+For more details refer to the documentation (generate it via the provided Doxyfile or
+just read the docstrings inside `MCP9808.hpp`, whatever floats your boat)
 
 ## File listing
 * README.md - this readme file
@@ -19,3 +19,6 @@ For more details refer to the documentation (or the docstrings inside
 ##### `Src/` folder
 * MCP9808.cpp - implementation of the interface functions
 * MCP9808-internal.cpp - STM32-specific I/O functions (for communication)
+
+TODO: Test with negative temperatures!
+TODO: Implement interrupt (alert) functionality (if needed)
