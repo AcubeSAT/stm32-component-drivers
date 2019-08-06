@@ -67,7 +67,7 @@ void MCP9808::getTemp(float32_t& result) {
     // start summing the other bits
     for (uint8_t i = 0; i < 12; i++) {
         if (data & 0x01) { // we need the LSB only in every iteration
-            result += powf(2, i - 4);  // add the appropriate power of 2 to the result
+            result += 2 << (i-4);  // add the appropriate power of 2 to the result
         }
         data >>= 1;  // then toss out the bit
     }
