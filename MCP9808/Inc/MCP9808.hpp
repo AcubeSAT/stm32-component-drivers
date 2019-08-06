@@ -4,7 +4,6 @@
 #include "stm32l4xx_hal.h"
 #include "MCP9808-constants.hpp"
 #include <cstdint>
-#include <arm_math.h>
 
 /**
  * MCP9808 temperature sensor driver
