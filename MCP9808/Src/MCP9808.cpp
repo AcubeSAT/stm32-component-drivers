@@ -61,7 +61,7 @@ void MCP9808::getTemp(float32_t& result) {
     // keep bit 12 only (the sign bit) and if it's 1, we start counting from -2^12
     // TODO: find a way to test negative temperatures
     if ((data & 0x100000)) {
-       result += powf(-2, 12);
+       result += 1 / (2 << 12);
     }
 
     // start summing the other bits
