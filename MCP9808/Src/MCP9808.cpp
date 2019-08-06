@@ -1,5 +1,3 @@
-#include <MCP9808.hpp>
-
 #include "MCP9808.hpp"
 
 MCP9808::MCP9808(I2C_HandleTypeDef* i2c) {
