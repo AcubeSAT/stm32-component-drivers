@@ -34,11 +34,24 @@ class MCP9808 {
     private:
         /**
         * Write a value to a register (see the constants in MCP9808-constants.hpp)
+        * NOTE: this writes data as they are, so be careful!
+        * 
         * @param addr the address of the desired register
         * @param data the data octets to be written
         */
         void writeReg(uint8_t addr, uint16_t &data);
-
+        
+        /**
+        * Safely change a setting on the register
+        * This is the recommended function to use when changing settings,
+        * and is used in all public functions that change settings.
+        * 
+        * @param addr the address of the desired register
+        * @param mask the appropriate bitmask to access the particular
+        * setting bit or group of bits (found in mcp9808-constants.hpp)
+        * @param setting the new value of the setting to be changed
+        * (also found in mcp9808-constants.hpp)
+        */
         void setReg(uint8_t addr, uint16_t mask, uint16_t setting);
 
     public:
