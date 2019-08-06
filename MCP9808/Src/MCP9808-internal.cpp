@@ -1,6 +1,3 @@
-
-#include <MCP9808.hpp>
-
 #include "MCP9808.hpp"
 
 void MCP9808::writeReg(uint8_t addr, uint16_t &data) {
