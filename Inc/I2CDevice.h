@@ -16,6 +16,9 @@ private:
 protected:
     /**
      * The I2C device address specified by the peripheral
+     *
+     * The **7 most significant bits** of this address are used. The least significant bit is not
+     * taken into account, as I2C addresses are 7 bits wide.
      */
     uint8_t deviceAddress;
 
