@@ -1,4 +1,4 @@
-#include "MCP9808.hpp"
+#include "I2CDevice.h"
 
 I2CDevice::I2CDevice(I2C_HandleTypeDef* i2c) {
     this->i2c = i2c;
