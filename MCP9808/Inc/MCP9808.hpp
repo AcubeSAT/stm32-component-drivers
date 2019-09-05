@@ -143,7 +143,7 @@ class MCP9808 {
          * Get the current temperature reading (in Celsius)
          * @param result the variable where the result is going to be stored
          */
-        void getTemp(float32_t &result);
+        void getTemp(float &result);
 };
 
 #endif //MCP9808DRIVER_MCP9808_HPP

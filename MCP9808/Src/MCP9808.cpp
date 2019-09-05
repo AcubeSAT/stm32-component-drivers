@@ -1,3 +1,4 @@
+#include <ecss-services/inc/Logger.hpp>
 #include "MCP9808.hpp"
 
 MCP9808::MCP9808(I2C_HandleTypeDef* i2c) {
@@ -54,20 +55,20 @@ void MCP9808::setResolution(uint16_t setting) {
 
 }
 
-void MCP9808::getTemp(float32_t& result) {
+void MCP9808::getTemp(float& result) {
     uint16_t data;
     readReg(MCP9808_REG_TEMP, data);
 
     // keep bit 12 only (the sign bit) and if it's 1, we start counting from -2^12
     // TODO: find a way to test negative temperatures
     if ((data & 0x100000)) {
-       result += 1 / (2 << 12);
+       result += 1 / (float)(2 << 12);
     }
 
     // start summing the other bits
     for (uint8_t i = 0; i < 12; i++) {
         if (data & 0x01) { // we need the LSB only in every iteration
-            result += 2 << (i-4);  // add the appropriate power of 2 to the result
+            result += powf(2, i-4);  // add the appropriate power of 2 to the result
         }
         data >>= 1;  // then toss out the bit
     }
