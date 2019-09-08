@@ -31,6 +31,11 @@ class MCP9808 {
      */
     I2C_HandleTypeDef* i2c;
 
+    /**
+     * The I2C address in a format acceptable by HAL (last bit is always 0)
+     */
+    uint8_t i2cAddress;
+
     private:
         /**
         * Write a value to a register (see the constants in MCP9808-constants.hpp)
@@ -58,8 +63,9 @@ class MCP9808 {
         /**
         * Initialize a new controller object for MCP9808
         * @param i2c handle to the appropriately-set and enabled I2C peripheral
+        * @param i2cUserAddress last 3 bits of the I2C address, selectable by pins A0-A2 of the MCP9808
         */
-        MCP9808(I2C_HandleTypeDef* i2c);
+        MCP9808(I2C_HandleTypeDef* i2c, uint8_t i2cUserAddress);
 
         /**
         * Read a value from a register (see the constants in MCP9808-constants.hpp)

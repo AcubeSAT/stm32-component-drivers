@@ -1,13 +1,6 @@
 #ifndef MCP9808DRIVER_MCP9808_CONSTANTS_HPP
 #define MCP9808DRIVER_MCP9808_CONSTANTS_HPP
 
-/**
- * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
- */
-
-// User defined I2C address (bits A3-A1, see datasheet for acceptable values)
-#define MCP9808_I2C_USER_ADDR                           (0x00)
-
 // Register addresses
 #define MCP9808_REG_RFU                                 (0x00u)
 #define MCP9808_REG_CONFIG                              (0x01u)
@@ -78,9 +71,6 @@
 
 // Mask to enable changes only to address bits 2-4 (which are user-settable)
 #define MCP9808_I2C_USER_ADDR_MASK                      (0xF1u)
-
-// Custom bus address (for usage in read-write requests)
-#define MCP9808_I2C_BUS_ADDR (static_cast<uint16_t>((MCP9808_I2C_BASE_ADDR & MCP9808_I2C_USER_ADDR_MASK) | MCP9808_I2C_USER_ADDR))
 
 // Hysteresis temperature mask
 #define MCP9808_CONFIG_THYST_MASK                       (0xF9FFu)

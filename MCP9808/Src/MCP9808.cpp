@@ -1,8 +1,9 @@
 #include <ecss-services/inc/Logger.hpp>
 #include "MCP9808.hpp"
 
-MCP9808::MCP9808(I2C_HandleTypeDef* i2c) {
+MCP9808::MCP9808(I2C_HandleTypeDef* i2c, uint8_t i2cUserAddress) {
     this->i2c = i2c;
+    this->i2cAddress = (MCP9808_I2C_BASE_ADDR & MCP9808_I2C_USER_ADDR_MASK) | static_cast<uint8_t>(i2cUserAddress << 1U);
 }
 
 void MCP9808::setHystTemp(uint16_t temp) {
