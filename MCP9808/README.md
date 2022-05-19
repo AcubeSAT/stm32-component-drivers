@@ -1,8 +1,7 @@
 # Microchip Technology MCP9808 Temperature Sensor 
-*Driver for STM32-based microcontrollers*
+*Driver for ATSAM-based microcontrollers*
 
 ## Dependencies
-Make sure to have the STM32 HAL functions for I2C available and enabled!
 
 ## How to use
 Just include the repo as a submodule (or clone it) in your project and 
@@ -19,6 +18,3 @@ just read the docstrings inside `MCP9808.hpp`, whatever floats your boat)
 ##### `Src/` folder
 * MCP9808.cpp - implementation of the interface functions
 * MCP9808-internal.cpp - STM32-specific I/O functions (for communication)
-
-TODO: Test with negative temperatures!
-TODO: Implement interrupt (alert) functionality (if needed)
