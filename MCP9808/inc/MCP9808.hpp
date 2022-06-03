@@ -54,7 +54,7 @@ public:
     * @param addr the address of the desired register
     * @param buffer the variable where the data will be stored
     */
-    void readReg(uint8_t addr, uint16_t &result);
+    void readReg(uint8_t addr, uint8_t *buffer);
 
     /**
      * Set the hysteresis temperature (THYST)
@@ -126,6 +126,12 @@ public:
      * @param setting one of: MCP9808_RES_0_50C, MCP9808_RES_0_25C, MCP9808_RES_0_125C, MCP9808_RES_0_0625C
      */
     void setResolution(uint16_t setting);
+
+    /**
+     * A register callback function to act as an interrupt handler
+     * @param context a variable to store the transaction status
+     */
+    void TWIHSCallback(uintptr_t context);
 
     /**
      * Get the current temperature reading (in Celsius)

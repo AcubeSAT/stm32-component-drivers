@@ -1,33 +1,13 @@
+/**
+ * @author Grigoris Pavlakis <grigpavl@ece.auth.gr>
+ */
+
 #ifndef MCP9808DRIVER_MCP9808_CONSTANTS_HPP
 #define MCP9808DRIVER_MCP9808_CONSTANTS_HPP
 
 /**
  * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
  */
-
-typedef enum
-{
-    APP_STATE_EEPROM_STATUS_VERIFY,
-    APP_STATE_EEPROM_WRITE,
-    APP_STATE_EEPROM_WAIT_WRITE_COMPLETE,
-    APP_STATE_EEPROM_CHECK_INTERNAL_WRITE_STATUS,
-    APP_STATE_EEPROM_READ,
-    APP_STATE_EEPROM_WAIT_READ_COMPLETE,
-    APP_STATE_VERIFY,
-    APP_STATE_IDLE,
-    APP_STATE_XFER_SUCCESSFUL,
-    APP_STATE_XFER_ERROR
-
-} APP_STATE;
-
-typedef enum
-{
-    APP_TRANSFER_STATUS_IN_PROGRESS,
-    APP_TRANSFER_STATUS_SUCCESS,
-    APP_TRANSFER_STATUS_ERROR,
-    APP_TRANSFER_STATUS_IDLE,
-
-} APP_TRANSFER_STATUS;
 
 // User defined I2C address (bits A3-A1, see datasheet for acceptable values)
 #define MCP9808_I2C_USER_ADDR                           (0x00)
@@ -98,13 +78,16 @@ typedef enum
  */
 
 // Base slave bus address (manufacturer-defined, used on the I2C bus)
-#define MCP9808_I2C_BASE_ADDR                           (0x30u)
+#define MCP9808_I2C_BASE_ADDR                           (0x18u)
 
 // Mask to enable changes only to address bits 2-4 (which are user-settable)
-#define MCP9808_I2C_USER_ADDR_MASK                      (0xF1u)
+#define MCP9808_I2C_USER_ADDR_MASK                      (0x78u)
 
 // Custom bus address (for usage in read-write requests)
 #define MCP9808_I2C_BUS_ADDR (static_cast<uint16_t>((MCP9808_I2C_BASE_ADDR & MCP9808_I2C_USER_ADDR_MASK) | MCP9808_I2C_USER_ADDR))
+
+// Manufacturer ID
+#define MCP9808_MANUFACTURER_ID                         (0x0054u)
 
 // Hysteresis temperature mask
 #define MCP9808_CONFIG_THYST_MASK                       (0xF9FFu)
@@ -123,5 +106,29 @@ typedef enum
 
 #define MCP9808_RES_MASK                                (0x00FC)
 
-#endif //MCP9808DRIVER_MCP9808_CONSTANTS_HPP
+typedef enum
+{
+    APP_STATE_EEPROM_STATUS_VERIFY,
+    APP_STATE_EEPROM_WRITE,
+    APP_STATE_EEPROM_WAIT_WRITE_COMPLETE,
+    APP_STATE_EEPROM_CHECK_INTERNAL_WRITE_STATUS,
+    APP_STATE_EEPROM_READ,
+    APP_STATE_EEPROM_WAIT_READ_COMPLETE,
+    APP_STATE_VERIFY,
+    APP_STATE_IDLE,
+    APP_STATE_XFER_SUCCESSFUL,
+    APP_STATE_XFER_ERROR
 
+} APP_STATE;
+
+typedef enum
+{
+    APP_TRANSFER_STATUS_IN_PROGRESS,
+    APP_TRANSFER_STATUS_SUCCESS,
+    APP_TRANSFER_STATUS_ERROR,
+    APP_TRANSFER_STATUS_IDLE,
+
+} APP_TRANSFER_STATUS;
+
+
+#endif //MCP9808DRIVER_MCP9808_CONSTANTS_HPP

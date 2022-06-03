@@ -51,21 +51,15 @@ void MCP9808::setResolution(uint16_t setting) {
 
 }
 
-
 void MCP9808::getTemp(float &result) {
-    uint16_t data;
-    readReg(MCP9808_REG_TEMP, data);
+    uint8_t buffer[2];
+    readReg(MCP9808_REG_TEMP, buffer);
 
-    // keep bit 12 only (the sign bit) and if it's 1, we start counting from -2^12
-    if ((data & 0x100000)) {
-        result += 1 / (2 << 12);
-    }
-
-    // start summing the other bits
-    for (uint8_t i = 0; i < 12; i++) {
-        if (data & 0x01) { // we need the LSB only in every iteration
-            result += 2 << (i - 4);  // add the appropriate power of 2 to the result
-        }
-        data >>= 1;  // then toss out the bit
+    buffer[0] &= 0X1F;
+    if ((buffer[0] & 0x10) == 0x10) {
+        buffer[0] &= 0x0F;
+        result = 256 - (16 * buffer[0] + buffer[1] / 16);
+    } else {
+        result = ((16 * static_cast<float>(buffer[0]) + static_cast<float>(buffer[1]) / 16));
     }
 }
