@@ -1,22 +1,24 @@
 #ifndef MCP9808DRIVER_MCP9808_HPP
 #define MCP9808DRIVER_MCP9808_HPP
 
+#pragma once
+
 #include "stdint.h"
 #include "plib_twihs2_master.h"
 #include "MCP9808-constants.hpp"
 
 
 /**
- * MCP9808 temperature sensor driver
+ * MCP9808 temperature sensor driver by Grigorios Pavlakis and Dimitrios Sourlantzis
  *
- * This is a simple driver to use the MCP9808 sensor on STM32 microcontrollers. All Microchip-specific
+ * This is a simple driver to use the MCP9808 sensor on ATSAMV71Q21B microcontrollers. All Microchip-specific
  * functions are used solely within the file <b>MCP9808-internal.cpp</b> to allow for portability.
  *
  * For more details about the operation of the sensor, see the datasheet found at:
  * http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf
  *
  * This is a modified version of the already existed driver writen in
- * https://gitlab.com/acubesat/obc/stm32-component-drivers/-/tree/mcp9808 by Grigoris Pavlakis
+ * https://gitlab.com/acubesat/obc/stm32-component-drivers/-/tree/mcp9808 by Grigorios Pavlakis
  *
  */
 
@@ -50,11 +52,13 @@ public:
 
 
     /**
-    * Read a value from a register (see the constants in MCP9808-constants.hpp)
+    * Read a value from a register (see the constants in MCP9808-constants.hpp). About register reading operations
+    * in MCP9808, refer to documentation page 21, figure 5.3.
     * @param addr the address of the desired register
-    * @param buffer the variable where the data will be stored
+    * @param upperByte a byte-type variable to hold the MSB data of the desired register
+    * @param lowerByte a byte-type variable to hold the LSB data of the desired register
     */
-    void readReg(uint8_t addr, uint8_t *buffer);
+    void readReg(uint8_t addr, uint16_t &data);
 
     /**
      * Set the hysteresis temperature (THYST)
@@ -122,16 +126,12 @@ public:
     void clearInterrupts();
 
     /**
-     * Set the measurement resolution.
+     * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
+     * the I2C protocol reads MSB-first, while the register fits only 8 bits, the input is shifted by 8 bits to transfer
+     * the data bits to the MSB part and thus store them.
      * @param setting one of: MCP9808_RES_0_50C, MCP9808_RES_0_25C, MCP9808_RES_0_125C, MCP9808_RES_0_0625C
      */
     void setResolution(uint16_t setting);
-
-    /**
-     * A register callback function to act as an interrupt handler
-     * @param context a variable to store the transaction status
-     */
-    void TWIHSCallback(uintptr_t context);
 
     /**
      * Get the current temperature reading (in Celsius)

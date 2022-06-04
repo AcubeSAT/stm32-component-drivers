@@ -1,4 +1,4 @@
-#include "../inc/MCP9808.hpp"
+#include "MCP9808.hpp"
 
 
 void MCP9808::setHystTemp(uint16_t temp) {
@@ -45,21 +45,19 @@ void MCP9808::setAlertMode(uint16_t setting) {
 
 void MCP9808::setResolution(uint16_t setting) {
     setReg(MCP9808_REG_RESOLUTION, MCP9808_RES_MASK, setting << 8);
-    // since the bits we're interested in are located in the less significant byte, and
-    // the I2C protocol reads MSB-first, while the register fits only 8 bits,
-    // we shift by 8 to bring them to the MSB and thus store them.
-
 }
 
 void MCP9808::getTemp(float &result) {
-    uint8_t buffer[2];
-    readReg(MCP9808_REG_TEMP, buffer);
+    uint16_t data;
 
-    buffer[0] &= 0X1F;
-    if ((buffer[0] & 0x10) == 0x10) {
-        buffer[0] &= 0x0F;
-        result = 256 - (16 * buffer[0] + buffer[1] / 16);
+    readReg(MCP9808_REG_TEMP, data);
+
+    uint8_t upperByte = (data >> 8) & 0X1F;
+    uint8_t lowerByte = (data & 0xFF);
+    if ((upperByte & 0x10) == 0x10) {
+        upperByte &= 0x0F;
+        result = 256 - ((16 * static_cast<float>(upperByte) + static_cast<float>(lowerByte) / 16));
     } else {
-        result = ((16 * static_cast<float>(buffer[0]) + static_cast<float>(buffer[1]) / 16));
+        result = ((16 * static_cast<float>(upperByte) + static_cast<float>(lowerByte) / 16));
     }
 }
