@@ -48,18 +48,15 @@ private:
     */
     void setReg(uint8_t addr, uint16_t mask, uint16_t setting);
 
-public:
-
-
     /**
     * Read a value from a register (see the constants in MCP9808-constants.hpp). About register reading operations
     * in MCP9808, refer to documentation page 21, figure 5.3.
     * @param addr the address of the desired register
-    * @param upperByte a byte-type variable to hold the MSB data of the desired register
-    * @param lowerByte a byte-type variable to hold the LSB data of the desired register
+    * @param data a variable to save the data from the desired register
     */
     void readReg(uint8_t addr, uint16_t &data);
 
+public:
     /**
      * Set the hysteresis temperature (THYST)
      * Available options are: 0, 1.5, 3, 6 degrees Celsius

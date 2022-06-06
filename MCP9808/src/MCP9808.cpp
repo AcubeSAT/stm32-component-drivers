@@ -52,7 +52,7 @@ void MCP9808::getTemp(float &result) {
 
     readReg(MCP9808_REG_TEMP, data);
 
-    uint8_t upperByte = (data >> 8) & 0X1F;
+    uint8_t upperByte = (data >> 8) & 0x1F;
     uint8_t lowerByte = (data & 0xFF);
     if ((upperByte & 0x10) == 0x10) {
         upperByte &= 0x0F;
