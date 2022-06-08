@@ -16,7 +16,6 @@
  *
  * This is a modified version of the already existed driver writen for STM32 microcontrollers by Grigorios Pavlakis and can be found at:
  * https://gitlab.com/acubesat/obc/atsam-component-drivers/-/tree/old-stm32
- *
  */
 class MCP9808 {
 private:
@@ -27,7 +26,7 @@ private:
     /**
     * MCP9808 temperature sensor register addresses.
     */
-    enum registerAddresses {
+    enum Register {
         REG_RFU = 0x00u,
         REG_CONFIG = 0x01u,
         REG_TUPPER = 0x02u,
@@ -46,7 +45,7 @@ private:
     /**
      * Hysteresis temperature options.
      */
-    enum hysteresisTemperatureOptions {
+    enum HysteresisTemperatureOptions {
         THYST_0C = 0x000u,
         THYST_1_5C = 0x200u,
         THYST_3C = 0x400u,
@@ -56,7 +55,7 @@ private:
     /**
     * Low-power mode (SHDN) options.
     */
-    enum lowPowerMode {
+    enum LowPowerMode {
         LOWPWR_ENABLE = 0x100,
         LOWPWR_DISABLE = 0x000
     };
@@ -64,7 +63,7 @@ private:
     /**
     * Critical temperature register locking options.
     */
-    enum criticalTemperatureRegisterLock {
+    enum CriticalTemperatureRegisterLock {
         TCRIT_LOCK_ENABLE = 0x80,
         TCRIT_LOCK_DISABLE = 0x00
     };
@@ -72,7 +71,7 @@ private:
     /**
     * WINLOCK T_upper and T_lower temperature window locking options.
     */
-    enum temperatureWindowLock {
+    enum TemperatureWindowLock {
         WINLOCK_ENABLE = 0x40,
         WINLOCK_DISABLE = 0x00
     };
@@ -85,7 +84,7 @@ private:
     /**
     *  Output status options, see datasheet p. 19.
     */
-    enum alertStatus {
+    enum AlertStatus {
         ALERT_ENABLE = 0x10,
         ALERT_DISABLE = 0x00
     };
@@ -93,7 +92,7 @@ private:
     /**
     * Every output control option.
     */
-    enum alertControl {
+    enum AlertControl {
         ALERT_CONTROL_DISABLE = 0x08,
         ALERT_CONTROL_ENABLE = 0x00
     };
@@ -101,7 +100,7 @@ private:
     /**
     * Every alert output selection option.
     */
-    enum alertSelection {
+    enum AlertSelection {
         ALERT_SELECT_CRITONLY = 0x04,
         ALERT_SELECT_ALL = 0x00
     };
@@ -109,7 +108,7 @@ private:
     /**
     * Every alert output modes.
     */
-    enum alertMode {
+    enum AlertMode {
         ALERT_MODE_IRQ = 0x01,
         ALERT_MODE_COMPARATOR = 0x00
     };
@@ -117,7 +116,7 @@ private:
     /**
     * Every polarity of alerts option.
     */
-    enum alertPolarity {
+    enum AlertPolarity {
         ALERT_POLARITY_ACTIVE_HIGH = 0x02,
         ALERT_POLARITY_ACTIVE_LOW = 0x00
     };
@@ -125,7 +124,7 @@ private:
     /**
     * Every measurement resolution option.
     */
-    enum measurementResolution {
+    enum MeasurementResolution {
         RES_0_50C = 0x00,
         RES_0_25C = 0x01,
         RES_0_125C = 0x02,
@@ -220,38 +219,38 @@ public:
      * Available options are: 0, 1.5, 3, 6 degrees Celsius
      * @param option desired hysteresis temperature option
      */
-    void setHysteresisTemperature(hysteresisTemperatureOptions option);
+    void setHysteresisTemperature(HysteresisTemperatureOptions option);
 
     /**
     * Enter/exit low power mode (SHDN - shutdown mode)
     * @param setting the desired low power mode option
     */
-    void setLowPowerMode(lowPowerMode setting);
+    void setLowPowerMode(LowPowerMode setting);
 
     /**
     * Set locking status of the critical temperature (TCRIT) register
     * @param setting the desired critical temperature locking option
     */
-    void setCriticalTemperatureLock(criticalTemperatureRegisterLock setting);
+    void setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
 
     /**
     * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
     * @param setting the desired locking status option
     */
-    void setTemperatureWindowLock(temperatureWindowLock setting);
+    void setTemperatureWindowLock(TemperatureWindowLock setting);
 
     /**
      * Enable or disable temperature alerts.
      * If enabled, alert output is asserted as a comparator/interrupt or critical temperature
      * @param setting the desired alert status option
      */
-    void setAlertStatus(alertStatus setting);
+    void setAlertStatus(AlertStatus setting);
 
     /**
      * Enable or disable alert control mode.
      * @param setting the desired alert control option
      */
-    void setAlertControl(alertControl setting);
+    void setAlertControl(AlertControl setting);
 
     /**
      * Select the event for which an alert will be emitted, if triggered.
@@ -259,19 +258,19 @@ public:
      * T_ambient > T_crit.
      * @param setting the desired alert selection option
      */
-    void setAlertSelection(alertSelection setting);
+    void setAlertSelection(AlertSelection setting);
 
     /**
      * Set the polarity of the emitted alert (active-low or active-high)
      * @param setting desired alert polarity option
      */
-    void setAlertPolarity(alertPolarity setting);
+    void setAlertPolarity(AlertPolarity setting);
 
     /**
      * Set the alert mode (comparator or interrupt output)
      * @param setting the desired alert mode option
      */
-    void setAlertMode(alertMode setting);
+    void setAlertMode(AlertMode setting);
 
     /**
     * Set the interrupts to be cleared on the next read attempt (namely, a temperature
@@ -285,7 +284,7 @@ public:
      * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
      * @param setting the desired measurement resolution option
      */
-    void setResolution(measurementResolution setting);
+    void setResolution(MeasurementResolution setting);
 
     /**
      * Get the current temperature reading (in Celsius)

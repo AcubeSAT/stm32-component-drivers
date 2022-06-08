@@ -50,19 +50,19 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
     writeRegister(address, newSetting);
 }
 
-void MCP9808::setHysteresisTemperature(MCP9808::hysteresisTemperatureOptions option) {
+void MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
     setRegister(REG_CONFIG, THYST_MASK, option);
 }
 
-void MCP9808::setLowPowerMode(MCP9808::lowPowerMode setting) {
+void MCP9808::setLowPowerMode(MCP9808::LowPowerMode setting) {
     setRegister(REG_CONFIG, SHDN_MASK, setting);
 }
 
-void MCP9808::setCriticalTemperatureLock(MCP9808::criticalTemperatureRegisterLock setting) {
+void MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
     setRegister(REG_CONFIG, TCRIT_LOCK_MASK, setting);
 }
 
-void MCP9808::setTemperatureWindowLock(MCP9808::temperatureWindowLock setting) {
+void MCP9808::setTemperatureWindowLock(MCP9808::TemperatureWindowLock setting) {
     setRegister(REG_CONFIG, WINLOCK_MASK, setting);
 }
 
@@ -70,27 +70,27 @@ void MCP9808::clearInterrupts() {
     setRegister(REG_CONFIG, IRQ_CLEAR_MASK, IRQ_CLEAR);
 }
 
-void MCP9808::setAlertStatus(MCP9808::alertStatus setting) {
+void MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
     setRegister(REG_CONFIG, ALERT_STATUS_MASK, setting);
 }
 
-void MCP9808::setAlertControl(MCP9808::alertControl setting) {
+void MCP9808::setAlertControl(MCP9808::AlertControl setting) {
     setRegister(REG_CONFIG, ALERT_CONTROL_MASK, setting);
 }
 
-void MCP9808::setAlertSelection(MCP9808::alertSelection setting) {
+void MCP9808::setAlertSelection(MCP9808::AlertSelection setting) {
     setRegister(REG_CONFIG, ALERT_SELECT_MASK, setting);
 }
 
-void MCP9808::setAlertPolarity(MCP9808::alertPolarity setting) {
+void MCP9808::setAlertPolarity(MCP9808::AlertPolarity setting) {
     setRegister(REG_CONFIG, ALERT_POLARITY_MASK, setting);
 }
 
-void MCP9808::setAlertMode(MCP9808::alertMode setting) {
+void MCP9808::setAlertMode(MCP9808::AlertMode setting) {
     setRegister(REG_CONFIG, ALERT_MODE_MASK, setting);
 }
 
-void MCP9808::setResolution(MCP9808::measurementResolution setting) {
+void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
     setRegister(REG_RESOLUTION, RES_MASK, setting << 8);
 }
 
