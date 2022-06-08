@@ -2,7 +2,6 @@
 
 #include "stdint.h"
 #include "plib_twihs2_master.h"
-#include "MCP9808-constants.hpp"
 
 
 /**
