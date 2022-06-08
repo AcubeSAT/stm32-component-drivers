@@ -79,7 +79,7 @@ private:
     /**
     * The required value in order to set interrupts to be cleared on next read of CONFIG register.
     */
-    uint8_t const IRQ_CLEAR = 0x20;
+    const uint8_t IRQ_CLEAR = 0x20;
 
     /**
     *  Output status options, see datasheet p. 19.
