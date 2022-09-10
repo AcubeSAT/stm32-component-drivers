@@ -1,7 +1,10 @@
 #pragma once
 
-#include "stdint.h"
+#include <cstdint>
+#include "FreeRTOS.h"
+#include "Logger.hpp"
 #include "plib_twihs2_master.h"
+#include "task.h"
 
 
 /**
@@ -211,6 +214,20 @@ private:
     * (also found in mcp9808-constants.hpp)
     */
     void setRegister(uint8_t address, Mask mask, uint16_t setting);
+
+    /**
+     * Function that prevents hanging when a I2C device is not responding.
+     */
+    inline void waitForResponse(){
+        auto start = xTaskGetTickCount();
+        while (TWIHS2_IsBusy()){
+            if (xTaskGetTickCount() - start > 100) {
+                LOG_ERROR << "I2C timeout";
+                TWIHS2_Initialize();
+            }
+            taskYIELD();
+        }
+    };
 
 public:
     /**
