@@ -218,7 +218,7 @@ private:
     /**
      * Function that prevents hanging when a I2C device is not responding.
      */
-    inline void waitForResponse(){
+    static inline void waitForResponse(){
         auto start = xTaskGetTickCount();
         while (TWIHS2_IsBusy()){
             if (xTaskGetTickCount() - start > 100) {
@@ -307,4 +307,10 @@ public:
      * @returns the current temperature
      */
     float getTemperature();
+
+    /**
+     * Check the Manufacturer ID register against the expected value.
+     * @return Returns true if the device is connected and responds correctly.
+     */
+    bool isDeviceConnected();
 };

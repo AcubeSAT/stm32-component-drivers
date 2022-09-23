@@ -112,3 +112,7 @@ float MCP9808::getTemperature() {
 
     return result;
 }
+
+bool MCP9808::isDeviceConnected() {
+    return readRegister(REG_MFGID) == MANUFACTURER_ID;
+}
