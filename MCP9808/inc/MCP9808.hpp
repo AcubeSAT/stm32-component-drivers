@@ -21,6 +21,12 @@
  */
 class MCP9808 {
 private:
+
+    /**
+     * Wait period before a sensor read is skipped
+     */
+     const uint8_t TickWait = 100;
+
     /**
     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
     */
@@ -218,10 +224,10 @@ private:
     /**
      * Function that prevents hanging when a I2C device is not responding.
      */
-    static inline void waitForResponse(){
+    static inline void waitForResponse() {
         auto start = xTaskGetTickCount();
-        while (TWIHS2_IsBusy()){
-            if (xTaskGetTickCount() - start > 100) {
+        while (TWIHS2_IsBusy()) {
+            if (xTaskGetTickCount() - start > TickWait) {
                 LOG_ERROR << "I2C timeout";
                 TWIHS2_Initialize();
             }
