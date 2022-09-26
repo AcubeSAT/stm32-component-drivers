@@ -1,7 +1,10 @@
 #pragma once
 
-#include "stdint.h"
+#include <cstdint>
+#include "FreeRTOS.h"
+#include "Logger.hpp"
 #include "plib_twihs2_master.h"
+#include "task.h"
 
 
 /**
@@ -18,6 +21,12 @@
  */
 class MCP9808 {
 private:
+
+    /**
+     * Wait period before a sensor read is skipped
+     */
+    const uint8_t TimeoutTicks = 100;
+
     /**
     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
     */
@@ -212,6 +221,20 @@ private:
     */
     void setRegister(uint8_t address, Mask mask, uint16_t setting);
 
+    /**
+     * Function that prevents hanging when a I2C device is not responding.
+     */
+    static inline void waitForResponse() {
+        auto start = xTaskGetTickCount();
+        while (TWIHS2_IsBusy()) {
+            if (xTaskGetTickCount() - start > TimeoutTicks) {
+                LOG_ERROR << "I2C timeout";
+                TWIHS2_Initialize();
+            }
+            taskYIELD();
+        }
+    };
+
 public:
     /**
      * Set the hysteresis temperature (THYST)
@@ -290,4 +313,10 @@ public:
      * @returns the current temperature
      */
     float getTemperature();
+
+    /**
+     * Check the Manufacturer ID register against the expected value.
+     * @return Returns true if the device is connected and responds correctly.
+     */
+    bool isDeviceConnected();
 };

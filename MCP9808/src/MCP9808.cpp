@@ -10,12 +10,12 @@ void MCP9808::writeRegister(uint8_t address, uint16_t data) {
     uint8_t ackData = 0;
 
     if (TWIHS2_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
-        while (TWIHS2_IsBusy());
+        waitForResponse();
         error = TWIHS2_ErrorGet();
     }
 
     if (TWIHS2_Write(I2C_BUS_ADDRESS, txData, 1)) {
-        while (TWIHS2_IsBusy());
+        waitForResponse();
         error = TWIHS2_ErrorGet();
     }
 }
@@ -25,17 +25,17 @@ uint16_t MCP9808::readRegister(uint8_t address) {
     uint8_t ackData = 0;
 
     if (TWIHS2_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
-        while (TWIHS2_IsBusy());
+        waitForResponse();
         error = TWIHS2_ErrorGet();
     }
 
     if (TWIHS2_Write(I2C_BUS_ADDRESS, &address, 1)) {
-        while (TWIHS2_IsBusy());
+        waitForResponse();
         error = TWIHS2_ErrorGet();
     }
 
     if (TWIHS2_Read(I2C_BUS_ADDRESS, buffer, 2)) {
-        while (TWIHS2_IsBusy());
+        waitForResponse();
         error = TWIHS2_ErrorGet();
         return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
     } else {
@@ -111,4 +111,8 @@ float MCP9808::getTemperature() {
     }
 
     return result;
+}
+
+bool MCP9808::isDeviceConnected() {
+    return readRegister(REG_MFGID) == MANUFACTURER_ID;
 }
