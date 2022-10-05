@@ -17,11 +17,11 @@ MCP9808 Connections:
 | ------ | ----- | ----- |
 | 1 | Data | Use a pull up resistor to 3.3V |
 | 2 | Clock | Use a pull up resistor to 3.3V |
-| 3 | Alert | AFAIK We don't use this? |
+| 3 | Alert | Unused |
 | 4 | Ground | Set to one of the dev board's grounds |
 | 5 | A2 | Set to ground |
 | 6 | A1 | Set to ground |
 | 7 | A0 | Set to ground |
-| 8 | Vdd | Set to 3V3 for the dev board |
+| 8 | Vdd | Set to 3V3 from the dev board |
 
 Our breakout board currently skips two pins Pin 4 and Pin 7. For example MCP's Pin 4 is connected to the breakout's Pin 5. 
