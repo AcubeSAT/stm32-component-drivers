@@ -8,13 +8,15 @@
  * The LCLs are completely programmable during flight.
  * For now the class contains functionality only for the On-Board Computer Subsystem but
  * the Science Unit will make use of LCL circuits as well.
+ * The main components that constitute a Latchup Current Limiter are a TLC555 timer, an
+ * Operational Amplifier, a P-MOS MOSFET, a N-MOS MOSFET
  */
 
 class LCL {
 private:
 
     /**
-     * PWM channels used to set the current threshold.
+     * PWM channels used to set the current threshold for the TLC555 timer.
      */
     enum PWMChannel : uint8_t {
         PWMC0_PWMH0 = 0, ///< NAND Flash
@@ -24,8 +26,10 @@ private:
     };
 
     /**
-     * GPIOs used reset the LCL.
-     * Initial value given by a pulled-up resistor.
+     * GPIOs used reset the LCL, specifically the TLC555 IC.
+     * Active low.
+     * Initial value given by a pull-up resistor to prevent undefined behavior during MCU
+     * reset/start-up.
      */
     enum ResetPins : uint8_t {
         PC15 = 0, ///< NAND Flash
@@ -35,8 +39,10 @@ private:
     };
 
     /**
-     * GPIOs used reset the LCL.
-     * Initial value given by a pulled-up resistor.
+     * GPIOs used reset the LCL, specifically the TLC555 IC.
+     * Active low.
+     * Initial value given by a pull-up resistor to prevent undefined behavior during MCU
+     * reset/start-up.
      */
     enum SetPins : uint8_t {
         PC13 = 0, ///< MRAM
