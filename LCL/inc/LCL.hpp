@@ -4,15 +4,17 @@
 #define ATSAM_COMPONENT_DRIVERS_LCL_HPP
 
 /**
- * @class A Latchup Current Limiter driver providing all the functionality for these protection
- * circuits.
+ * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
+ * The LCLs are completely programmable during flight.
+ * For now the class contains functionality only for the On-Board Computer Subsystem but
+ * the Science Unit will make use of LCL circuits as well.
  */
 
 class LCL {
 private:
 
     /**
-     * PWM channels used to set the current threshold
+     * PWM channels used to set the current threshold.
      */
     enum PWMChannel : uint8_t {
         PWMC0_PWMH0 = 0, ///< NAND Flash
@@ -22,8 +24,8 @@ private:
     };
 
     /**
-     * GPIOs used reset the LCL
-     * Initial value given by a pulled-up resistor
+     * GPIOs used reset the LCL.
+     * Initial value given by a pulled-up resistor.
      */
     enum ResetPins : uint8_t {
         PC15 = 0, ///< NAND Flash
@@ -33,8 +35,8 @@ private:
     };
 
     /**
-     * GPIOs used reset the LCL
-     * Initial value given by a pulled-up resistor
+     * GPIOs used reset the LCL.
+     * Initial value given by a pulled-up resistor.
      */
     enum SetPins : uint8_t {
         PC13 = 0, ///< MRAM
@@ -44,10 +46,14 @@ private:
     };
 
 public:
+
+    LCL();
+    void returnLCLStatus();
     void openLCL();
-    void shutDownLCL();
+    void closeLCL();
     void calculateVoltageThreshold();
     void calculateCurrentThreshold();
+    void changeCurrentThreshHold();
 };
 
 #endif //ATSAM_COMPONENT_DRIVERS_LCL_HPP
