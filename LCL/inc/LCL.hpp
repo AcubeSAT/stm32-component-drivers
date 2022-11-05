@@ -11,11 +11,43 @@
 class LCL {
 private:
 
+    /**
+     * PWM channels used to set the current threshold
+     */
+    enum PWMChannel : uint8_t {
+        PWMC0_PWMH0 = 0, ///< NAND Flash
+        PWM0_PWMH1 = 1, ///< MRAM
+        PWMC0_PWMH3 = 2, ///< CAN1
+        PWMC0_PWMH2 = 3 ///< CAN2
+    };
+
+    /**
+     * GPIOs used reset the LCL
+     * Initial value given by a pulled-up resistor
+     */
+    enum ResetPins : uint8_t {
+        PC15 = 0, ///< NAND Flash
+        PE4 = 1, ///< MRAM
+        PD24 = 2, ///< CAN1
+        PA26 = 3 ///< CAN2
+    };
+
+    /**
+     * GPIOs used reset the LCL
+     * Initial value given by a pulled-up resistor
+     */
+    enum SetPins : uint8_t {
+        PC13 = 0, ///< MRAM
+        PA17 = 1, ///< NAND Flash
+        PD26 = 2, ///< CAN1
+        PD22 = 3 ///< CAN2
+    };
+
 public:
     void openLCL();
     void shutDownLCL();
     void calculateVoltageThreshold();
-    void calculateCurrentUpperBound();
+    void calculateCurrentThreshold();
 };
 
 #endif //ATSAM_COMPONENT_DRIVERS_LCL_HPP
