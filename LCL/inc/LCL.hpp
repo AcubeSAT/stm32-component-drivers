@@ -13,7 +13,9 @@
  */
 
 class LCL {
-private:
+protected:
+    float CurrentThreshold = 0;
+public:
 
     /**
      * @enum Devices protected by LCLs
@@ -27,12 +29,23 @@ private:
 
     /**
      * @enum PWM channels used to set the current threshold for the TLC555 timer.
+     * PWM0 of ATSAMV71 is used for all thresholds.
      */
-    enum class PWMChannel : uint8_t {
-        PWMC0_PWMH0 = 0, ///< NAND Flash
-        PWM0_PWMH1 = 1, ///< MRAM
-        PWMC0_PWMH3 = 2, ///< CAN1
-        PWMC0_PWMH2 = 3 ///< CAN2
+    enum class PWMChannelMask : uint8_t {
+        NANDFlash = PWM_CHANNEL_0_MASK, ///< NAND Flash
+        MRAM = PWM_CHANNEL_1_MASK, ///< MRAM
+        CAN1 = PWM_CHANNEL_3_MASK, ///< CAN1
+        CAN2 = PWM_CHANNEL_2_MASK ///< CAN2
+    };
+
+    /**
+     * @enum PWM channels used to set the current threshold for the TLC555 timer.
+     */
+    enum class PWMChannelNumber : uint8_t {
+        NANDFlash = PWM_CHANNEL_0, ///< NAND Flash
+        MRAM = PWM_CHANNEL_1, ///< MRAM
+        CAN1 = PWM_CHANNEL_3, ///< CAN1
+        CAN2 = PWM_CHANNEL_2 ///< CAN2
     };
 
     /**
@@ -42,8 +55,8 @@ private:
      * reset/start-up.
      */
     enum class ResetPins : uint8_t {
-        MRAM = PIO_PIN_PC15, ///< NAND Flash
-        NANDFlash = PIO_PIN_PE4, ///< MRAM
+        NANDFlash = PIO_PIN_PC15, ///< NAND Flash
+        MRAM = PIO_PIN_PE4, ///< MRAM
         CAN1 = PIO_PIN_PD24, ///< CAN1
         CAN2 = PIO_PIN_PA26 ///< CAN2
     };
@@ -55,27 +68,39 @@ private:
      * reset/start-up.
      */
     enum class SetPins : uint8_t {
-        MRAM = PIO_PIN_PC13, ///< MRAM
-        NANDFlash = PIO_PIN_PA17, ///< NAND Flash
+        NANDFlash = PIO_PIN_PC13, ///< MRAM
+        MRAM = PIO_PIN_PA17, ///< NAND Flash
         CAN1 = PIO_PIN_PD26, ///< CAN1
         CAN2 = PIO_PIN_PD22 ///< CAN2
     };
 
-public:
+    virtual void returnLCLStatus() = 0;
 
-    LCL();
+    virtual void openLCL() = 0;
 
-    void returnLCLStatus();
+    virtual void closeLCL() = 0;
 
-    void openLCL();
+    virtual void calculateVoltageThreshold() = 0;
 
-    void closeLCL();
+    virtual void calculateCurrentThreshold() = 0;
 
-    void calculateVoltageThreshold();
+    virtual void changeCurrentThreshHold() = 0;
+};
 
-    void calculateCurrentThreshold();
+class NANDFlashLCLProtection : public LCL {
+    explicit NANDFlashLCLProtection;
 
-    void changeCurrentThreshHold();
+    void returnLCLStatus() override;
+
+    void openLCL() override;
+
+    void closeLCL() override;
+
+    void calculateVoltageThreshold() override;
+
+    void calculateCurrentThreshold() override;
+
+    void changeCurrentThreshHold() override;
 };
 
 #endif //ATSAM_COMPONENT_DRIVERS_LCL_HPP
