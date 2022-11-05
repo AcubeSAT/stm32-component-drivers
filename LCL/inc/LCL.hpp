@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef ATSAM_COMPONENT_DRIVERS_LCL_HPP
 #define ATSAM_COMPONENT_DRIVERS_LCL_HPP
 
