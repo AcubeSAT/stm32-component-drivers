@@ -25,7 +25,7 @@ private:
     /**
      * Wait period before a sensor read is skipped
      */
-    const uint8_t TimeoutTicks = 100;
+    static const uint8_t TimeoutTicks = 100;
 
     /**
     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
