@@ -3,19 +3,17 @@
 #ifndef ATSAM_COMPONENT_DRIVERS_LCL_HPP
 #define ATSAM_COMPONENT_DRIVERS_LCL_HPP
 
-/**
- * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
- * The LCLs are completely programmable during flight.
- * For now the class contains functionality only for the On-Board Computer Subsystem but
- * the Science Unit will make use of LCL circuits as well.
- * The main components that constitute a Latchup Current Limiter are a TLC555 timer, an
- * Operational Amplifier, a P-MOS MOSFET, a N-MOS MOSFET
- */
+namespace LCLDefinitions {
 
-class LCL {
-protected:
-    float CurrentThreshold = 0;
-public:
+    /**
+     *
+     */
+    struct LCLControlPins {
+        ResetPin resetPin = 0;
+        SetPins setPin = 0;
+        PWMChannelMasks pwmChannelMask = 0;
+        PWMChannelNumbers pwmChannelNumber = 0;
+    };
 
     /**
      * @enum Devices protected by LCLs
@@ -31,7 +29,7 @@ public:
      * @enum PWM channels used to set the current threshold for the TLC555 timer.
      * PWM0 of ATSAMV71 is used for all thresholds.
      */
-    enum class PWMChannelMask : uint8_t {
+    enum class PWMChannelMasks : uint8_t {
         NANDFlash = PWM_CHANNEL_0_MASK, ///< NAND Flash
         MRAM = PWM_CHANNEL_1_MASK, ///< MRAM
         CAN1 = PWM_CHANNEL_3_MASK, ///< CAN1
@@ -41,7 +39,7 @@ public:
     /**
      * @enum PWM channels used to set the current threshold for the TLC555 timer.
      */
-    enum class PWMChannelNumber : uint8_t {
+    enum class PWMChannelNumbers : uint8_t {
         NANDFlash = PWM_CHANNEL_0, ///< NAND Flash
         MRAM = PWM_CHANNEL_1, ///< MRAM
         CAN1 = PWM_CHANNEL_3, ///< CAN1
@@ -73,34 +71,37 @@ public:
         CAN1 = PIO_PIN_PD26, ///< CAN1
         CAN2 = PIO_PIN_PD22 ///< CAN2
     };
+}
 
-    virtual void returnLCLStatus() = 0;
+/**
+ * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
+ * The LCLs are completely programmable during flight.
+ * For now the class contains functionality only for the On-Board Computer Subsystem but
+ * the Science Unit will make use of LCL circuits as well.
+ * The main components that constitute a Latchup Current Limiter are a TLC555 timer, an
+ * Operational Amplifier, a P-MOS MOSFET, a N-MOS MOSFET
+ */
+class LCL {
+private:
 
-    virtual void openLCL() = 0;
+    LCLDefinitions::LCLControlPins controlPins = {0};
 
-    virtual void closeLCL() = 0;
+    inline uint16_t pwmDutyCycle = 0;
 
-    virtual void calculateVoltageThreshold() = 0;
+    // inline float currentThreshold = 0;
+public:
 
-    virtual void calculateCurrentThreshold() = 0;
+    void returnLCLStatus(LCLDefinitions::LCLControlPins) : ;
 
-    virtual void changeCurrentThreshHold() = 0;
-};
+    void openLCL();
 
-class NANDFlashLCLProtection : public LCL {
-    explicit NANDFlashLCLProtection;
+    void closeLCL();
 
-    void returnLCLStatus() override;
+    void calculateVoltageThreshold();
 
-    void openLCL() override;
+    void calculateCurrentThreshold();
 
-    void closeLCL() override;
-
-    void calculateVoltageThreshold() override;
-
-    void calculateCurrentThreshold() override;
-
-    void changeCurrentThreshHold() override;
+    void changeCurrentThreshHold();
 };
 
 #endif //ATSAM_COMPONENT_DRIVERS_LCL_HPP

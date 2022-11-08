@@ -1,18 +1,18 @@
 #include "LCL.hpp"
 
-NANDFlashLCLProtection::NANDFlashLCLProtection() {
+LCL::LCL() {
 //    PIO_PinWrite(PIO_PIN_PB2, true); // RESET
 //    PIO_PinWrite(PIO_PIN_PB3, true); // SET/TRIG
 }
 
-void NANDFlashLCLProtection::returnLCLStatus() {
+void LCL::returnLCLStatus() {
     PWM0_ChannelPeriodGet();
     calculateCurrentThreshold();
 
     return struct
 }
 
-void NANDFlashLCLProtection::openLCL() {
+void LCL::openLCL() {
     // Todo assert status of GPIOs/log
     PIO_PinWrite(PIO_PIN_PB2, true); // RESET
     PIO_PinWrite(PIO_PIN_PB3, true); // SET/TRIG
@@ -23,21 +23,21 @@ void NANDFlashLCLProtection::openLCL() {
     PIO_PinWrite(PIO_PIN_PB3, true); // disable set
 }
 
-void NANDFlashLCLProtection::closeLCL() {
+void LCL::closeLCL() {
     // Todo assert status of GPIOs/log
     PWM0_ChannelsStop();
     PIO_PinWrite(PIO_PIN_PB2, false); // enable RESET
 }
 
-void NANDFlashLCLProtection::calculateVoltageThreshold() {
+void LCL::calculateVoltageThreshold() {
 
 }
 
-void NANDFlashLCLProtection::calculateCurrentThreshold() {
+void LCL::calculateCurrentThreshold() {
 
 }
 
-void NANDFlashLCLProtection::changeCurrentThreshHold() {
+void LCL::changeCurrentThreshHold() {
     PWM0_ChannelDutySet(PWM_CHANNEL_0, duty0);
 
 }
