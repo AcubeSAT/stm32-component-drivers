@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "definitions.h"
 
 namespace LCLDefinitions {
 
@@ -10,8 +11,8 @@ namespace LCLDefinitions {
     struct LCLControlPins {
         uint8_t resetPin = static_cast<uint8_t>(0);
         uint8_t setPin = static_cast<uint8_t>(0);
-//        PWMChannelMasks pwmChannelMask = static_cast<PWMChannelMasks>(0);
-//        PWMChannelNumbers pwmChannelNumber = static_cast<PWMChannelNumbers>(0);
+        uint8_t pwmChannelMask = static_cast<uint8_t>(0);
+        uint8_t pwmChannelNumber = static_cast<uint8_t>(0);
     };
 }
 
@@ -37,9 +38,7 @@ public:
 
     void returnLCLStatus();
 
-    void openLCL() {
-        return;
-    }
+    void openLCL();
 
     void closeLCL();
 
