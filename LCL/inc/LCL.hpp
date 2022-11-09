@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "definitions.h"
 #include "peripheral/pio/plib_pio.h"
+#include "peripheral/pwm/plib_pwm0.h"
 
 namespace LCLDefinitions {
 
@@ -70,13 +71,13 @@ private:
 public:
 
     LCL(LCLDefinitions::LCLControlPins &controlPinsStruct) : controlPins(controlPinsStruct) {
-        PIO_PinWrite(controlPins.resetPin, false);
-        PIO_PinWrite(controlPins.setPin, true);
+        PIO_PinWrite(static_cast<PIO_PIN>(controlPins.resetPin), false);
+        PIO_PinWrite(static_cast<PIO_PIN>(controlPins.setPin), true);
     }
 
     inline void changePWMDutyCycle(uint16_t newDutyCycle) {
         pwmDutyCycle = newDutyCycle;
-        PWM0_ChannelDutySet(controlPins.pwmChannelNumber, newDutyCycle);
+        PWM0_ChannelDutySet(static_cast<PWM_CHANNEL_NUM>(controlPins.pwmChannelNumber), newDutyCycle);
     }
 
     void returnLCLStatus();
