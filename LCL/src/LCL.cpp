@@ -10,12 +10,12 @@
 void LCL::openLCL() {
     // Todo assert status of GPIOs/log
     PIO_PinWrite(controlPins.resetPin, true); // RESET
-    PIO_PinWrite(controlPins.setPin, true); // SET/TRIG
     PWM0_ChannelsStart(controlPins.pwmChannelMask);
 
     PIO_PinWrite(controlPins.setPin, false); // enable set
-    SYSTICK_DelayMs(100);
+    SYSTICK_DelayMs(100); // any better ideas?
     PIO_PinWrite(controlPins.setPin, true); // disable set
+    lclOn = true;
 }
 
 
@@ -23,6 +23,7 @@ void LCL::closeLCL() {
     // Todo assert status of GPIOs/log
     PWM0_ChannelsStop(controlPins.pwmChannelMask);
     PIO_PinWrite(PIO_PIN_PB2, false); // enable RESET
+    lclOn = false;
 }
 
 void LCL::calculateVoltageThreshold() {
