@@ -29,7 +29,9 @@
 #define TWIHS_Initialize TWIHS1_Initialize
 #define TWIHS_IsBusy TWIHS1_IsBusy
 #else
+
 #include "plib_twihs2_master.h"
+
 #define TWIHS_Write TWIHS2_Write
 #define TWIHS_ErrorGet TWIHS2_ErrorGet
 #define TWIHS_Read TWIHS2_Read
@@ -269,7 +271,7 @@ public:
     /**
      *
      */
-     void MCP9809 (uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+    MCP9809(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
 
     /**
      * Set the hysteresis temperature (THYST)
