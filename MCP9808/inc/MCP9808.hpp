@@ -267,6 +267,11 @@ private:
 
 public:
     /**
+     *
+     */
+     void MCP9809 (uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+
+    /**
      * Set the hysteresis temperature (THYST)
      * Available options are: 0, 1.5, 3, 6 degrees Celsius
      * @param option desired hysteresis temperature option
