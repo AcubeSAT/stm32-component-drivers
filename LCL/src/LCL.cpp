@@ -7,21 +7,21 @@
 //    return struct
 //}
 
-void LCL::openLCL() {
+void LCL::enableLCL() {
     // Todo assert status of GPIOs/log
-    PIO_PinWrite(static_cast<PIO_PIN>(controlPins.resetPin), true); // RESET
-    PWM0_ChannelsStart(static_cast<PWM_CHANNEL_MASK>(controlPins.pwmChannelMask));
+    PIO_PinWrite(controlPins.resetPin, true); // RESET
+    PWM0_ChannelsStart(controlPins.pwmChannelMask);
 
-    PIO_PinWrite(static_cast<PIO_PIN>(controlPins.setPin), false); // enable set
+    PIO_PinWrite(controlPins.setPin, false); // enable set
     SYSTICK_DelayMs(100); // any better ideas?
-    PIO_PinWrite(static_cast<PIO_PIN>(controlPins.setPin), true); // disable set
+    PIO_PinWrite(controlPins.setPin, true); // disable set
     lclOn = true;
 }
 
 
-void LCL::closeLCL() {
+void LCL::disableLCL() {
     // Todo assert status of GPIOs/log
-    PWM0_ChannelsStop(static_cast<PWM_CHANNEL_MASK>(controlPins.pwmChannelMask));
+    PWM0_ChannelsStop(controlPins.pwmChannelMask);
     PIO_PinWrite(PIO_PIN_PB2, false); // enable RESET
     lclOn = false;
 }
