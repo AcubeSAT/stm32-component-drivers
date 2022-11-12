@@ -15,23 +15,26 @@
 #define MCP9808_TWI_PORT 2
 
 #if MCP9808_TWI_PORT == 0
+
 #include "plib_twihs0_master.h"
 #define TWIHS_Write TWIHS0_Write
 #define TWIHS_ErrorGet TWIHS0_ErrorGet
 #define TWIHS_Read TWIHS0_Read
 #define TWIHS_Initialize TWIHS0_Initialize
 #define TWIHS_IsBusy TWIHS0_IsBusy
+
 #elif MCP9808_TWI_PORT == 1
+
 #include "plib_twihs1_master.h"
 #define TWIHS_Write TWIHS1_Write
 #define TWIHS_ErrorGet TWIHS1_ErrorGet
 #define TWIHS_Read TWIHS1_Read
 #define TWIHS_Initialize TWIHS1_Initialize
 #define TWIHS_IsBusy TWIHS1_IsBusy
+
 #else
 
 #include "plib_twihs2_master.h"
-
 #define TWIHS_Write TWIHS2_Write
 #define TWIHS_ErrorGet TWIHS2_ErrorGet
 #define TWIHS_Read TWIHS2_Read
