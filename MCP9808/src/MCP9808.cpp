@@ -9,14 +9,14 @@ void MCP9808::writeRegister(uint8_t address, uint16_t data) {
 
     uint8_t ackData = 0;
 
-    if (TWIHS2_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
+    if (TWIHS_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
         waitForResponse();
-        error = TWIHS2_ErrorGet();
+        error = TWIHS_ErrorGet();
     }
 
-    if (TWIHS2_Write(I2C_BUS_ADDRESS, txData, 1)) {
+    if (TWIHS_Write(I2C_BUS_ADDRESS, txData, 1)) {
         waitForResponse();
-        error = TWIHS2_ErrorGet();
+        error = TWIHS_ErrorGet();
     }
 }
 
@@ -24,19 +24,19 @@ uint16_t MCP9808::readRegister(uint8_t address) {
     uint8_t buffer[2];
     uint8_t ackData = 0;
 
-    if (TWIHS2_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
+    if (TWIHS_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
         waitForResponse();
-        error = TWIHS2_ErrorGet();
+        error = TWIHS_ErrorGet();
     }
 
-    if (TWIHS2_Write(I2C_BUS_ADDRESS, &address, 1)) {
+    if (TWIHS_Write(I2C_BUS_ADDRESS, &address, 1)) {
         waitForResponse();
-        error = TWIHS2_ErrorGet();
+        error = TWIHS_ErrorGet();
     }
 
-    if (TWIHS2_Read(I2C_BUS_ADDRESS, buffer, 2)) {
+    if (TWIHS_Read(I2C_BUS_ADDRESS, buffer, 2)) {
         waitForResponse();
-        error = TWIHS2_ErrorGet();
+        error = TWIHS_ErrorGet();
         return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
     } else {
         return 0;

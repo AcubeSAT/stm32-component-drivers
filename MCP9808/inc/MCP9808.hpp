@@ -3,9 +3,39 @@
 #include <cstdint>
 #include "FreeRTOS.h"
 #include "Logger.hpp"
-#include "plib_twihs2_master.h"
 #include "task.h"
 
+/**
+ * Select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
+ * By giving the value the correct value corresponding value to MCP9808_TWI_PORT, the user can
+ * choose between TWI0, TWI1 or TWI2 respectively.
+ * For the ATSAMV71 development board MCP9808_TWI_PORT = 2
+ * For OBC or ADCS microcontrollers MCP9808_TWI_PORT = 1
+ */
+#define MCP9808_TWI_PORT 2
+
+#if MCP9808_TWI_PORT == 0
+#include "plib_twihs0_master.h"
+#define TWIHS_Write TWIHS0_Write
+#define TWIHS_ErrorGet TWIHS0_ErrorGet
+#define TWIHS_Read TWIHS0_Read
+#define TWIHS_Initialize TWIHS0_Initialize
+#define TWIHS_IsBusy TWIHS0_IsBusy
+#elif MCP9808_TWI_PORT == 1
+#include "plib_twihs1_master.h"
+#define TWIHS_Write TWIHS1_Write
+#define TWIHS_ErrorGet TWIHS1_ErrorGet
+#define TWIHS_Read TWIHS1_Read
+#define TWIHS_Initialize TWIHS1_Initialize
+#define TWIHS_IsBusy TWIHS1_IsBusy
+#else
+#include "plib_twihs2_master.h"
+#define TWIHS_Write TWIHS2_Write
+#define TWIHS_ErrorGet TWIHS2_ErrorGet
+#define TWIHS_Read TWIHS2_Read
+#define TWIHS_Initialize TWIHS2_Initialize
+#define TWIHS_IsBusy TWIHS2_IsBusy
+#endif
 
 /**
  * MCP9808 temperature sensor driver by Grigorios Pavlakis and Dimitrios Sourlantzis
@@ -171,7 +201,7 @@ private:
     const uint8_t I2C_BASE_ADDRESS = 0x18u;
 
     /**
-    * Bit mask to enable changes only to addressess bits 2-4 which are user-settable.
+    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
     */
     const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
 
@@ -226,10 +256,10 @@ private:
      */
     static inline void waitForResponse() {
         auto start = xTaskGetTickCount();
-        while (TWIHS2_IsBusy()) {
+        while (TWIHS_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
                 LOG_ERROR << "I2C timeout";
-                TWIHS2_Initialize();
+                TWIHS_Initialize();
             }
             taskYIELD();
         }
