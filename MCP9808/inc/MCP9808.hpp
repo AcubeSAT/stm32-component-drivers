@@ -363,6 +363,10 @@ public:
      */
     bool isDeviceConnected();
 
+    /**
+     * Getter function
+     * @return the I2C_USER_ADDRESS private variable
+     */
     inline uint8_t getI2CUserAddress() const {
         return I2C_USER_ADDRESS;
     }
