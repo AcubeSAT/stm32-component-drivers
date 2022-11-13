@@ -7,10 +7,10 @@
 
 /**
  * Select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
- * By giving the value the correct value corresponding value to MCP9808_TWI_PORT, the user can
+ * By giving the corresponding value to MCP9808_TWI_PORT, the user can
  * choose between TWI0, TWI1 or TWI2 respectively.
- * For the ATSAMV71 development board MCP9808_TWI_PORT = 2
- * For OBC or ADCS microcontrollers MCP9808_TWI_PORT = 1
+ * For the OBC microcontroller MCP9808_TWI_PORT = 1
+ * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2
  */
 #define MCP9808_TWI_PORT 2
 
