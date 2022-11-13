@@ -362,4 +362,8 @@ public:
      * @return Returns true if the device is connected and responds correctly.
      */
     bool isDeviceConnected();
+
+    inline uint8_t getI2CUserAddress() const {
+        return I2C_USER_ADDRESS;
+    }
 };
