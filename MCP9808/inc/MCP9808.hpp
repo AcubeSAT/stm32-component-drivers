@@ -60,7 +60,7 @@ private:
     /**
      * Wait period before a sensor read is skipped
      */
-    static const uint8_t TimeoutTicks = 100;
+    const uint8_t TimeoutTicks = 100;
 
     /**
     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
@@ -259,11 +259,13 @@ private:
     /**
      * Function that prevents hanging when a I2C device is not responding.
      */
-    static inline void waitForResponse() {
+    inline void waitForResponse() {
         auto start = xTaskGetTickCount();
         while (TWIHS_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
-                LOG_ERROR << "I2C timeout";
+                etl::string<LOGGER_MAX_MESSAGE_SIZE> timeoutMessage = "Temperature device with address ";
+                etl::to_string(I2C_USER_ADDRESS, timeoutMessage, true);
+                LOG_ERROR << timeoutMessage << " timeout";
                 TWIHS_Initialize();
             }
             taskYIELD();
@@ -272,9 +274,10 @@ private:
 
 public:
     /**
-     *
+     * Set the I2C address depending on the pin configuration of the physical device
+     * @see I2C_USER_ADDRESS
      */
-    MCP9809(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+    MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
 
     /**
      * Set the hysteresis temperature (THYST)
