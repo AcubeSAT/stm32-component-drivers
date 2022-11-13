@@ -35,6 +35,7 @@
 #elif MCP9808_TWI_PORT == 2
 
 #include "plib_twihs2_master.h"
+
 #define TWIHS_Write TWIHS2_Write
 #define TWIHS_ErrorGet TWIHS2_ErrorGet
 #define TWIHS_Read TWIHS2_Read
@@ -263,9 +264,8 @@ private:
         auto start = xTaskGetTickCount();
         while (TWIHS_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
-                etl::string<LOGGER_MAX_MESSAGE_SIZE> timeoutMessage = "Temperature device with address ";
-                etl::to_string(I2C_USER_ADDRESS, timeoutMessage, true);
-                LOG_ERROR << timeoutMessage << " timeout";
+                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
+                          << " has timed out";
                 TWIHS_Initialize();
             }
             taskYIELD();
