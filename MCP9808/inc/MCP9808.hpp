@@ -32,7 +32,7 @@
 #define TWIHS_Initialize TWIHS1_Initialize
 #define TWIHS_IsBusy TWIHS1_IsBusy
 
-#else
+#elif MCP9808_TWI_PORT == 2
 
 #include "plib_twihs2_master.h"
 #define TWIHS_Write TWIHS2_Write
