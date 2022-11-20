@@ -12,7 +12,6 @@ namespace LCLDefinitions {
      *
      */
     struct LCLDeviceControl {
-        etl::string<9> protectedDevice;
         PWM_CHANNEL_MASK pwmChannelMask;
         PWM_CHANNEL_NUM pwmChannelNumber;
         PIO_PIN resetPin;
@@ -39,7 +38,7 @@ private:
     // inline float currentThreshold = 0;
 public:
 
-    LCL(LCLDefinitions::LCLDeviceControl &controlPinsStruct) : controlPins(controlPinsStruct) {
+    LCL(LCLDefinitions::LCLDeviceControl controlPinsStruct) : controlPins(controlPinsStruct) {
         PIO_PinWrite(controlPins.resetPin, false);
         PIO_PinWrite(controlPins.setPin, true);
     }
