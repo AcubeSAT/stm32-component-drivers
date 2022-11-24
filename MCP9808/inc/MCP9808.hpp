@@ -4,16 +4,15 @@
 #include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
+#include "Peripheral_Definitions.hpp"
 
 /**
- * Select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
- * By giving the corresponding value to MCP9808_TWI_PORT, the user can
- * choose between TWI0, TWI1 or TWI2 respectively.
- * For the OBC microcontroller MCP9808_TWI_PORT = 1
- * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2
+ * The MCP9808_TWI_PORT definition is used to select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
+ * By giving the corresponding value to MCP9808_TWI_PORT, the user can choose between TWI0, TWI1 or TWI2 respectively.
+ * For the OBC microcontroller MCP9808_TWI_PORT = 1,
+ * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
+ * Each subsystem shall define MCP9808_TWI_PORT in a platform specific header file.
  */
-#define MCP9808_TWI_PORT 2
-
 #if MCP9808_TWI_PORT == 0
 
 #include "plib_twihs0_master.h"
@@ -276,6 +275,7 @@ public:
     /**
      * Set the I2C address depending on the pin configuration of the physical device
      * @see I2C_USER_ADDRESS
+     * @param i2cUserAddress user selectable address
      */
     MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
 
