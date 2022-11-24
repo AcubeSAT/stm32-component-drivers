@@ -2,6 +2,12 @@
 
 Libraries for interfacing various hardware components and ICs with ATSAM microcontrollers
 
+# Platform Specific Definitions
+
+## MCP9808
+
+Each subsystem shall define MCP9808_TWI_PORT in a platform specific header file.
+
 # Connecting the MCP9808 at the Xplained V71 Dev Board
 
 You should set the I2C_USER_ADDRESS to a defined value. This is done by setting the A0-A1-A2 pins of the temperature sensor.
