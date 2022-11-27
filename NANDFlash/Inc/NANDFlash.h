@@ -10,13 +10,22 @@
  */
 class MT29F {
 private:
-    static uint32_t dataRegister = 0x60000000;
-    static uint32_t addressRegister = 0x60200000;
-    static uint32_t commandRegister = 0x60400000;
+    uint32_t dataRegister = 0x60000000;
+    uint32_t addressRegister = 0x60200000;
+    uint32_t commandRegister = 0x60400000;
 
+    PIO_PIN NANDOE = PIO_PIN_PC9;
+    PIO_PIN NANDWE = PIO_PIN_PC10;
+    PIO_PIN NANDCLE  = PIO_PIN_PC17;
+    PIO_PIN NANDALE = PIO_PIN_PC16;
+    PIO_PIN NCS = PIO_PIN_PA3;
+
+public:
     void writeData(uint8_t data);
 
     void sendAddress(uint8_t address);
 
     void sendCommand(uint8_t command);
+
+    uint8_t readDataFromNAND();
 };
