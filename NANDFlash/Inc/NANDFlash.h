@@ -18,9 +18,11 @@ private:
     PIO_PIN NANDWE = PIO_PIN_PC10;
     PIO_PIN NANDCLE  = PIO_PIN_PC17;
     PIO_PIN NANDALE = PIO_PIN_PC16;
-    PIO_PIN NCS = PIO_PIN_PA3;
+    PIO_PIN NCS = PIO_PIN_PD19;
 
 public:
+    uint8_t initialize();
+
     void writeData(uint8_t data);
 
     void sendAddress(uint8_t address);
