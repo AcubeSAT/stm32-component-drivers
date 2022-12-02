@@ -1,7 +1,8 @@
+#pragma once
+
 #include <cstdint>
 #include "definitions.h"
 
-#pragma once
 /**
  * This is a driver for MT29F NAND Flash.
  * @ingroup drivers
