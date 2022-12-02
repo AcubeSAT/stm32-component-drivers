@@ -33,11 +33,12 @@ public:
         PIO_PinWrite(NANDCLE, false);
         *((volatile uint8_t *) commandRegister) = (uint8_t) command;
         PIO_PinWrite(NCS, true);
+        PIO_PinWrite(NANDOE, false);
     }
 
     uint8_t readDataFromNAND();
 
-    uint8_t initialize(){    MATRIX_REGS->CCFG_SMCNFCS = 8;
+    uint8_t initialize(){
         uint8_t data;
         while(1) {
             if (PIO_PinRead(PIO_PIN_PA12)) {
@@ -49,7 +50,6 @@ public:
                     }
                 }
                 PIO_PinWrite(NCS, false);
-                PIO_PinWrite(NANDOE, false);
                 for(int i = 0; i < 10; i++){
                     data = *((volatile uint8_t *) dataRegister);
                 }
