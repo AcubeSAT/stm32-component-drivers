@@ -4,7 +4,7 @@
 #include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
-#include "Peripheral_Definitions.hpp"
+//#include "Peripheral_Definitions.hpp"
 
 /**
  * The MCP9808_TWI_PORT definition is used to select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
@@ -13,6 +13,9 @@
  * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
  * Each subsystem shall define MCP9808_TWI_PORT in a platform specific header file.
  */
+
+#define MCP9808_TWI_PORT 1
+
 #if MCP9808_TWI_PORT == 0
 
 #include "plib_twihs0_master.h"
