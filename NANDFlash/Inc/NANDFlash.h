@@ -11,15 +11,15 @@
  */
 class MT29F {
 private:
-    uint32_t dataRegister = 0x60000000;
-    uint32_t addressRegister = 0x60200000;
-    uint32_t commandRegister = 0x60400000;
+    uint32_t dataRegister = 0x61000000;
+    uint32_t addressRegister = 0x61200000;
+    uint32_t commandRegister = 0x61400000;
 
     PIO_PIN NANDOE = PIO_PIN_PC9;
     PIO_PIN NANDWE = PIO_PIN_PC10;
     PIO_PIN NANDCLE  = PIO_PIN_PC17;
     PIO_PIN NANDALE = PIO_PIN_PC16;
-    PIO_PIN NCS = PIO_PIN_PD19;
+    PIO_PIN NCS = PIO_PIN_PD18;
 
 public:
 
