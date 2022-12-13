@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include "definitions.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /**
  * This is a driver for MT29F NAND Flash.
@@ -33,4 +35,5 @@ public:
 
     uint8_t readDataFromNAND();
 
+    void READ_ID();
 };
