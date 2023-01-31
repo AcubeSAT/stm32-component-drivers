@@ -8,10 +8,12 @@ public:
      *
      * @param chipSelect
      */
-    MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
+    constexpr MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
 
-    /*
+    /**
      *
+     * @param dataAddress
+     * @param data
      */
     inline void mramDataWrite(uint32_t dataAddress, uint8_t data) {
         smcDataWrite(moduleBaseAddress | dataAddress, data);
