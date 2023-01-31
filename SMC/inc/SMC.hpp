@@ -47,7 +47,7 @@ public:
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      * @return Base address on the EBI peripheral that the Chip Select corresponds to.
      */
-    static inline uint32_t smcGetBaseAddress(uint8_t chipSelect) {
+    static inline constexpr uint32_t smcGetBaseAddress(uint8_t chipSelect) {
         uint32_t dataAddress = 0; // TODO: add error handling in case chipSelect out of bounds.
 
         switch (chipSelect) {
