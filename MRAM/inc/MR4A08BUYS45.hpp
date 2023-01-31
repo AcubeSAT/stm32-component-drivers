@@ -1,17 +1,29 @@
 #pragma once
-#include "Peripheral_Definitions.hpp"
 
-class MRAM {
+#include "SMC.hpp"
+
+class MRAM : public SMC {
 public:
+    /**
+     *
+     * @param chipSelect
+     */
+    MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
 
-    static inline void smcDataWrite(uint32_t dataAddress, uint8_t data)
-    {
-        *(reinterpret_cast<volatile uint8_t *>(MRAM_BASE_ADDRESS + dataAddress)) = data;
+    /*
+     *
+     */
+    inline void mramDataWrite(uint32_t dataAddress, uint8_t data) {
+        smcDataWrite(moduleBaseAddress | dataAddress, data);
     }
 
-    static inline uint8_t smcDataRead(uint32_t dataAddress)
-    {
-        return *(reinterpret_cast<volatile uint8_t *>(MRAM_BASE_ADDRESS + dataAddress));
+    /**
+     *
+     * @param dataAddress
+     * @return
+     */
+    inline uint8_t mramDataRead(uint32_t dataAddress) {
+        return smcDataRead(moduleBaseAddress | dataAddress);
     }
 };
 
