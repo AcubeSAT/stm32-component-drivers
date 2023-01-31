@@ -52,7 +52,7 @@ public:
      * @param data
      * @param sizeOfData
      */
-    inline void mramWriteData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
+    void mramWriteData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
 
     /**
      *
@@ -60,5 +60,5 @@ public:
      * @param data
      * @param sizeOfData
      */
-    inline void mramReadData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
+    void mramReadData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
 };
