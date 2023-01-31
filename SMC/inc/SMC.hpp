@@ -33,7 +33,7 @@ public:
      * Initialize the \ref moduleBaseAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      */
-    SMC(ChipSelect chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)) {}
+    constexpr SMC(ChipSelect chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)) {}
 
     /**
      * Basic 8-bit write to an EBI address.
