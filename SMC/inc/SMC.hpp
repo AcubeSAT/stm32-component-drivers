@@ -20,6 +20,16 @@ private:
 
 public:
     /**
+     * Available Chip Select pins on the ATSAMV71 MCU.
+     */
+    enum ChipSelect : uint8_t {
+        NCS0 = 0,
+        NCS1 = 1,
+        NCS2 = 2,
+        NCS3 = 3,
+    };
+
+    /**
      * Initialize the \ref moduleBaseAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      */
@@ -48,8 +58,6 @@ public:
      * @return Base address on the EBI peripheral that the Chip Select corresponds to.
      */
     static inline constexpr uint32_t smcGetBaseAddress(uint8_t chipSelect) {
-        // TODO: add error handling in case chipSelect out of bounds.
-
         switch (chipSelect) {
             case 0:
                 return EBI_CS0_ADDR;
