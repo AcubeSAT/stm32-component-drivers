@@ -3,6 +3,16 @@
 #include "SMC.hpp"
 
 class MRAM : public SMC {
+private:
+    /**
+     *
+     */
+    static static constexpr uint32_t memoryAddressLimit = 0x1FFFFF;
+
+    /*
+     *
+     */
+    uint32_t nextUnallocatedMemoryAddress = 0;
 public:
     /**
      *
