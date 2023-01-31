@@ -33,7 +33,7 @@ public:
      * Initialize the \ref moduleBaseAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      */
-    SMC(uint8_t chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)) {}
+    SMC(ChipSelect chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)) {}
 
     /**
      * Basic 8-bit write to an EBI address.
@@ -57,18 +57,18 @@ public:
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      * @return Base address on the EBI peripheral that the Chip Select corresponds to.
      */
-    static inline constexpr uint32_t smcGetBaseAddress(uint8_t chipSelect) {
+    static inline constexpr uint32_t smcGetBaseAddress(ChipSelect chipSelect) {
         switch (chipSelect) {
-            case 0:
+            case NCS0:
                 return EBI_CS0_ADDR;
 
-            case 1:
+            case NCS1:
                 return EBI_CS1_ADDR;
 
-            case 2:
+            case NCS2:
                 return EBI_CS2_ADDR;
 
-            case 3:
+            case NCS3:
                 return EBI_CS3_ADDR;
 
             default:
