@@ -48,28 +48,23 @@ public:
      * @return Base address on the EBI peripheral that the Chip Select corresponds to.
      */
     static inline constexpr uint32_t smcGetBaseAddress(uint8_t chipSelect) {
-        uint32_t dataAddress = 0; // TODO: add error handling in case chipSelect out of bounds.
+        // TODO: add error handling in case chipSelect out of bounds.
 
         switch (chipSelect) {
             case 0:
-                dataAddress = EBI_CS0_ADDR;
-                break;
+                return EBI_CS0_ADDR;
 
             case 1:
-                dataAddress = EBI_CS1_ADDR;
-                break;
+                return EBI_CS1_ADDR;
 
             case 2:
-                dataAddress = EBI_CS2_ADDR;
-                break;
+                return EBI_CS2_ADDR;
 
             case 3:
-                dataAddress = EBI_CS3_ADDR;
-                break;
+                return EBI_CS3_ADDR;
 
             default:
-                break;
+                return 0;
         }
-        return dataAddress;
     }
 };
