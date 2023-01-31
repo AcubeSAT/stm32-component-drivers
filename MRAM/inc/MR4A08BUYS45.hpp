@@ -9,7 +9,7 @@ private:
      * The device can store data from address 0 to 2^21-1.
      * Primarily used for error detection.
      */
-    static static constexpr uint32_t memoryAddressLimit = 0x1FFFFF;
+    static inline constexpr uint32_t memoryAddressLimit = 0x1FFFFF;
 
     /**
      * A variable to keep track of the total allocated memory and help in inserting new data.
@@ -32,7 +32,7 @@ public:
      * @param dataAddress MRAM address to write to.
      * @param data 8-bit data to write to the address.
      */
-    inline void mramDataWrite(uint32_t dataAddress, uint8_t data) {
+    inline void mramWriteByte(uint32_t dataAddress, uint8_t data) {
         smcDataWrite(moduleBaseAddress | dataAddress, data);
     }
 
@@ -42,7 +42,23 @@ public:
      * @param dataAddress MRAM address to write to.
      * @return 8-bit data saved in that address.
      */
-    inline uint8_t mramDataRead(uint32_t dataAddress) {
+    inline uint8_t mramReadByte(uint32_t dataAddress) {
         return smcDataRead(moduleBaseAddress | dataAddress);
     }
+
+    /**
+     *
+     * @param dataAddress
+     * @param data
+     * @param sizeOfData
+     */
+    inline void mramWriteData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
+
+    /**
+     *
+     * @param dataAddress
+     * @param data
+     * @param sizeOfData
+     */
+    inline void mramReadData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
 };
