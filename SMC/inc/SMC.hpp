@@ -12,7 +12,7 @@
  * used for enabling the external module such as the NAND Flash.
  */
 class SMC {
-private:
+protected:
     /**
      * Base address of the memory area mapped to the memory addresses of the external module.
      */
