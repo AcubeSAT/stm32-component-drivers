@@ -1,8 +1,46 @@
 #pragma once
 
-#include "stdint.h"
+#include <cstdint>
+#include "FreeRTOS.h"
+#include "Logger.hpp"
+#include "task.h"
+#include "Peripheral_Definitions.hpp"
+
+/**
+ * The MCP9808_TWI_PORT definition is used to select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
+ * By giving the corresponding value to MCP9808_TWI_PORT, the user can choose between TWI0, TWI1 or TWI2 respectively.
+ * For the OBC microcontroller MCP9808_TWI_PORT = 1,
+ * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
+ * Each subsystem shall define MCP9808_TWI_PORT in a platform specific header file.
+ */
+#if MCP9808_TWI_PORT == 0
+
+#include "plib_twihs0_master.h"
+#define TWIHS_Write TWIHS0_Write
+#define TWIHS_ErrorGet TWIHS0_ErrorGet
+#define TWIHS_Read TWIHS0_Read
+#define TWIHS_Initialize TWIHS0_Initialize
+#define TWIHS_IsBusy TWIHS0_IsBusy
+
+#elif MCP9808_TWI_PORT == 1
+
+#include "plib_twihs1_master.h"
+#define TWIHS_Write TWIHS1_Write
+#define TWIHS_ErrorGet TWIHS1_ErrorGet
+#define TWIHS_Read TWIHS1_Read
+#define TWIHS_Initialize TWIHS1_Initialize
+#define TWIHS_IsBusy TWIHS1_IsBusy
+
+#elif MCP9808_TWI_PORT == 2
+
 #include "plib_twihs2_master.h"
 
+#define TWIHS_Write TWIHS2_Write
+#define TWIHS_ErrorGet TWIHS2_ErrorGet
+#define TWIHS_Read TWIHS2_Read
+#define TWIHS_Initialize TWIHS2_Initialize
+#define TWIHS_IsBusy TWIHS2_IsBusy
+#endif
 
 /**
  * MCP9808 temperature sensor driver by Grigorios Pavlakis and Dimitrios Sourlantzis
@@ -18,6 +56,12 @@
  */
 class MCP9808 {
 private:
+
+    /**
+     * Wait period before a sensor read is skipped
+     */
+    const uint8_t TimeoutTicks = 100;
+
     /**
     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
     */
@@ -162,7 +206,7 @@ private:
     const uint8_t I2C_BASE_ADDRESS = 0x18u;
 
     /**
-    * Bit mask to enable changes only to addressess bits 2-4 which are user-settable.
+    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
     */
     const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
 
@@ -212,7 +256,29 @@ private:
     */
     void setRegister(uint8_t address, Mask mask, uint16_t setting);
 
+    /**
+     * Function that prevents hanging when a I2C device is not responding.
+     */
+    inline void waitForResponse() {
+        auto start = xTaskGetTickCount();
+        while (TWIHS_IsBusy()) {
+            if (xTaskGetTickCount() - start > TimeoutTicks) {
+                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
+                          << " has timed out";
+                TWIHS_Initialize();
+            }
+            taskYIELD();
+        }
+    };
+
 public:
+    /**
+     * Set the I2C address depending on the pin configuration of the physical device
+     * @see I2C_USER_ADDRESS
+     * @param i2cUserAddress user selectable address
+     */
+    MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+
     /**
      * Set the hysteresis temperature (THYST)
      * Available options are: 0, 1.5, 3, 6 degrees Celsius
@@ -290,4 +356,18 @@ public:
      * @returns the current temperature
      */
     float getTemperature();
+
+    /**
+     * Check the Manufacturer ID register against the expected value.
+     * @return Returns true if the device is connected and responds correctly.
+     */
+    bool isDeviceConnected();
+
+    /**
+     * Getter function
+     * @return the I2C_USER_ADDRESS private variable
+     */
+    inline uint8_t getI2CUserAddress() const {
+        return I2C_USER_ADDRESS;
+    }
 };
