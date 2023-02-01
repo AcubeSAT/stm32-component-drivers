@@ -24,7 +24,7 @@ private:
     const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000;
     const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000;
 
-    const PIO_PIN nandReadyBusyPin = PIO_PIN_NONE; //TODO: if PIO_PIN == NONE => throw error
+    const PIO_PIN nandReadyBusyPin = PIO_PIN_NONE; //TODO: if PIO_PIN == NONE => throw log message
 //    PIO_PIN NANDOE = PIO_PIN_PC9;
 //    PIO_PIN NANDWE = PIO_PIN_PC10;
 //    PIO_PIN NANDCLE  = PIO_PIN_PC17;
@@ -32,9 +32,35 @@ private:
 //    PIO_PIN NCS = PIO_PIN_PD18;
 
 public:
-    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {}
+    /**
+     * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
+     */
+    inline constexpr void selectNandConfiguration(ChipSelect chipSelect) {
+        switch (chipSelect) {
+            case NCS0:
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS0(1);
+                return;
 
-    uint8_t initialize();
+            case NCS1:
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS1(1);
+                return;
+
+            case NCS2:
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS2(1);
+                return;
+
+            case NCS3:
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS3(1);
+                return;
+
+            default:
+                return;
+        }
+    }
+
+    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {
+        selectNandConfiguration(chipSelect);
+    }
 
     inline void nandSendData(uint8_t data) {
         smcDataWrite(moduleBaseAddress, data);
@@ -51,6 +77,8 @@ public:
     inline uint8_t nandReadData() {
         return smcDataRead(moduleBaseAddress);
     }
+
+    uint8_t initialize();
 
     void READ_ID();
 };
