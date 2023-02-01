@@ -3,7 +3,7 @@
   Filename:		nand_hw_if.h
   Description:  Header file for hardware NAND interface
 
-  © 2012 Micron Technology, Inc. All Rights Reserved
+  ï¿½ 2012 Micron Technology, Inc. All Rights Reserved
 
  You have a license to reproduce, display, perform, produce derivative works of,
  and distribute (in original or modified form) the Program, provided that you
@@ -33,7 +33,7 @@
  *****************************************************************************/
 
 /* support x16 NAND devices */
-#define BUS_WIDTH_16BIT;
+// #define BUS_WIDTH_16BIT; // do not define 16-bit device
 
 /******************************************************************************
  * 							END OF USER SETTINGS AREA

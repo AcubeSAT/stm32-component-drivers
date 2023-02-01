@@ -1,6 +1,8 @@
 #pragma once
+
 #include "SMC.hpp"
-//#include "definitions.h"
+//#include <cstdint>
+#include "definitions.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -10,29 +12,44 @@
  * @see http://ww1.microchip.com/downloads/en/DeviceDoc/NAND-Flash-Interface-with-EBI-on-Cortex-M-Based-MCUs-DS90003184A.pdf
  *  and https://gr.mouser.com/datasheet/2/671/micron_technology_micts05995-1-1759202.pdf
  */
-class MT29F  {
+class MT29F : public SMC {
 private:
-    uint32_t dataRegister = 0x61000000;
-    uint32_t addressRegister = 0x61200000;
-    uint32_t commandRegister = 0x61400000;
+    const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000;
+    const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000;
 
+    PIO_PIN nandReadyBusyPin = static_cast<PIO_PIN>(0);
 //    PIO_PIN NANDOE = PIO_PIN_PC9;
 //    PIO_PIN NANDWE = PIO_PIN_PC10;
 //    PIO_PIN NANDCLE  = PIO_PIN_PC17;
 //    PIO_PIN NANDALE = PIO_PIN_PC16;
 //    PIO_PIN NCS = PIO_PIN_PD18;
 
+    // WIP enum
+    enum ReadyBusyPin : PIO_PIN {
+        MemoryPartition1 = MEM_NAND_BUSY_1_PIN,
+        MemoryPartition2 = MEM_NAND_BUSY_2_PIN
+    };
+
 public:
+    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {}
 
     uint8_t initialize();
 
-    void writeData(uint8_t data);
+    inline void nandSendData(uint8_t data) {
+        smcDataWrite(moduleBaseAddress, data);
+    }
 
-    void sendAddress(uint8_t address);
+    inline void nandSendAddress(uint8_t address) {
+        smcDataWrite(triggerNANDALEAddress, address);
+    }
 
-    void sendCommand(uint8_t command);
+    inline void nandSendCommand(uint8_t command) {
+        smcDataWrite(triggerNANDCLEAddress, command);
+    }
 
-    uint8_t readDataFromNAND();
+    inline uint8_t nandReadData() {
+        return smcDataRead(moduleBaseAddress);
+    }
 
     void READ_ID();
 };
