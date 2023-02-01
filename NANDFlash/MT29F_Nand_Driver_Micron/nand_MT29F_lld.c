@@ -3,7 +3,7 @@
   Filename:		nand_MT29F_lld.c
   Description:  Library routines for the Software Drivers for NAND flash
 
-  © 2012 Micron Technology, Inc. All Rights Reserved
+  ï¿½ 2012 Micron Technology, Inc. All Rights Reserved
 
  You have a license to reproduce, display, perform, produce derivative works of,
  and distribute (in original or modified form) the Program, provided that you
@@ -30,7 +30,7 @@
 #include <string.h>
 
 #ifdef TIMEOUT_SUPPORT
-	#include <time.h>
+#include <time.h>
 #endif
 
 #include "nand_MT29F_lld.h"
@@ -82,27 +82,27 @@ void __build_cycle_addr(nand_addr_t addr, MT_uint8 *addr_cycle_stream);
  */
 
 MT_uint8 Init_Driver(void) {
-	flash_width onfi_signature[ONFI_SIGNATURE_LENGHT];
+    flash_width onfi_signature[ONFI_SIGNATURE_LENGHT];
 
-	/* check if the driver is previously initialized */
-	if(DRIVER_STATUS_INITIALIZED == driver_status)
-		return DRIVER_STATUS_INITIALIZED;
+    /* check if the driver is previously initialized */
+    if(DRIVER_STATUS_INITIALIZED == driver_status)
+        return DRIVER_STATUS_INITIALIZED;
 
-	/* initialize platform */
-	PLATFORM_Init();
+    /* initialize platform */
+    PLATFORM_Init();
 
-	/* reset at startup is mandatory */
-	NAND_Reset();
+    /* reset at startup is mandatory */
+    NAND_Reset();
 
-	/* read if this device is ONFI complaint */
-	NAND_Read_ID_ONFI(onfi_signature);
+    /* read if this device is ONFI complaint */
+    NAND_Read_ID_ONFI(onfi_signature);
 
-	/* verify ONFI signature in the first field of parameter page */
-	if(strcmp((const char *)onfi_signature, "ONFI") &&
-		(NAND_BAD_PARAMETER_PAGE != NAND_Read_Param_Page(&device_info)))
-		driver_status = DRIVER_STATUS_INITIALIZED;
+    /* verify ONFI signature in the first field of parameter page */
+    if(strcmp((const char *)onfi_signature, "ONFI") &&
+       (NAND_BAD_PARAMETER_PAGE != NAND_Read_Param_Page(&device_info)))
+        driver_status = DRIVER_STATUS_INITIALIZED;
 
-	return driver_status;
+    return driver_status;
 }
 
 
@@ -121,22 +121,22 @@ MT_uint8 Init_Driver(void) {
  */
 
 MT_uint8 NAND_Reset(void) {
-	MT_uint8 ret;
+    MT_uint8 ret;
 
-	/* init board transfer */
-   PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-   /* send command and/or address */
-   PLATFORM_SendCmd(CMD_RESET);
+    /* send command and/or address */
+    PLATFORM_SendCmd(CMD_RESET);
 
-   /* wait (see datasheet for details) */
-   PLATFORM_Wait(TIME_WB);
-   ret = __wait_for_ready();
+    /* wait (see datasheet for details) */
+    PLATFORM_Wait(TIME_WB);
+    ret = __wait_for_ready();
 
-   /* close board transfer */
-   PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-   return ret;
+    return ret;
 }
 
 /**
@@ -158,13 +158,13 @@ MT_uint8 NAND_Reset(void) {
  */
 
 MT_uint8 NAND_Read_ID(flash_width *buffer) {
-	int i;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* init board transfer */
+    /* init board transfer */
     PLATFORM_Open();
 
     /* send command and/or address */
@@ -176,7 +176,7 @@ MT_uint8 NAND_Read_ID(flash_width *buffer) {
 
     /* read output */
     for(i=0; i<NUM_OF_READID_BYTES; i++)
-    	buffer[i] = PLATFORM_ReadData();
+        buffer[i] = PLATFORM_ReadData();
 
     /* close board transfer */
     PLATFORM_Close();
@@ -203,9 +203,9 @@ MT_uint8 NAND_Read_ID(flash_width *buffer) {
  */
 
 MT_uint8 NAND_Read_ID_ONFI(flash_width *buffer) {
-	MT_uint32 i;
+    MT_uint32 i;
 
-	/* init board transfer */
+    /* init board transfer */
     PLATFORM_Open();
 
     /* send command and/or address */
@@ -217,7 +217,7 @@ MT_uint8 NAND_Read_ID_ONFI(flash_width *buffer) {
 
     /* read output */
     for(i=0; i<NUM_OF_READIDONFI_BYTES; i++)
-    	buffer[i] = PLATFORM_ReadData();
+        buffer[i] = PLATFORM_ReadData();
 
     /* close board transfer */
     PLATFORM_Close();
@@ -247,11 +247,11 @@ MT_uint8 NAND_Read_ID_ONFI(flash_width *buffer) {
  */
 
 MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
-	MT_uint8 rbuf[NUM_OF_PPAGE_BYTES];
-	MT_uint8 ret;
-	MT_uint32 i;
+    MT_uint8 rbuf[NUM_OF_PPAGE_BYTES];
+    MT_uint8 ret;
+    MT_uint32 i;
 
-	/* init board transfer */
+    /* init board transfer */
     PLATFORM_Open();
 
     /* send command and/or address */
@@ -264,11 +264,11 @@ MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
     /* read output */
     for(i=0; i<NUM_OF_PPAGE_BYTES; i++)
-    	rbuf[i] = PLATFORM_ReadData();
+        rbuf[i] = PLATFORM_ReadData();
 
     /* close board transfer */
     PLATFORM_Close();
@@ -278,92 +278,92 @@ MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
      */
 
     /* Parameter page signature (ONFI) */
-	__as_string(rbuf, ppage->signature, 0, 3);
+    __as_string(rbuf, ppage->signature, 0, 3);
 
-	/* check if the buffer contains a valid ONFI parameter page */
-	if (strcmp(ppage->signature, "ONFI"))
-		return NAND_BAD_PARAMETER_PAGE;
+    /* check if the buffer contains a valid ONFI parameter page */
+    if (strcmp(ppage->signature, "ONFI"))
+        return NAND_BAD_PARAMETER_PAGE;
 
-	/* Revision number */
-	ppage->rev_num = __as_uint16(rbuf[4], rbuf[5]);
+    /* Revision number */
+    ppage->rev_num = __as_uint16(rbuf[4], rbuf[5]);
 
-	/* Features supported */
-	ppage->feature = __as_uint16(rbuf[6], rbuf[7]);
+    /* Features supported */
+    ppage->feature = __as_uint16(rbuf[6], rbuf[7]);
 
-	/* Optional commands supported */
-	ppage->command = __as_uint16(rbuf[8], rbuf[9]);
+    /* Optional commands supported */
+    ppage->command = __as_uint16(rbuf[8], rbuf[9]);
 
-	/* Device manufacturer */
-	__as_string(rbuf, ppage->manufacturer, 32, 43);
+    /* Device manufacturer */
+    __as_string(rbuf, ppage->manufacturer, 32, 43);
 
-	/* Device part number */
-	__as_string(rbuf, ppage->model, 44, 63);
+    /* Device part number */
+    __as_string(rbuf, ppage->model, 44, 63);
 
-	/* Manufacturer ID (Micron = 2Ch) */
-	ppage->jedec_id = rbuf[64];
+    /* Manufacturer ID (Micron = 2Ch) */
+    ppage->jedec_id = rbuf[64];
 
-	/* Date code */
-	ppage->date_code = __as_uint16(rbuf[65], rbuf[66]);
+    /* Date code */
+    ppage->date_code = __as_uint16(rbuf[65], rbuf[66]);
 
-	/* Number of data bytes per page */
-	ppage->data_bytes_per_page = __as_uint32(rbuf[80], rbuf[81], rbuf[82], rbuf[83]);
+    /* Number of data bytes per page */
+    ppage->data_bytes_per_page = __as_uint32(rbuf[80], rbuf[81], rbuf[82], rbuf[83]);
 
-	/* Number of spare bytes per page */
-	ppage->spare_bytes_per_page = __as_uint16(rbuf[84], rbuf[85]);
+    /* Number of spare bytes per page */
+    ppage->spare_bytes_per_page = __as_uint16(rbuf[84], rbuf[85]);
 
-	/* Number of data bytes per partial page */
-	ppage->data_bytes_per_partial_page = __as_uint32(rbuf[86], rbuf[87], rbuf[88], rbuf[89]);
+    /* Number of data bytes per partial page */
+    ppage->data_bytes_per_partial_page = __as_uint32(rbuf[86], rbuf[87], rbuf[88], rbuf[89]);
 
-	/* Number of spare bytes per partial page */
-	ppage->spare_bytes_per_partial_page = __as_uint16(rbuf[90], rbuf[91]);
+    /* Number of spare bytes per partial page */
+    ppage->spare_bytes_per_partial_page = __as_uint16(rbuf[90], rbuf[91]);
 
-	/* Number of pages per block */
-	ppage->pages_per_block = __as_uint32(rbuf[92], rbuf[93], rbuf[94], rbuf[95]);
+    /* Number of pages per block */
+    ppage->pages_per_block = __as_uint32(rbuf[92], rbuf[93], rbuf[94], rbuf[95]);
 
-	/* Number of blocks per unit */
-	ppage->blocks_per_lun = __as_uint32(rbuf[96], rbuf[97], rbuf[98], rbuf[99]);
+    /* Number of blocks per unit */
+    ppage->blocks_per_lun = __as_uint32(rbuf[96], rbuf[97], rbuf[98], rbuf[99]);
 
-	/* Number of logical units (LUN) per chip enable */
-	ppage->luns_per_ce = rbuf[100];
+    /* Number of logical units (LUN) per chip enable */
+    ppage->luns_per_ce = rbuf[100];
 
-	/* Number of address cycles */
-	ppage->num_addr_cycles = rbuf[101];
+    /* Number of address cycles */
+    ppage->num_addr_cycles = rbuf[101];
 
-	/* Number of bits per cell (1 = SLC; >1= MLC) */
-	ppage->bit_per_cell = rbuf[102];
+    /* Number of bits per cell (1 = SLC; >1= MLC) */
+    ppage->bit_per_cell = rbuf[102];
 
-	/* Bad blocks maximum per unit */
-	ppage->max_bad_blocks_per_lun = __as_uint16(rbuf[103], rbuf[104]);
+    /* Bad blocks maximum per unit */
+    ppage->max_bad_blocks_per_lun = __as_uint16(rbuf[103], rbuf[104]);
 
-	/* Block endurance */
-	ppage->block_endurance = __as_uint16(rbuf[105], rbuf[106]);
+    /* Block endurance */
+    ppage->block_endurance = __as_uint16(rbuf[105], rbuf[106]);
 
-	/* Guaranteed valid blocks at beginning of target */
-	ppage->guarenteed_valid_blocks = rbuf[107];
+    /* Guaranteed valid blocks at beginning of target */
+    ppage->guarenteed_valid_blocks = rbuf[107];
 
-	/* Block endurance for guaranteed valid blocks */
-	ppage->guarenteed_valid_blocks = __as_uint16(rbuf[108], rbuf[109]);
+    /* Block endurance for guaranteed valid blocks */
+    ppage->guarenteed_valid_blocks = __as_uint16(rbuf[108], rbuf[109]);
 
-	/* Number of programs per page */
-	ppage->num_programs_per_page = rbuf[110];
+    /* Number of programs per page */
+    ppage->num_programs_per_page = rbuf[110];
 
-	/* Partial programming attributes */
-	ppage->partial_prog_attr = rbuf[111];
+    /* Partial programming attributes */
+    ppage->partial_prog_attr = rbuf[111];
 
-	/* Number of bits ECC bits */
-	ppage->num_ECC_bits_correctable = rbuf[112];
+    /* Number of bits ECC bits */
+    ppage->num_ECC_bits_correctable = rbuf[112];
 
-	/* Number of interleaved address bits */
-	ppage->num_interleaved_addr_bits = rbuf[113];
+    /* Number of interleaved address bits */
+    ppage->num_interleaved_addr_bits = rbuf[113];
 
-	/* Interleaved operation attributes */
-	ppage->interleaved_op_attr = rbuf[114];
+    /* Interleaved operation attributes */
+    ppage->interleaved_op_attr = rbuf[114];
 
     return ret;
 }
 
 /**
-    The SET FEATURES (EFh) command writes the subfeature parameters (P1–P4) to the
+    The SET FEATURES (EFh) command writes the subfeature parameters (P1ï¿½P4) to the
     specified feature address to enable or disable target-specific features. This command is
     accepted by the target only when all die (LUNs) on the target are idle.
 
@@ -385,47 +385,47 @@ MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
  */
 
 MT_uint8 NAND_Set_Feature(flash_width feature_address, flash_width subfeature) {
-	MT_uint8 ret;
+    MT_uint8 ret;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check if this feature/command is supported */
-	if ((device_info.command & OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES) == 0)
-		return NAND_UNSUPPORTED;
+    /* check if this feature/command is supported */
+    if ((device_info.command & OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES) == 0)
+        return NAND_UNSUPPORTED;
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command and/or address */
-	PLATFORM_SendCmd(CMD_SET_FEATURE);
-	PLATFORM_SendAddr(feature_address);
+    /* send command and/or address */
+    PLATFORM_SendCmd(CMD_SET_FEATURE);
+    PLATFORM_SendAddr(feature_address);
 
     /* wait (see datasheet for details) */
     PLATFORM_Wait(TIME_ADL);
 
-	/* send sub-feature parameter */
-	PLATFORM_SendData(subfeature);	/* p0 */
-	PLATFORM_SendData(0x00);		/* p1 reserved */
-	PLATFORM_SendData(0x00);		/* p2 reserved */
-	PLATFORM_SendData(0x00);		/* p3 reserved */
+    /* send sub-feature parameter */
+    PLATFORM_SendData(subfeature);	/* p0 */
+    PLATFORM_SendData(0x00);		/* p1 reserved */
+    PLATFORM_SendData(0x00);		/* p2 reserved */
+    PLATFORM_SendData(0x00);		/* p3 reserved */
 
     PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return ret;
+    return ret;
 }
 
 /**
-    The GET FEATURES (EEh) command reads the subfeature parameters (P1–P4) from the
+    The GET FEATURES (EEh) command reads the subfeature parameters (P1ï¿½P4) from the
     specified feature address. This command is accepted by the target only when all die
     (LUNs) on the target are idle.
 
@@ -446,22 +446,22 @@ MT_uint8 NAND_Set_Feature(flash_width feature_address, flash_width subfeature) {
  */
 
 MT_uint8 NAND_Get_Feature(flash_width feature_address, flash_width *subfeature) {
-	flash_width ret;
+    flash_width ret;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check if this feature/command is supported */
-	if ((device_info.command & OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES) == 0)
-		return NAND_UNSUPPORTED;
+    /* check if this feature/command is supported */
+    if ((device_info.command & OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES) == 0)
+        return NAND_UNSUPPORTED;
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command and/or address */
-	PLATFORM_SendCmd(CMD_GET_FEATURE);
-	PLATFORM_SendAddr(feature_address);
+    /* send command and/or address */
+    PLATFORM_SendCmd(CMD_GET_FEATURE);
+    PLATFORM_SendAddr(feature_address);
 
     /* wait (see datasheet for details) */
     PLATFORM_Wait(TIME_WB);
@@ -469,18 +469,18 @@ MT_uint8 NAND_Get_Feature(flash_width feature_address, flash_width *subfeature) 
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* send sub-feature parameter */
+    /* send sub-feature parameter */
     *subfeature = PLATFORM_ReadData(); /* p0 */
-	/*
-	 * skip p1, p2 and p3 because they are reserved and their value are 00h
-	 */
+    /*
+     * skip p1, p2 and p3 because they are reserved and their value are 00h
+     */
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -499,28 +499,28 @@ MT_uint8 NAND_Get_Feature(flash_width feature_address, flash_width *subfeature) 
  */
 
 flash_width NAND_Read_Status() {
-	flash_width ret;
+    flash_width ret;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command and/or address */
-	PLATFORM_SendCmd(CMD_READ_STATUS);
+    /* send command and/or address */
+    PLATFORM_SendCmd(CMD_READ_STATUS);
 
-	/* wait */
-	PLATFORM_Wait(TIME_WHR);
+    /* wait */
+    PLATFORM_Wait(TIME_WHR);
 
-	/* read value */
-	ret = PLATFORM_ReadData();
+    /* read value */
+    ret = PLATFORM_ReadData();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -541,44 +541,44 @@ flash_width NAND_Read_Status() {
  */
 
 flash_width NAND_Read_Status_Enhanced(nand_addr_t addr) {
-	flash_width ret;
-	MT_uint8 row_address[5];
+    flash_width ret;
+    MT_uint8 row_address[5];
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* check if this feature/command is supported */
-	if ((device_info.command & OPTIONAL_CMD_READ_STATUS_ENHANCED) == 0)
-		return NAND_UNSUPPORTED;
+    /* check if this feature/command is supported */
+    if ((device_info.command & OPTIONAL_CMD_READ_STATUS_ENHANCED) == 0)
+        return NAND_UNSUPPORTED;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command  */
-	PLATFORM_SendCmd(CMD_READ_STATUS_ENHANCED);
+    /* send command  */
+    PLATFORM_SendCmd(CMD_READ_STATUS_ENHANCED);
 
-	/* send row address (3rd, 4th, 5th cycle) */
-	PLATFORM_SendAddr(row_address[2]);
-	PLATFORM_SendAddr(row_address[3]);
-	PLATFORM_SendAddr(row_address[4]);
+    /* send row address (3rd, 4th, 5th cycle) */
+    PLATFORM_SendAddr(row_address[2]);
+    PLATFORM_SendAddr(row_address[3]);
+    PLATFORM_SendAddr(row_address[4]);
 
-	/* wait */
-	PLATFORM_Wait(TIME_WHR);
+    /* wait */
+    PLATFORM_Wait(TIME_WHR);
 
-	/* read value */
-	ret = PLATFORM_ReadData();
+    /* read value */
+    ret = PLATFORM_ReadData();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -603,59 +603,59 @@ flash_width NAND_Read_Status_Enhanced(nand_addr_t addr) {
  */
 
 MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
-	MT_uint8 row_address[5];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
+    MT_uint8 row_address[5];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command  */
-	PLATFORM_SendCmd(CMD_ERASE_BLOCK);
+    /* send command  */
+    PLATFORM_SendCmd(CMD_ERASE_BLOCK);
 
-	/* send row address (3rd, 4th, 5th cycle) */
-	PLATFORM_SendAddr(row_address[2]);
-	PLATFORM_SendAddr(row_address[3]);
-	PLATFORM_SendAddr(row_address[4]);
+    /* send row address (3rd, 4th, 5th cycle) */
+    PLATFORM_SendAddr(row_address[2]);
+    PLATFORM_SendAddr(row_address[3]);
+    PLATFORM_SendAddr(row_address[4]);
 
-	/* send confirm command */
-	PLATFORM_SendCmd(CMD_ERASE_BLOCK_CONFIRM);
+    /* send confirm command */
+    PLATFORM_SendCmd(CMD_ERASE_BLOCK_CONFIRM);
 
-	/* wait */
-	PLATFORM_Wait(TIME_WB);
-	ret = __wait_for_ready();
+    /* wait */
+    PLATFORM_Wait(TIME_WB);
+    ret = __wait_for_ready();
 
     /* return if timeout occurs */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* check if erase is good */
-	if(!(status_reg & STATUS_WRITE_PROTECTED))
-		return NAND_ERASE_FAILED_WRITE_PROTECT;
+    /* check if erase is good */
+    if(!(status_reg & STATUS_WRITE_PROTECTED))
+        return NAND_ERASE_FAILED_WRITE_PROTECT;
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_ERASE_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_ERASE_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /**
-    The READ PAGE (00h–30h) command copies a page from the NAND Flash array to its
+    The READ PAGE (00hï¿½30h) command copies a page from the NAND Flash array to its
     respective cache register and enables data output. This command is accepted by the die
     (LUN) when it is ready (RDY = 1, ARDY = 1).
 
@@ -681,65 +681,65 @@ MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
  */
 
 MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 row_address[5];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
-	int i;
+    MT_uint8 row_address[5];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* x16 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		if(lenght > (device_info.data_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    /* x16 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        if(lenght > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.data_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command  */
-	PLATFORM_SendCmd(CMD_READ_MODE);
+    /* send command  */
+    PLATFORM_SendCmd(CMD_READ_MODE);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(row_address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(row_address[i]);
 
-	/* return to read mode */
-	PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    /* return to read mode */
+    PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
-	/* wait */
-	ret = __wait_for_ready();
+    /* wait */
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* read data */
-	for(i=0; i<lenght; i++)
-		buffer[i] = PLATFORM_ReadData();
+    /* read data */
+    for(i=0; i<lenght; i++)
+        buffer[i] = PLATFORM_ReadData();
 
-	/* read status register on exit */
-	status_reg = NAND_Read_Status();
+    /* read status register on exit */
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_READ_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_READ_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -771,61 +771,61 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
  */
 
 MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 address[5];
-	MT_uint8 status_reg;
-	MT_uint32 k;
-	int i;
+    MT_uint8 address[5];
+    MT_uint8 status_reg;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* x16 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		if(lenght > (device_info.data_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    /* x16 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        if(lenght > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.data_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	__build_cycle_addr(addr, address);
+    __build_cycle_addr(addr, address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(address[i]);
 
-	/* send data */
-	for(k=0; k<lenght; k++)
-		PLATFORM_SendData(buffer[k]);
+    /* send data */
+    for(k=0; k<lenght; k++)
+        PLATFORM_SendData(buffer[k]);
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* check if program is good */
-	if(!(status_reg & STATUS_WRITE_PROTECTED))
-		return NAND_PROGRAM_FAILED_WRITE_PROTECT;
+    /* check if program is good */
+    if(!(status_reg & STATUS_WRITE_PROTECTED))
+        return NAND_PROGRAM_FAILED_WRITE_PROTECT;
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_PROGRAM_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_PROGRAM_FAILED;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -856,74 +856,74 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
  */
 
 MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 row_address[5];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
-	MT_uint32 k;
-	int i;
+    MT_uint8 row_address[5];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		/* x16 */
-		if(lenght > (device_info.spare_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        /* x16 */
+        if(lenght > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.spare_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	/* spare area starts after last main area byte */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-		/* x8 bus width */
-		addr.column=device_info.data_bytes_per_page;
-	else
-		/* x16 bus width */
-		addr.column=device_info.data_bytes_per_page >> 1;
+    /* spare area starts after last main area byte */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
+        /* x8 bus width */
+        addr.column=device_info.data_bytes_per_page;
+    else
+        /* x16 bus width */
+        addr.column=device_info.data_bytes_per_page >> 1;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_READ_MODE);
+    /* send command */
+    PLATFORM_SendCmd(CMD_READ_MODE);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(row_address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(row_address[i]);
 
-	/* return to read mode */
-	PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    /* return to read mode */
+    PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
-	/* wait */
-	ret = __wait_for_ready();
+    /* wait */
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* read data */
-	for(k=0; k<lenght; k++)
-		buffer[k] = PLATFORM_ReadData();
+    /* read data */
+    for(k=0; k<lenght; k++)
+        buffer[k] = PLATFORM_ReadData();
 
-	/* read status register on exit */
-	status_reg = NAND_Read_Status();
+    /* read status register on exit */
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_READ_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_READ_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -954,69 +954,69 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
  */
 
 MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 address[5];
-	MT_uint8 status_reg;
-	MT_uint32 k;
-	int i;
+    MT_uint8 address[5];
+    MT_uint8 status_reg;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		/* x16 */
-		if(lenght > (device_info.spare_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        /* x16 */
+        if(lenght > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.spare_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	/* spare area starts after last main area byte */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-		/* x8 bus width */
-		addr.column=device_info.data_bytes_per_page;
-	else
-		/* x16 bus width */
-		addr.column=device_info.data_bytes_per_page >> 1;
+    /* spare area starts after last main area byte */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
+        /* x8 bus width */
+        addr.column=device_info.data_bytes_per_page;
+    else
+        /* x16 bus width */
+        addr.column=device_info.data_bytes_per_page >> 1;
 
-	__build_cycle_addr(addr, address);
+    __build_cycle_addr(addr, address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(address[i]);
 
-	/* send data */
-	for(k=0; k<lenght; k++)
-		PLATFORM_SendData(buffer[k]);
+    /* send data */
+    for(k=0; k<lenght; k++)
+        PLATFORM_SendData(buffer[k]);
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* check if program is good */
-	if(!(status_reg & STATUS_WRITE_PROTECTED))
-		return NAND_PROGRAM_FAILED_WRITE_PROTECT;
+    /* check if program is good */
+    if(!(status_reg & STATUS_WRITE_PROTECTED))
+        return NAND_PROGRAM_FAILED_WRITE_PROTECT;
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_PROGRAM_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_PROGRAM_FAILED;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /*
@@ -1024,14 +1024,14 @@ MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 len
  */
 MT_uint8 NAND_Read_Unique_Id(flash_width *buffer) {
 
-	int i;
-	MT_uint8 ret;
+    int i;
+    MT_uint8 ret;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* init board transfer */
+    /* init board transfer */
     PLATFORM_Open();
 
     /* send command and/or address */
@@ -1041,15 +1041,15 @@ MT_uint8 NAND_Read_Unique_Id(flash_width *buffer) {
     /* wait (see datasheet for details) */
     PLATFORM_Wait(TIME_WB);
 
-	ret = __wait_for_ready();
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
     /* read output */
     for(i=0; i<NUM_OF_UNIQUEID_BYTES; i++)
-    	buffer[i] = (MT_uint8) PLATFORM_ReadData();
+        buffer[i] = (MT_uint8) PLATFORM_ReadData();
 
     /* close board transfer */
     PLATFORM_Close();
@@ -1088,106 +1088,106 @@ MT_uint8 NAND_Read_Unique_Id(flash_width *buffer) {
  */
 
 MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr) {
-	MT_uint8 src_address_stream[NUM_OF_ADDR_CYCLE];
-	MT_uint8 dest_address_stream[NUM_OF_ADDR_CYCLE];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
-	MT_uint32 k;
-	int i;
+    MT_uint8 src_address_stream[NUM_OF_ADDR_CYCLE];
+    MT_uint8 dest_address_stream[NUM_OF_ADDR_CYCLE];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return driver_status;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return driver_status;
 
-	/* check if this feature/command is supported */
-	if ((device_info.command & OPTIONAL_CMD_COPYBACK) == 0)
-		return NAND_UNSUPPORTED;
+    /* check if this feature/command is supported */
+    if ((device_info.command & OPTIONAL_CMD_COPYBACK) == 0)
+        return NAND_UNSUPPORTED;
 
-	/* check input parameters */
-	if((NAND_SUCCESS != __is_valid_addr(src_addr)) || (NAND_SUCCESS != __is_valid_addr(dest_addr)))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if((NAND_SUCCESS != __is_valid_addr(src_addr)) || (NAND_SUCCESS != __is_valid_addr(dest_addr)))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* check if the source and destination address are the same */
-	if(!__compare_addr(src_addr, dest_addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check if the source and destination address are the same */
+    if(!__compare_addr(src_addr, dest_addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* check if odd to even copy back is supported */
-	if ((device_info.command & SUPPORTED_ODD_TO_EVEN_PAGE_COPYBACK) == 0) {
-		if(((src_addr.page & 1) != 0) && ((dest_addr.page & 1) == 0))
-			return NAND_INVALID_NAND_ADDRESS;
-		if(((src_addr.page & 1) == 0) && ((dest_addr.page & 1) != 0))
-			return NAND_INVALID_NAND_ADDRESS;
-	}
+    /* check if odd to even copy back is supported */
+    if ((device_info.command & SUPPORTED_ODD_TO_EVEN_PAGE_COPYBACK) == 0) {
+        if(((src_addr.page & 1) != 0) && ((dest_addr.page & 1) == 0))
+            return NAND_INVALID_NAND_ADDRESS;
+        if(((src_addr.page & 1) == 0) && ((dest_addr.page & 1) != 0))
+            return NAND_INVALID_NAND_ADDRESS;
+    }
 
-	/* copy back allows to move data from one page to another on the same plane */
-	if(((src_addr.block & 1) != 0) && ((dest_addr.block & 1) == 0))
-		return NAND_INVALID_NAND_ADDRESS;
-	if(((src_addr.block & 1) == 0) && ((dest_addr.block & 1) != 0))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* copy back allows to move data from one page to another on the same plane */
+    if(((src_addr.block & 1) != 0) && ((dest_addr.block & 1) == 0))
+        return NAND_INVALID_NAND_ADDRESS;
+    if(((src_addr.block & 1) == 0) && ((dest_addr.block & 1) != 0))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* copy back is allowed only at the start of a page (ignoring column) */
-	src_addr.column = 0;
-	dest_addr.column = 0;
+    /* copy back is allowed only at the start of a page (ignoring column) */
+    src_addr.column = 0;
+    dest_addr.column = 0;
 
-	/* build address cycles for source and destination address */
-	__build_cycle_addr(src_addr, src_address_stream);
-	__build_cycle_addr(dest_addr, dest_address_stream);
+    /* build address cycles for source and destination address */
+    __build_cycle_addr(src_addr, src_address_stream);
+    __build_cycle_addr(dest_addr, dest_address_stream);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_READ_MODE);
+    /* send command */
+    PLATFORM_SendCmd(CMD_READ_MODE);
 
-	/* send source address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(src_address_stream[i]);
+    /* send source address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(src_address_stream[i]);
 
-	/* read for internal data move */
+    /* read for internal data move */
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_READ_INTERNAL_DATA_MOVE);
+    /* send command */
+    PLATFORM_SendCmd(CMD_READ_INTERNAL_DATA_MOVE);
 
     /* wait (see datasheet for details) */
-	PLATFORM_Wait(TIME_WB);
-	ret = __wait_for_ready();
+    PLATFORM_Wait(TIME_WB);
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
     /* program for internal data move */
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PROGRAM_INTERNAL_DATA_MOVE);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PROGRAM_INTERNAL_DATA_MOVE);
 
-	/* send destination address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(dest_address_stream[i]);
+    /* send destination address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(dest_address_stream[i]);
 
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
-	/* wait (see datasheet for details) */
-	PLATFORM_Wait(TIME_WB);
-	ret = __wait_for_ready();
+    /* wait (see datasheet for details) */
+    PLATFORM_Wait(TIME_WB);
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* check if program is good */
-	if(!(status_reg & STATUS_WRITE_PROTECTED))
-		return NAND_PROGRAM_FAILED_WRITE_PROTECT;
+    /* check if program is good */
+    if(!(status_reg & STATUS_WRITE_PROTECTED))
+        return NAND_PROGRAM_FAILED_WRITE_PROTECT;
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_PROGRAM_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_PROGRAM_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /*
@@ -1195,13 +1195,13 @@ MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr) {
  */
 MT_uint8 NAND_Multiplane_Copy_Back(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1210,13 +1210,13 @@ MT_uint8 NAND_Multiplane_Copy_Back(void) {
  */
 MT_uint8 NAND_Cache_Read(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1225,13 +1225,13 @@ MT_uint8 NAND_Cache_Read(void) {
  */
 MT_uint8 NAND_Cache_Program(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1240,13 +1240,13 @@ MT_uint8 NAND_Cache_Program(void) {
  */
 MT_uint8 NAND_Multiplane_Page_Program(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1255,13 +1255,13 @@ MT_uint8 NAND_Multiplane_Page_Program(void) {
  */
 MT_uint8 NAND_Multiplane_Block_Erase(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1280,20 +1280,20 @@ MT_uint8 NAND_Multiplane_Block_Erase(void) {
 
 MT_uint8 NAND_Lock(void) {
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_LOCK);
+    /* send command */
+    PLATFORM_SendCmd(CMD_LOCK);
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -1318,48 +1318,48 @@ MT_uint8 NAND_Lock(void) {
  */
 
 MT_uint8 NAND_Unlock(nand_addr_t start_block, nand_addr_t end_block) {
-	MT_uint8 start_address_stream[NUM_OF_ADDR_CYCLE];
-	MT_uint8 end_address_stream[NUM_OF_ADDR_CYCLE];
+    MT_uint8 start_address_stream[NUM_OF_ADDR_CYCLE];
+    MT_uint8 end_address_stream[NUM_OF_ADDR_CYCLE];
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if((NAND_SUCCESS != __is_valid_addr(start_block)) || (NAND_SUCCESS != __is_valid_addr(end_block)))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if((NAND_SUCCESS != __is_valid_addr(start_block)) || (NAND_SUCCESS != __is_valid_addr(end_block)))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* verify if start_block < end_block */
-	if(ADDR_A_GT_B == __compare_addr(start_block, end_block) )
-		return NAND_INVALID_NAND_ADDRESS;
+    /* verify if start_block < end_block */
+    if(ADDR_A_GT_B == __compare_addr(start_block, end_block) )
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* build address cycles for start and end block */
-	__build_cycle_addr(start_block, start_address_stream);
-	__build_cycle_addr(end_block, end_address_stream);
+    /* build address cycles for start and end block */
+    __build_cycle_addr(start_block, start_address_stream);
+    __build_cycle_addr(end_block, end_address_stream);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_LOW);
+    /* send command */
+    PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_LOW);
 
-	/* send row address (3rd, 4th, 5th cycle) */
-	PLATFORM_SendAddr(start_address_stream[2]);
-	PLATFORM_SendAddr(start_address_stream[3]);
-	PLATFORM_SendAddr(start_address_stream[4]);
+    /* send row address (3rd, 4th, 5th cycle) */
+    PLATFORM_SendAddr(start_address_stream[2]);
+    PLATFORM_SendAddr(start_address_stream[3]);
+    PLATFORM_SendAddr(start_address_stream[4]);
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_HIGH);
+    /* send command */
+    PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_HIGH);
 
-	/* send row address (3rd, 4th, 5th cycle) */
-	PLATFORM_SendAddr(end_address_stream[2]);
-	PLATFORM_SendAddr(end_address_stream[3]);
-	PLATFORM_SendAddr(end_address_stream[4]);
+    /* send row address (3rd, 4th, 5th cycle) */
+    PLATFORM_SendAddr(end_address_stream[2]);
+    PLATFORM_SendAddr(end_address_stream[3]);
+    PLATFORM_SendAddr(end_address_stream[4]);
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 
 }
 
@@ -1379,38 +1379,38 @@ MT_uint8 NAND_Unlock(nand_addr_t start_block, nand_addr_t end_block) {
  */
 
 MT_uint8 NAND_Read_Lock_Status(nand_addr_t block_addr) {
-	MT_uint8 block_addr_stream[NUM_OF_ADDR_CYCLE];
-	MT_uint8 block_lock_status_reg;
+    MT_uint8 block_addr_stream[NUM_OF_ADDR_CYCLE];
+    MT_uint8 block_lock_status_reg;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(block_addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(block_addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* build address cycles for block address */
-	__build_cycle_addr(block_addr, block_addr_stream);
+    /* build address cycles for block address */
+    __build_cycle_addr(block_addr, block_addr_stream);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command*/
-	PLATFORM_SendCmd(CMD_BLOCK_LOCK_READ_STATUS);
+    /* send command*/
+    PLATFORM_SendCmd(CMD_BLOCK_LOCK_READ_STATUS);
 
-	/* send row address (3rd, 4th, 5th cycle) */
-	PLATFORM_SendAddr(block_addr_stream[2]);
-	PLATFORM_SendAddr(block_addr_stream[3]);
-	PLATFORM_SendAddr(block_addr_stream[4]);
+    /* send row address (3rd, 4th, 5th cycle) */
+    PLATFORM_SendAddr(block_addr_stream[2]);
+    PLATFORM_SendAddr(block_addr_stream[3]);
+    PLATFORM_SendAddr(block_addr_stream[4]);
 
-	block_lock_status_reg = PLATFORM_ReadData();
+    block_lock_status_reg = PLATFORM_ReadData();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* return the value of block status register */
-	return block_lock_status_reg;
+    /* return the value of block status register */
+    return block_lock_status_reg;
 
 }
 
@@ -1419,13 +1419,13 @@ MT_uint8 NAND_Read_Lock_Status(nand_addr_t block_addr) {
  */
 MT_uint8 NAND_Lock_Down(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1434,13 +1434,13 @@ MT_uint8 NAND_Lock_Down(void) {
  */
 MT_uint8 NAND_Unlock_Down(void) {
 
-	/*
-	 * TO BE IMPLEMENTED
-	 *
-	 * Please contact Micron support for any request
-	 */
+    /*
+     * TO BE IMPLEMENTED
+     *
+     * Please contact Micron support for any request
+     */
 
-	return NAND_UNIMPLEMENTED;
+    return NAND_UNIMPLEMENTED;
 
 }
 
@@ -1468,37 +1468,37 @@ MT_uint8 NAND_Unlock_Down(void) {
   	@EndSteps
  */
 MT_uint8 NAND_OTP_Mode_Enter(void) {
-	MT_uint8 ret;
-	flash_width subfeature;
+    MT_uint8 ret;
+    flash_width subfeature;
 
-	/* check if driver is in a valid state */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* check if driver is in a valid state */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check if device is NOT in OTP status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is NOT in OTP status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	if((FEATURE_ARRAY_NORMAL != subfeature) && (FEATURE_ARRAY_OTP_PROTECTION != subfeature))
-		return NAND_GENERIC_FAIL;
+    if((FEATURE_ARRAY_NORMAL != subfeature) && (FEATURE_ARRAY_OTP_PROTECTION != subfeature))
+        return NAND_GENERIC_FAIL;
 
-	/* set OTP status */
-	ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_OTP_OPERATION);
+    /* set OTP status */
+    ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_OTP_OPERATION);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	/* check if device is in OTP status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is in OTP status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	if(FEATURE_ARRAY_OTP_OPERATION != subfeature)
-		return NAND_GENERIC_FAIL;
+    if(FEATURE_ARRAY_OTP_OPERATION != subfeature)
+        return NAND_GENERIC_FAIL;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -1516,37 +1516,37 @@ MT_uint8 NAND_OTP_Mode_Enter(void) {
   	@EndSteps
  */
 MT_uint8 NAND_OTP_Mode_Exit(void) {
-	MT_uint8 ret;
-	flash_width subfeature;
+    MT_uint8 ret;
+    flash_width subfeature;
 
-	/* check if driver is in a valid state */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* check if driver is in a valid state */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check if device is NOT in normal status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is NOT in normal status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	if((FEATURE_ARRAY_OTP_OPERATION != subfeature) && (FEATURE_ARRAY_OTP_PROTECTION != subfeature))
-		return NAND_GENERIC_FAIL;
+    if((FEATURE_ARRAY_OTP_OPERATION != subfeature) && (FEATURE_ARRAY_OTP_PROTECTION != subfeature))
+        return NAND_GENERIC_FAIL;
 
-	/* exit OTP status */
-	ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_NORMAL);
+    /* exit OTP status */
+    ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_NORMAL);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	/* check if device is in normal status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is in normal status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	if(FEATURE_ARRAY_NORMAL != subfeature)
-		return NAND_GENERIC_FAIL;
+    if(FEATURE_ARRAY_NORMAL != subfeature)
+        return NAND_GENERIC_FAIL;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -1567,62 +1567,62 @@ MT_uint8 NAND_OTP_Mode_Exit(void) {
   	@EndSteps
  */
 MT_uint8 NAND_OTP_Mode_Protect(nand_addr_t addr) {
-	MT_uint8 ret;
-	flash_width subfeature;
-	flash_width write_buf[device_info.data_bytes_per_page + device_info.spare_bytes_per_page];
+    MT_uint8 ret;
+    flash_width subfeature;
+    flash_width write_buf[device_info.data_bytes_per_page + device_info.spare_bytes_per_page];
 
-	/* check if driver is in a valid state */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* check if driver is in a valid state */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check if device is NOT in normal status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is NOT in normal status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	if(FEATURE_ARRAY_OTP_OPERATION != subfeature)
-		return NAND_GENERIC_FAIL;
+    if(FEATURE_ARRAY_OTP_OPERATION != subfeature)
+        return NAND_GENERIC_FAIL;
 
-	/* issue protect OTP area command */
-	ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_OTP_PROTECTION);
+    /* issue protect OTP area command */
+    ret = NAND_Set_Feature(ADDR_FEATURE_ARRAY_OPMODE, FEATURE_ARRAY_OTP_PROTECTION);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	/* check if device is in normal status */
-	ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
+    /* check if device is in normal status */
+    ret = NAND_Get_Feature(ADDR_FEATURE_ARRAY_OPMODE, &subfeature);
 
-	/* return with error if a fail occurs */
-	if(NAND_SUCCESS != ret)
-		return ret;
+    /* return with error if a fail occurs */
+    if(NAND_SUCCESS != ret)
+        return ret;
 
-	if(FEATURE_ARRAY_OTP_PROTECTION != subfeature)
-		return NAND_GENERIC_FAIL;
+    if(FEATURE_ARRAY_OTP_PROTECTION != subfeature)
+        return NAND_GENERIC_FAIL;
 
-	/* issue the PROGRAM command to lock permanently the page */
+    /* issue the PROGRAM command to lock permanently the page */
 
-	/* data buffer is filled with 0x00 */
-	memset(write_buf, 0x00, device_info.data_bytes_per_page);
+    /* data buffer is filled with 0x00 */
+    memset(write_buf, 0x00, device_info.data_bytes_per_page);
 
-	/* x8 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-		ret = NAND_OTP_Page_Program(addr, write_buf, device_info.data_bytes_per_page);
-	/* x16 */
-	else
-		ret = NAND_OTP_Page_Program(addr, write_buf, (device_info.data_bytes_per_page>>2));
+    /* x8 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
+        ret = NAND_OTP_Page_Program(addr, write_buf, device_info.data_bytes_per_page);
+        /* x16 */
+    else
+        ret = NAND_OTP_Page_Program(addr, write_buf, (device_info.data_bytes_per_page>>2));
 
-	if(NAND_SUCCESS != ret) {
-		/* in case of program error, exit in OTP mode */
-		NAND_OTP_Mode_Enter();
-		return NAND_GENERIC_FAIL;
-	}
+    if(NAND_SUCCESS != ret) {
+        /* in case of program error, exit in OTP mode */
+        NAND_OTP_Mode_Enter();
+        return NAND_GENERIC_FAIL;
+    }
 
-	/* restore OTP mode before return */
-	ret = NAND_OTP_Mode_Enter();
+    /* restore OTP mode before return */
+    ret = NAND_OTP_Mode_Enter();
 
-	if(NAND_SUCCESS != ret)
-		return NAND_GENERIC_FAIL;
+    if(NAND_SUCCESS != ret)
+        return NAND_GENERIC_FAIL;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -1655,54 +1655,54 @@ MT_uint8 NAND_OTP_Mode_Protect(nand_addr_t addr) {
  */
 
 MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 address[5];
-	MT_uint8 status_reg;
-	MT_uint32 k;
-	int i;
+    MT_uint8 address[5];
+    MT_uint8 status_reg;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* x16 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		if(lenght > (device_info.data_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    /* x16 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        if(lenght > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.data_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	__build_cycle_addr(addr, address);
+    __build_cycle_addr(addr, address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(address[i]);
 
-	/* send data */
-	for(k=0; k<lenght; k++)
-		PLATFORM_SendData(buffer[k]);
+    /* send data */
+    for(k=0; k<lenght; k++)
+        PLATFORM_SendData(buffer[k]);
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
@@ -1734,70 +1734,70 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
  */
 
 MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 address[5];
-	MT_uint8 status_reg;
-	MT_uint32 k;
-	int i;
+    MT_uint8 address[5];
+    MT_uint8 status_reg;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* x16 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		if(lenght > (device_info.spare_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    /* x16 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        if(lenght > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.spare_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	/* spare area starts after last main area byte */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-		/* x8 bus width */
-		addr.column=device_info.data_bytes_per_page;
-	else
-		/* x16 bus width */
-		addr.column=device_info.data_bytes_per_page >> 1;
+    /* spare area starts after last main area byte */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
+        /* x8 bus width */
+        addr.column=device_info.data_bytes_per_page;
+    else
+        /* x16 bus width */
+        addr.column=device_info.data_bytes_per_page >> 1;
 
-	__build_cycle_addr(addr, address);
+    __build_cycle_addr(addr, address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(address[i]);
 
-	/* send data */
-	for(k=0; k<lenght; k++)
-		PLATFORM_SendData(buffer[k]);
+    /* send data */
+    for(k=0; k<lenght; k++)
+        PLATFORM_SendData(buffer[k]);
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    /* send command */
+    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
-	status_reg = NAND_Read_Status();
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	/* check if program is good */
-	if(status_reg & STATUS_FAIL)
-		return NAND_PROGRAM_FAILED;
+    /* check if program is good */
+    if(status_reg & STATUS_FAIL)
+        return NAND_PROGRAM_FAILED;
 
-	return NAND_SUCCESS;
+    return NAND_SUCCESS;
 }
 
 /**
-    The READ PAGE (00h–30h) command copies a page from the NAND Flash array to its
+    The READ PAGE (00hï¿½30h) command copies a page from the NAND Flash array to its
     respective cache register and enables data output. This command is accepted by the die
     (LUN) when it is ready (RDY = 1, ARDY = 1).
     Use this function only to read OTP area!
@@ -1824,65 +1824,65 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
  */
 
 MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 row_address[5];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
-	int i;
+    MT_uint8 row_address[5];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	/* x16 */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		if(lenght > (device_info.data_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    /* x16 */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        if(lenght > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.data_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command  */
-	PLATFORM_SendCmd(CMD_READ_MODE);
+    /* send command  */
+    PLATFORM_SendCmd(CMD_READ_MODE);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(row_address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(row_address[i]);
 
-	/* return to read mode */
-	PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    /* return to read mode */
+    PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
-	/* wait */
-	ret = __wait_for_ready();
+    /* wait */
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* read data */
-	for(i=0; i<lenght; i++)
-		buffer[i] = PLATFORM_ReadData();
+    /* read data */
+    for(i=0; i<lenght; i++)
+        buffer[i] = PLATFORM_ReadData();
 
-	/* read status register on exit */
-	status_reg = NAND_Read_Status();
+    /* read status register on exit */
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_READ_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_READ_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /**
@@ -1914,74 +1914,74 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
  */
 
 MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
-	MT_uint8 row_address[5];
-	MT_uint8 status_reg;
-	MT_uint8 ret;
-	MT_uint32 k;
-	int i;
+    MT_uint8 row_address[5];
+    MT_uint8 status_reg;
+    MT_uint8 ret;
+    MT_uint32 k;
+    int i;
 
-	/* verify if driver is initialized */
-	if(DRIVER_STATUS_INITIALIZED != driver_status)
-		return DRIVER_STATUS_NOT_INITIALIZED;
+    /* verify if driver is initialized */
+    if(DRIVER_STATUS_INITIALIZED != driver_status)
+        return DRIVER_STATUS_NOT_INITIALIZED;
 
-	/* check input parameters */
-	if(NAND_SUCCESS != __is_valid_addr(addr))
-		return NAND_INVALID_NAND_ADDRESS;
+    /* check input parameters */
+    if(NAND_SUCCESS != __is_valid_addr(addr))
+        return NAND_INVALID_NAND_ADDRESS;
 
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-		/* x16 */
-		if(lenght > (device_info.spare_bytes_per_page >> 1) )
-			return NAND_INVALID_LENGHT;
-	}
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
+        /* x16 */
+        if(lenght > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGHT;
+    }
 
-	/* x8 */
-	if(lenght > device_info.spare_bytes_per_page)
-		return NAND_INVALID_LENGHT;
+    /* x8 */
+    if(lenght > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGHT;
 
-	/* spare area starts after last main area byte */
-	if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-		/* x8 bus width */
-		addr.column=device_info.data_bytes_per_page;
-	else
-		/* x16 bus width */
-		addr.column=device_info.data_bytes_per_page >> 1;
+    /* spare area starts after last main area byte */
+    if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
+        /* x8 bus width */
+        addr.column=device_info.data_bytes_per_page;
+    else
+        /* x16 bus width */
+        addr.column=device_info.data_bytes_per_page >> 1;
 
-	__build_cycle_addr(addr, row_address);
+    __build_cycle_addr(addr, row_address);
 
-	/* init board transfer */
-	PLATFORM_Open();
+    /* init board transfer */
+    PLATFORM_Open();
 
-	/* send command */
-	PLATFORM_SendCmd(CMD_READ_MODE);
+    /* send command */
+    PLATFORM_SendCmd(CMD_READ_MODE);
 
-	/* send address */
-	for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-		PLATFORM_SendAddr(row_address[i]);
+    /* send address */
+    for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
+        PLATFORM_SendAddr(row_address[i]);
 
-	/* return to read mode */
-	PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    /* return to read mode */
+    PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
-	/* wait */
-	ret = __wait_for_ready();
+    /* wait */
+    ret = __wait_for_ready();
 
     /* return if timeout */
     if (NAND_SUCCESS != ret)
-    	return ret;
+        return ret;
 
-	/* read data */
-	for(k=0; k<lenght; k++)
-		buffer[k] = PLATFORM_ReadData();
+    /* read data */
+    for(k=0; k<lenght; k++)
+        buffer[k] = PLATFORM_ReadData();
 
-	/* read status register on exit */
-	status_reg = NAND_Read_Status();
+    /* read status register on exit */
+    status_reg = NAND_Read_Status();
 
-	/* close board transfer */
-	PLATFORM_Close();
+    /* close board transfer */
+    PLATFORM_Close();
 
-	if(status_reg & STATUS_FAIL)
-		return NAND_READ_FAILED;
+    if(status_reg & STATUS_FAIL)
+        return NAND_READ_FAILED;
 
-	return ret;
+    return ret;
 }
 
 /******************************************************************************
@@ -1996,29 +1996,29 @@ MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 le
 #define BIT_USED_TO_POLL STATUS_RDY
 
 #ifdef TIMEOUT_SUPPORT
-	#define NUM_OF_TICKS_TO_TIMEOUT (TIME_OUT_SECOND * CLOCKS_PER_SEC)
+#define NUM_OF_TICKS_TO_TIMEOUT (TIME_OUT_SECOND * CLOCKS_PER_SEC)
 #endif
 
 MT_uint8 __wait_for_ready() {
-	MT_uint8 ret;
+    MT_uint8 ret;
 
-	#ifdef TIMEOUT_SUPPORT
-		MT_uint32 clock_start = (MT_uint32) clock();
-	#endif
+#ifdef TIMEOUT_SUPPORT
+    MT_uint32 clock_start = (MT_uint32) clock();
+#endif
 
-	PLATFORM_SendCmd(CMD_READ_STATUS);
+    PLATFORM_SendCmd(CMD_READ_STATUS);
 
-	#ifndef TIMEOUT_SUPPORT
+#ifndef TIMEOUT_SUPPORT
 
-		while (BIT_USED_TO_POLL != (BIT_USED_TO_POLL & PLATFORM_ReadData()))
-			{ /* do nothing */ 	}
+    while (BIT_USED_TO_POLL != (BIT_USED_TO_POLL & PLATFORM_ReadData()))
+    { /* do nothing */ 	}
 
-		PLATFORM_SendCmd(CMD_READ_MODE);
-		return SUCCESS;
+    PLATFORM_SendCmd(CMD_READ_MODE);
+    return SUCCESS;
 
-	#else
+#else
 
-		while ( (BIT_USED_TO_POLL != (BIT_USED_TO_POLL & PLATFORM_ReadData())) \
+    while ( (BIT_USED_TO_POLL != (BIT_USED_TO_POLL & PLATFORM_ReadData())) \
 				&& ((MT_uint32) clock() < (MT_uint32) (clock_start + NUM_OF_TICKS_TO_TIMEOUT)) )
 			{  /* do nothing */ }
 
@@ -2031,7 +2031,7 @@ MT_uint8 __wait_for_ready() {
 		PLATFORM_SendCmd(CMD_READ_MODE);
 		return ret;
 
-	#endif
+#endif
 
 }
 
@@ -2040,12 +2040,12 @@ MT_uint8 __wait_for_ready() {
  * device size
  */
 MT_uint8 __is_valid_addr(nand_addr_t addr) {
-	if((addr.column < device_info.data_bytes_per_page) &&
-			(addr.page < device_info.pages_per_block) &&
-			(addr.block < device_info.blocks_per_lun) &&
-			(addr.lun < device_info.luns_per_ce))
-		return NAND_SUCCESS;
-	return NAND_INVALID_NAND_ADDRESS;
+    if((addr.column < device_info.data_bytes_per_page) &&
+       (addr.page < device_info.pages_per_block) &&
+       (addr.block < device_info.blocks_per_lun) &&
+       (addr.lun < device_info.luns_per_ce))
+        return NAND_SUCCESS;
+    return NAND_INVALID_NAND_ADDRESS;
 }
 
 /*
@@ -2053,85 +2053,85 @@ MT_uint8 __is_valid_addr(nand_addr_t addr) {
  */
 MT_uint8 __compare_addr(nand_addr_t first_addr, nand_addr_t second_addr) {
 
-	/* first_addr = second_addr */
-	if((first_addr.lun == second_addr.lun) && \
+    /* first_addr = second_addr */
+    if((first_addr.lun == second_addr.lun) && \
 		(first_addr.block == second_addr.block) && \
 		(first_addr.page == second_addr.page) && \
 		(first_addr.column == first_addr.column))
-			return ADDR_A_EQ_B;
+        return ADDR_A_EQ_B;
 
-	/* first_addr > second_addr */
-	if((first_addr.lun > second_addr.lun) && \
+    /* first_addr > second_addr */
+    if((first_addr.lun > second_addr.lun) && \
 		(first_addr.block > second_addr.block) && \
 		(first_addr.page > second_addr.page) && \
 		(first_addr.column > first_addr.column))
-			return ADDR_A_GT_B;
+        return ADDR_A_GT_B;
 
-	/* first_addr < second_addr */
-	return ADDR_A_LT_B;
+    /* first_addr < second_addr */
+    return ADDR_A_LT_B;
 }
 
 /*
  * __as_uint16
  */
 MT_uint16 __as_uint16(MT_uint8 byte1, MT_uint8 byte0) {
-	#ifdef LITTLE_ENDIAN
-		return ((MT_uint16) ((byte0 << 8) | byte1));
-	#endif
-	#ifdef BIG_ENDIAN
-		return ((MT_uint16) ((byte1 << 8) | byte0));
-	#endif
+#ifdef LITTLE_ENDIAN
+    return ((MT_uint16) ((byte0 << 8) | byte1));
+#endif
+#ifdef BIG_ENDIAN
+    return ((MT_uint16) ((byte1 << 8) | byte0));
+#endif
 }
 
 /*
  * __as_uint32
  */
 MT_uint32 __as_uint32(MT_uint8 byte3, MT_uint8 byte2, MT_uint8 byte1, MT_uint8 byte0) {
-	#ifdef LITTLE_ENDIAN
-		return ((MT_uint32) ((byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3));
-	#endif
-	#ifdef BIG_ENDIAN
-		return ((MT_uint32) ((byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0));
-	#endif
+#ifdef LITTLE_ENDIAN
+    return ((MT_uint32) ((byte0 << 24) | (byte1 << 16) | (byte2 << 8) | byte3));
+#endif
+#ifdef BIG_ENDIAN
+    return ((MT_uint32) ((byte3 << 24) | (byte2 << 16) | (byte1 << 8) | byte0));
+#endif
 }
 /*
  * __as_string
  */
 void __as_string(MT_uint8 *src_ptr, char *dest_ptr, int start, int stop) {
-	#ifdef LITTLE_ENDIAN
-		strncpy((char *)dest_ptr, (const char *)src_ptr+start, stop-start+1);
+#ifdef LITTLE_ENDIAN
+    strncpy((char *)dest_ptr, (const char *)src_ptr+start, stop-start+1);
 		dest_ptr[stop-start+1] = '\0';
-	#endif
-	#ifdef BIG_ENDIAN
-		strncpy((char *)dest_ptr, (const char *)src_ptr+start, stop-start+1);
+#endif
+#ifdef BIG_ENDIAN
+    strncpy((char *)dest_ptr, (const char *)src_ptr+start, stop-start+1);
 		dest_ptr[stop-start+1] = '\0';
-	#endif
+#endif
 }
 
 /*
  * __build_cycle_addr
  */
 void __build_cycle_addr(nand_addr_t addr, MT_uint8 *addr_cycle_stream) {
-	#define LOW				0
-	#define HIGH			1
+#define LOW				0
+#define HIGH			1
 
-	/* extract n-th bit from a value */
-	#define CHECK_BIT(val, n) ((val & (1 << n)) >> n)
+    /* extract n-th bit from a value */
+#define CHECK_BIT(val, n) ((val & (1 << n)) >> n)
 
-	/* extract from column address */
-	#define COL(n) 			CHECK_BIT(addr.column, n)
+    /* extract from column address */
+#define COL(n) 			CHECK_BIT(addr.column, n)
 
-	/* extract from page address */
-	#define PAGE(n) 		CHECK_BIT(addr.page, n)
+    /* extract from page address */
+#define PAGE(n) 		CHECK_BIT(addr.page, n)
 
-	/* extract from block address */
-	#define BLOCK(n) 		CHECK_BIT(addr.block, n)
+    /* extract from block address */
+#define BLOCK(n) 		CHECK_BIT(addr.block, n)
 
-	/* extract from lun number */
-	#define LUN(n) 			CHECK_BIT(addr.lun, n)
+    /* extract from lun number */
+#define LUN(n) 			CHECK_BIT(addr.lun, n)
 
-	/* build a single row of address cycle */
-	#define BUILD_ADDR_ROW(i_07, i_06, i_05, i_04, i_03, i_02, i_01, i_00) (\
+    /* build a single row of address cycle */
+#define BUILD_ADDR_ROW(i_07, i_06, i_05, i_04, i_03, i_02, i_01, i_00) (\
 		 ((i_07) << 7) \
 	   | ((i_06) << 6) \
 	   | ((i_05) << 5) \
@@ -2142,62 +2142,62 @@ void __build_cycle_addr(nand_addr_t addr, MT_uint8 *addr_cycle_stream) {
 	   | ((i_00) << 0) \
 	);
 
-	int cycle;
+    int cycle;
 
-	/* build the address cycle stream (64 pages per block) */
-	if (64 == device_info.pages_per_block) {
+    /* build the address cycle stream (64 pages per block) */
+    if (64 == device_info.pages_per_block) {
 
-		/* Col 1 - I cycle */
-		addr_cycle_stream[0] =
-				(MT_uint8) BUILD_ADDR_ROW(COL(7), COL(6), COL(5), COL(4), COL(3), COL(2), COL(1), COL(0));
+        /* Col 1 - I cycle */
+        addr_cycle_stream[0] =
+                (MT_uint8) BUILD_ADDR_ROW(COL(7), COL(6), COL(5), COL(4), COL(3), COL(2), COL(1), COL(0));
 
-		/* Col 2 - II cycle */
-		addr_cycle_stream[1] =
-				(MT_uint8) BUILD_ADDR_ROW(LOW, LOW, COL(13), COL(12), COL(11), COL(10),COL(9),COL(8));
+        /* Col 2 - II cycle */
+        addr_cycle_stream[1] =
+                (MT_uint8) BUILD_ADDR_ROW(LOW, LOW, COL(13), COL(12), COL(11), COL(10),COL(9),COL(8));
 
-		/* Row 1 - III cycle */
-		addr_cycle_stream[2] =
-				(MT_uint8) BUILD_ADDR_ROW(BLOCK(1), BLOCK(0), PAGE(5), PAGE(4), PAGE(3), PAGE(2), PAGE(1), PAGE(0));
+        /* Row 1 - III cycle */
+        addr_cycle_stream[2] =
+                (MT_uint8) BUILD_ADDR_ROW(BLOCK(1), BLOCK(0), PAGE(5), PAGE(4), PAGE(3), PAGE(2), PAGE(1), PAGE(0));
 
-		/* Row 2 - IV cycle */
-		addr_cycle_stream[3] =
-				(MT_uint8) BUILD_ADDR_ROW(BLOCK(9), BLOCK(8), BLOCK(7), BLOCK(6), BLOCK(5), BLOCK(4), BLOCK(3), BLOCK(2));
+        /* Row 2 - IV cycle */
+        addr_cycle_stream[3] =
+                (MT_uint8) BUILD_ADDR_ROW(BLOCK(9), BLOCK(8), BLOCK(7), BLOCK(6), BLOCK(5), BLOCK(4), BLOCK(3), BLOCK(2));
 
-		/* Row 3 - V cycle */
-		addr_cycle_stream[4] =
-				(MT_uint8) BUILD_ADDR_ROW(LOW, LOW, LOW, LOW, LUN(0), BLOCK(12), BLOCK(11), BLOCK(10));
+        /* Row 3 - V cycle */
+        addr_cycle_stream[4] =
+                (MT_uint8) BUILD_ADDR_ROW(LOW, LOW, LOW, LOW, LUN(0), BLOCK(12), BLOCK(11), BLOCK(10));
 
-	}
+    }
 
-	/* build the address cycle stream (128 pages per block) */
-	if (128 == device_info.pages_per_block) {
+    /* build the address cycle stream (128 pages per block) */
+    if (128 == device_info.pages_per_block) {
 
-		/* Col 1 - I cycle */
-		addr_cycle_stream[0] =
-				(MT_uint8) BUILD_ADDR_ROW(COL(7), COL(6), COL(5), COL(4), COL(3), COL(2), COL(1), COL(0));
+        /* Col 1 - I cycle */
+        addr_cycle_stream[0] =
+                (MT_uint8) BUILD_ADDR_ROW(COL(7), COL(6), COL(5), COL(4), COL(3), COL(2), COL(1), COL(0));
 
-		/* Col 2 - II cycle */
-		addr_cycle_stream[1] =
-				(MT_uint8) BUILD_ADDR_ROW(LOW, LOW, COL(13), COL(12), COL(11), COL(10),COL(9),COL(8));
+        /* Col 2 - II cycle */
+        addr_cycle_stream[1] =
+                (MT_uint8) BUILD_ADDR_ROW(LOW, LOW, COL(13), COL(12), COL(11), COL(10),COL(9),COL(8));
 
-		/* Row 1 - III cycle */
-		addr_cycle_stream[2] =
-				(MT_uint8) BUILD_ADDR_ROW(BLOCK(0), PAGE(6), PAGE(5), PAGE(4), PAGE(3), PAGE(2), PAGE(1), PAGE(0));
+        /* Row 1 - III cycle */
+        addr_cycle_stream[2] =
+                (MT_uint8) BUILD_ADDR_ROW(BLOCK(0), PAGE(6), PAGE(5), PAGE(4), PAGE(3), PAGE(2), PAGE(1), PAGE(0));
 
-		/* Row 2 - IV cycle */
-		addr_cycle_stream[3] =
-				(MT_uint8) BUILD_ADDR_ROW(BLOCK(8), BLOCK(7), BLOCK(6), BLOCK(5), BLOCK(4), BLOCK(3), BLOCK(2), BLOCK(1));
+        /* Row 2 - IV cycle */
+        addr_cycle_stream[3] =
+                (MT_uint8) BUILD_ADDR_ROW(BLOCK(8), BLOCK(7), BLOCK(6), BLOCK(5), BLOCK(4), BLOCK(3), BLOCK(2), BLOCK(1));
 
-		/* Row 3 - V cycle */
-		addr_cycle_stream[4] =
-				(MT_uint8) BUILD_ADDR_ROW(LOW, LOW, LOW, LOW, LUN(0), BLOCK(11), BLOCK(10), BLOCK(9));
+        /* Row 3 - V cycle */
+        addr_cycle_stream[4] =
+                (MT_uint8) BUILD_ADDR_ROW(LOW, LOW, LOW, LOW, LUN(0), BLOCK(11), BLOCK(10), BLOCK(9));
 
-	}
+    }
 
-	#ifdef DEBUG_PRINT_ADDRESS
-	printf("DEBUG: addr: LUN=%x, BLOCK=%x, PAGE=%x, COL=%x\n", \
+#ifdef DEBUG_PRINT_ADDRESS
+    printf("DEBUG: addr: LUN=%x, BLOCK=%x, PAGE=%x, COL=%x\n", \
 			addr.lun, addr.block, addr.page, addr.column);
 	printf("DEBUG: addr_cycl = I=%x II=%x III=%x IV=%x V=%x\n", \
 			addr_cycle_stream[0], addr_cycle_stream[1], addr_cycle_stream[2], addr_cycle_stream[3], addr_cycle_stream[4]);
-	#endif
+#endif
 }

@@ -3,7 +3,7 @@
   Filename:		nand_MT29F_lld.h
   Description:  Library routines for the Software Drivers for NAND flash
 
-  © 2012 Micron Technology, Inc. All Rights Reserved
+  ï¿½ 2012 Micron Technology, Inc. All Rights Reserved
 
  You have a license to reproduce, display, perform, produce derivative works of,
  and distribute (in original or modified form) the Program, provided that you
@@ -81,99 +81,99 @@ typedef bus_t flash_width;
 /** NAND address */
 typedef struct nand_address_t {
 
-	/* LUN */
-	MT_uint32 lun;
+    /* LUN */
+    MT_uint32 lun;
 
-	/* block address */
-	MT_uint32 block;
+    /* block address */
+    MT_uint32 block;
 
-	/* page address */
-	MT_uint32 page;
+    /* page address */
+    MT_uint32 page;
 
-	/* column address */
-	MT_uint32 column;
+    /* column address */
+    MT_uint32 column;
 
 } nand_addr_t;
 
 /** Parameter Page Data Structure */
 typedef struct parameter_page_t {
-	/** Parameter page signature (ONFI) */
-	char signature[5];
+    /** Parameter page signature (ONFI) */
+    char signature[5];
 
-	/** Revision number */
-	MT_uint16 rev_num;
+    /** Revision number */
+    MT_uint16 rev_num;
 
-	/** Features supported */
-	MT_uint16 feature;
+    /** Features supported */
+    MT_uint16 feature;
 
-	/** Optional commands supported */
-	MT_uint16 command;
+    /** Optional commands supported */
+    MT_uint16 command;
 
-	/** Device manufacturer */
-	char manufacturer[13];
+    /** Device manufacturer */
+    char manufacturer[13];
 
-	/** Device part number */
-	char model[21];
+    /** Device part number */
+    char model[21];
 
-	/** Manufacturer ID (Micron = 2Ch) */
-	MT_uint8 jedec_id;
+    /** Manufacturer ID (Micron = 2Ch) */
+    MT_uint8 jedec_id;
 
-	/** Date code */
-	MT_uint16 date_code;
+    /** Date code */
+    MT_uint16 date_code;
 
-	/** Number of data bytes per page */
-	MT_uint32 data_bytes_per_page;
+    /** Number of data bytes per page */
+    MT_uint32 data_bytes_per_page;
 
-	/** Number of spare bytes per page */
-	MT_uint16 spare_bytes_per_page;
+    /** Number of spare bytes per page */
+    MT_uint16 spare_bytes_per_page;
 
-	/** Number of data bytes per partial page */
-	MT_uint32 data_bytes_per_partial_page;
+    /** Number of data bytes per partial page */
+    MT_uint32 data_bytes_per_partial_page;
 
-	/** Number of spare bytes per partial page */
-	MT_uint16 spare_bytes_per_partial_page;
+    /** Number of spare bytes per partial page */
+    MT_uint16 spare_bytes_per_partial_page;
 
-	/** Number of pages per block */
-	MT_uint32 pages_per_block;
+    /** Number of pages per block */
+    MT_uint32 pages_per_block;
 
-	/** Number of blocks per unit */
-	MT_uint32 blocks_per_lun;
+    /** Number of blocks per unit */
+    MT_uint32 blocks_per_lun;
 
-	/** Number of logical units (LUN) per chip enable */
-	MT_uint8 luns_per_ce;
+    /** Number of logical units (LUN) per chip enable */
+    MT_uint8 luns_per_ce;
 
-	/** Number of address cycles */
-	MT_uint8 num_addr_cycles;
+    /** Number of address cycles */
+    MT_uint8 num_addr_cycles;
 
-	/** Number of bits per cell (1 = SLC; >1= MLC) */
-	MT_uint8 bit_per_cell;
+    /** Number of bits per cell (1 = SLC; >1= MLC) */
+    MT_uint8 bit_per_cell;
 
-	/** Bad blocks maximum per unit */
-	MT_uint16 max_bad_blocks_per_lun;
+    /** Bad blocks maximum per unit */
+    MT_uint16 max_bad_blocks_per_lun;
 
-	/** Block endurance */
-	MT_uint16 block_endurance;
+    /** Block endurance */
+    MT_uint16 block_endurance;
 
-	/** Guaranteed valid blocks at beginning of target */
-	MT_uint8 guarenteed_valid_blocks;
+    /** Guaranteed valid blocks at beginning of target */
+    MT_uint8 guarenteed_valid_blocks;
 
-	/** Block endurance for guaranteed valid blocks */
-	MT_uint16 block_endurance_guarenteed_valid;
+    /** Block endurance for guaranteed valid blocks */
+    MT_uint16 block_endurance_guarenteed_valid;
 
-	/** Number of programs per page */
-	MT_uint8 num_programs_per_page;
+    /** Number of programs per page */
+    MT_uint8 num_programs_per_page;
 
-	/** Partial programming attributes */
-	MT_uint8 partial_prog_attr;
+    /** Partial programming attributes */
+    MT_uint8 partial_prog_attr;
 
-	/** Number of bits ECC bits */
-	MT_uint8 num_ECC_bits_correctable;
+    /** Number of bits ECC bits */
+    MT_uint8 num_ECC_bits_correctable;
 
-	/** Number of interleaved address bits */
-	MT_uint8 num_interleaved_addr_bits;
+    /** Number of interleaved address bits */
+    MT_uint8 num_interleaved_addr_bits;
 
-	/** Interleaved operation attributes */
-	MT_uint8 interleaved_op_attr;
+    /** Interleaved operation attributes */
+    MT_uint8 interleaved_op_attr;
 
 } param_page_t;
 
@@ -181,129 +181,129 @@ typedef struct parameter_page_t {
  * List of features supported
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define SUPPORTED_EXTERNAL_VPP								0x1000
-	#define SUPPORTED_VOLUME_ADDRESSING							0x0800
-	#define SUPPORTED_NV_DDR2									0x0400
-	#define SUPPORTED_EZ_NAND									0x0200
-	#define SUPPORTED_PROGRAM_PAGE_REGISTER_CLEAR_ENHANCEMENT	0x0100
-	#define SUPPORTED_EXTENDED_PARAMETER_PAGE					0x0080
-	#define SUPPORTED_MULTIPLANE_READ_OPERATIONS				0x0040
-	#define SUPPORTED_NV_DDR									0x0020
-	#define SUPPORTED_ODD_TO_EVEN_PAGE_COPYBACK					0x0010
-	#define SUPPORTED_MULTIPLANE_PROGRAM_AND_ERASE_OPERATIONS	0x0008
-	#define SUPPORTED_NON_SEQUENTIAL_PAGE_PROGRAMMING			0x0004
-	#define SUPPORTED_MULTIPLE_LUN_OPERATIONS					0x0002
-	#define SUPPORTED_16_BIT_DATA_BUS_WIDTH						0x0001
+#define SUPPORTED_EXTERNAL_VPP								0x1000
+#define SUPPORTED_VOLUME_ADDRESSING							0x0800
+#define SUPPORTED_NV_DDR2									0x0400
+#define SUPPORTED_EZ_NAND									0x0200
+#define SUPPORTED_PROGRAM_PAGE_REGISTER_CLEAR_ENHANCEMENT	0x0100
+#define SUPPORTED_EXTENDED_PARAMETER_PAGE					0x0080
+#define SUPPORTED_MULTIPLANE_READ_OPERATIONS				0x0040
+#define SUPPORTED_NV_DDR									0x0020
+#define SUPPORTED_ODD_TO_EVEN_PAGE_COPYBACK					0x0010
+#define SUPPORTED_MULTIPLANE_PROGRAM_AND_ERASE_OPERATIONS	0x0008
+#define SUPPORTED_NON_SEQUENTIAL_PAGE_PROGRAMMING			0x0004
+#define SUPPORTED_MULTIPLE_LUN_OPERATIONS					0x0002
+#define SUPPORTED_16_BIT_DATA_BUS_WIDTH						0x0001
 #endif
 
 /*
  * List of optional commands supported
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define OPTIONAL_CMD_ODT_CONFIGURE							0x0800
-	#define OPTIONAL_CMD_VOLUME_SELECT							0x0400
-	#define OPTIONAL_CMD_RESET_LUN								0x0200
-	#define OPTIONAL_CMD_SMALL_DATA_MOVE						0x0100
-	#define OPTIONAL_CMD_CHANGE_ROW_ADDRESS						0x0080
-	#define OPTIONAL_CMD_CHANGE_READ_COLUMN_ENHANCED			0x0040
-	#define OPTIONAL_CMD_READ_UNIQUE_ID							0x0020
-	#define OPTIONAL_CMD_COPYBACK								0x0010
-	#define OPTIONAL_CMD_READ_STATUS_ENHANCED					0x0008
-	#define OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES			0x0004
-	#define OPTIONAL_CMD_READ_CACHE_COMMANDS					0x0002
-	#define OPTIONAL_CMD_PAGE_CACHE_PROGRAM_COMMAND				0x0001
+#define OPTIONAL_CMD_ODT_CONFIGURE							0x0800
+#define OPTIONAL_CMD_VOLUME_SELECT							0x0400
+#define OPTIONAL_CMD_RESET_LUN								0x0200
+#define OPTIONAL_CMD_SMALL_DATA_MOVE						0x0100
+#define OPTIONAL_CMD_CHANGE_ROW_ADDRESS						0x0080
+#define OPTIONAL_CMD_CHANGE_READ_COLUMN_ENHANCED			0x0040
+#define OPTIONAL_CMD_READ_UNIQUE_ID							0x0020
+#define OPTIONAL_CMD_COPYBACK								0x0010
+#define OPTIONAL_CMD_READ_STATUS_ENHANCED					0x0008
+#define OPTIONAL_CMD_GET_FEATURES_AND_SET_FEATURES			0x0004
+#define OPTIONAL_CMD_READ_CACHE_COMMANDS					0x0002
+#define OPTIONAL_CMD_PAGE_CACHE_PROGRAM_COMMAND				0x0001
 #endif
 
 /*
  * NAND Command set
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define CMD_RESET							0xFF
-	#define CMD_READID							0x90
-	#define CMD_READ_PARAM_PAGE					0xEC
-	#define	CMD_READ_UNIQ_ID					0xED
-	#define CMD_SET_FEATURE						0xEF
-	#define CMD_GET_FEATURE						0xEE
-	#define CMD_READ_STATUS						0x70
-	#define CMD_READ_STATUS_ENHANCED			0x78
-	#define CMD_ERASE_BLOCK						0x60
-	#define CMD_ERASE_BLOCK_CONFIRM				0xD0
-	#define CMD_READ_MODE						0x00
-	#define CMD_READ_CONFIRM					0x30
-	#define CMD_PAGE_PROGRAM					0x80
-	#define CMD_PAGE_PROGRAM_CONFIRM			0x10
-	#define CMD_READ_INTERNAL_DATA_MOVE			0x35
-	#define CMD_PROGRAM_INTERNAL_DATA_MOVE		0x85
-	#define CMD_LOCK							0x2A
-	#define CMD_BLOCK_UNLOCK_LOW				0x23
-	#define CMD_BLOCK_UNLOCK_HIGH				0x24
-	#define CMD_BLOCK_LOCK_READ_STATUS			0x7A
+#define CMD_RESET							0xFF
+#define CMD_READID							0x90
+#define CMD_READ_PARAM_PAGE					0xEC
+#define	CMD_READ_UNIQ_ID					0xED
+#define CMD_SET_FEATURE						0xEF
+#define CMD_GET_FEATURE						0xEE
+#define CMD_READ_STATUS						0x70
+#define CMD_READ_STATUS_ENHANCED			0x78
+#define CMD_ERASE_BLOCK						0x60
+#define CMD_ERASE_BLOCK_CONFIRM				0xD0
+#define CMD_READ_MODE						0x00
+#define CMD_READ_CONFIRM					0x30
+#define CMD_PAGE_PROGRAM					0x80
+#define CMD_PAGE_PROGRAM_CONFIRM			0x10
+#define CMD_READ_INTERNAL_DATA_MOVE			0x35
+#define CMD_PROGRAM_INTERNAL_DATA_MOVE		0x85
+#define CMD_LOCK							0x2A
+#define CMD_BLOCK_UNLOCK_LOW				0x23
+#define CMD_BLOCK_UNLOCK_HIGH				0x24
+#define CMD_BLOCK_LOCK_READ_STATUS			0x7A
 #endif
 
 /*
  * Significant addresses
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define ADDR_READ_ID						0x00
-	#define ADDR_READ_ID_ONFI					0x20
-	#define ADDR_READ_UNIQ_ID					0x00
-	#define ADDR_PARAM_PAGE						0x00
-	#define ADDR_READ_UNIQ_ID					0x00
-	#define ADDR_FEATURE_TIMING					0x01
-	#define ADDR_FEATURE_OUTPUT_STRENGTH		0x80
-	#define ADDR_FEATURE_RB_STRENGTH			0x81
-	#define ADDR_FEATURE_ARRAY_OPMODE			0x90
+#define ADDR_READ_ID						0x00
+#define ADDR_READ_ID_ONFI					0x20
+#define ADDR_READ_UNIQ_ID					0x00
+#define ADDR_PARAM_PAGE						0x00
+#define ADDR_READ_UNIQ_ID					0x00
+#define ADDR_FEATURE_TIMING					0x01
+#define ADDR_FEATURE_OUTPUT_STRENGTH		0x80
+#define ADDR_FEATURE_RB_STRENGTH			0x81
+#define ADDR_FEATURE_ARRAY_OPMODE			0x90
 #endif
 
 /**
  * Significant constants
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define NUM_OF_READID_BYTES					5
-	#define NUM_OF_READIDONFI_BYTES				4
-	#define NUM_OF_READUNIQUEID_BYTES			16
-	#define NUM_OF_PPAGE_BYTES					129
-	#define NUM_OF_ADDR_CYCLE					5
-	#define ONFI_SIGNATURE_LENGHT				4
-	#define NUM_OF_UNIQUEID_BYTES				32
+#define NUM_OF_READID_BYTES					5
+#define NUM_OF_READIDONFI_BYTES				4
+#define NUM_OF_READUNIQUEID_BYTES			16
+#define NUM_OF_PPAGE_BYTES					129
+#define NUM_OF_ADDR_CYCLE					5
+#define ONFI_SIGNATURE_LENGHT				4
+#define NUM_OF_UNIQUEID_BYTES				32
 #endif
 
 /*
  * Feature constants
  */
 #ifdef MICRON_NAND_DEFAULT
-	/* Timing mode */
-	#define FEATURE_TIMING_MODE0				0x00
-	#define FEATURE_TIMING_MODE1				0x01
-	#define FEATURE_TIMING_MODE2				0x02
-	#define FEATURE_TIMING_MODE3				0x03
-	#define FEATURE_TIMING_MODE4				0x04
-	#define FEATURE_TIMING_MODE5				0x05
-	/* I/O drive strength */
-	#define FEATURE_OUTPUT_STRENGH_100			0x00
-	#define FEATURE_OUTPUT_STRENGH_75			0x01
-	#define FEATURE_OUTPUT_STRENGH_50			0x02
-	#define FEATURE_OUTPUT_STRENGH_25			0x03
-	/* R/B# Pull-Down strength */
-	#define FEATURE_RB_STRENGH_100				0x00
-	#define FEATURE_RB_STRENGH_75				0x01
-	#define FEATURE_RB_STRENGH_50				0x02
-	#define FEATURE_RB_STRENGH_25				0x03
-	/* Array operation mode */
-	#define FEATURE_ARRAY_NORMAL				0x00
-	#define FEATURE_ARRAY_OTP_OPERATION			0x01
-	#define FEATURE_ARRAY_OTP_PROTECTION		0x03
-	#define FEATURE_ARRAY_DISABLE_ECC			0x00
-	#define FEATURE_ARRAY_ENABLE_ECC			0x08
+/* Timing mode */
+#define FEATURE_TIMING_MODE0				0x00
+#define FEATURE_TIMING_MODE1				0x01
+#define FEATURE_TIMING_MODE2				0x02
+#define FEATURE_TIMING_MODE3				0x03
+#define FEATURE_TIMING_MODE4				0x04
+#define FEATURE_TIMING_MODE5				0x05
+/* I/O drive strength */
+#define FEATURE_OUTPUT_STRENGH_100			0x00
+#define FEATURE_OUTPUT_STRENGH_75			0x01
+#define FEATURE_OUTPUT_STRENGH_50			0x02
+#define FEATURE_OUTPUT_STRENGH_25			0x03
+/* R/B# Pull-Down strength */
+#define FEATURE_RB_STRENGH_100				0x00
+#define FEATURE_RB_STRENGH_75				0x01
+#define FEATURE_RB_STRENGH_50				0x02
+#define FEATURE_RB_STRENGH_25				0x03
+/* Array operation mode */
+#define FEATURE_ARRAY_NORMAL				0x00
+#define FEATURE_ARRAY_OTP_OPERATION			0x01
+#define FEATURE_ARRAY_OTP_PROTECTION		0x03
+#define FEATURE_ARRAY_DISABLE_ECC			0x00
+#define FEATURE_ARRAY_ENABLE_ECC			0x08
 #endif
 
 /*
  * Time constants, in ns (see the datasheet for more details)
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define TIME_WHR							60
-	#define TIME_WB								100
-	#define TIME_ADL							70
+#define TIME_WHR							60
+#define TIME_WB								100
+#define TIME_ADL							70
 #endif
 
 /*
@@ -320,21 +320,21 @@ typedef struct parameter_page_t {
  * Status register definition
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define	STATUS_FAIL							0x00
-	#define	STATUS_FAILC						0x01
-	#define	STATUS_ARDY							0x20
-	#define	STATUS_RDY							0x40
-	#define	STATUS_WRITE_PROTECTED				0x80
+#define	STATUS_FAIL							0x00
+#define	STATUS_FAILC						0x01
+#define	STATUS_ARDY							0x20
+#define	STATUS_RDY							0x40
+#define	STATUS_WRITE_PROTECTED				0x80
 #endif
 
 /*
  * Block lock status register definition
  */
 #ifdef MICRON_NAND_DEFAULT
-	#define BLOCK_LOCKED_TIGHT					0x01
-	#define BLOCK_LOCKED						0x02
-	#define BLOCK_UNLOCKED_DEV_LOCKED			0x05
-	#define BLOCK_UNLOCKED_DEV_NOT_LOCKED		0x06
+#define BLOCK_LOCKED_TIGHT					0x01
+#define BLOCK_LOCKED						0x02
+#define BLOCK_UNLOCKED_DEV_LOCKED			0x05
+#define BLOCK_UNLOCKED_DEV_NOT_LOCKED		0x06
 #endif
 
 /*
@@ -352,7 +352,7 @@ typedef struct parameter_page_t {
 #define NAND_READ_FAILED						0x60
 #define NAND_UNSUPPORTED						0xFD
 #ifdef TIMEOUT_SUPPORT
-	#define NAND_TIMEOUT						0xFE
+#define NAND_TIMEOUT						0xFE
 #endif
 
 #define NAND_UNIMPLEMENTED						0xFF

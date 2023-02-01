@@ -3,7 +3,7 @@
   Filename:		common.h
   Description:  Common data type for Micron NAND Drivers
 
-  © 2012 Micron Technology, Inc. All Rights Reserved
+  ï¿½ 2012 Micron Technology, Inc. All Rights Reserved
 
  You have a license to reproduce, display, perform, produce derivative works of,
  and distribute (in original or modified form) the Program, provided that you

@@ -33,7 +33,7 @@
  *****************************************************************************/
 
 /* support x16 NAND devices */
-// #define BUS_WIDTH_16BIT; // do not define 16-bit device
+// #define BUS_WIDTH_16BIT;
 
 /******************************************************************************
  * 							END OF USER SETTINGS AREA
@@ -45,9 +45,9 @@
 
 /* define bus width */
 #ifndef BUS_WIDTH_16BIT
-	typedef MT_uint8 bus_t;
+typedef MT_uint8 bus_t;
 #else
-	typedef MT_uint16 bus_t;
+typedef MT_uint16 bus_t;
 #endif
 
 #ifdef ASYNC_MODE
