@@ -39,19 +39,19 @@ public:
     inline constexpr void selectNandConfiguration(ChipSelect chipSelect) {
         switch (chipSelect) {
             case NCS0:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS0(enableNandConfiguration);
+                MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(enableNandConfiguration);
                 return;
 
             case NCS1:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
+                MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
                 return;
 
             case NCS2:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS2(enableNandConfiguration);
+                MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS2(enableNandConfiguration);
                 return;
 
             case NCS3:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS3(enableNandConfiguration);
+                MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS3(enableNandConfiguration);
                 return;
 
             default:
