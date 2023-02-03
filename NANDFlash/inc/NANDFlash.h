@@ -30,6 +30,7 @@ private:
 //    PIO_PIN NANDCLE  = PIO_PIN_PC17;
 //    PIO_PIN NANDALE = PIO_PIN_PC16;
 //    PIO_PIN NCS = PIO_PIN_PD18;
+    inline static constexpr uint8_t enableNandConfiguration = 1;
 
 public:
     /**
@@ -38,19 +39,19 @@ public:
     inline constexpr void selectNandConfiguration(ChipSelect chipSelect) {
         switch (chipSelect) {
             case NCS0:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS0(1);
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS0(enableNandConfiguration);
                 return;
 
             case NCS1:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS1(1);
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
                 return;
 
             case NCS2:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS2(1);
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS2(enableNandConfiguration);
                 return;
 
             case NCS3:
-                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS3(1);
+                MATRIX_REGS->CCFG_SMCNFCS = CCFG_SMCNFCS_SMC_NFCS3(enableNandConfiguration);
                 return;
 
             default:
@@ -60,6 +61,7 @@ public:
 
     constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {
         selectNandConfiguration(chipSelect);
+        //TODO: add reset function from manufacturer
     }
 
     inline void nandSendData(uint8_t data) {
