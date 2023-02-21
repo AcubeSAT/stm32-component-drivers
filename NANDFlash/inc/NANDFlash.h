@@ -32,6 +32,29 @@ private:
     const PIO_PIN NCS = PIO_PIN_PD18;
     inline static constexpr uint8_t enableNandConfiguration = 1;
 
+    enum Commands : uint8_t {
+        RESET = 0xFF,
+        READID = 0x90,
+        READ_PARAM_PAGE = 0xEC,
+        READ_UNIQ_ID = 0xED,
+        SET_FEATURE = 0xEF,
+        GET_FEATURE = 0xEE,
+        READ_STATUS = 0x70,
+        READ_STATUS_ENHANCED = 0x78,
+        ERASE_BLOCK = 0x60,
+        ERASE_BLOCK_CONFIRM = 0xD0,
+        READ_MODE = 0x00,
+        READ_CONFIRM = 0x30,
+        PAGE_PROGRAM = 0x80,
+        PAGE_PROGRAM_CONFIRM = 0x10,
+        READ_INTERNAL_DATA_MOVE = 0x35,
+        PROGRAM_INTERNAL_DATA_MOVE = 0x85,
+        LOCK = 0x2A,
+        BLOCK_UNLOCK_LOW = 0x23,
+        BLOCK_UNLOCK_HIGH = 0x24,
+        BLOCK_LOCK_READ_STATUS = 0x7A
+    };
+
 public:
     /**
      * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
@@ -64,19 +87,19 @@ public:
         //TODO: add reset function from manufacturer
     }
 
-    inline void nandSendData(uint8_t data) {
+    inline void sendData(uint8_t data) {
         smcDataWrite(moduleBaseAddress, data);
     }
 
-    inline void nandSendAddress(uint8_t address) {
+    inline void sendAddress(uint8_t address) {
         smcDataWrite(triggerNANDALEAddress, address);
     }
 
-    inline void nandSendCommand(uint8_t command) {
+    inline void sendCommand(uint8_t command) {
         smcDataWrite(triggerNANDCLEAddress, command);
     }
 
-    inline uint8_t nandReadData() {
+    inline uint8_t readData() {
         return smcDataRead(moduleBaseAddress);
     }
 
