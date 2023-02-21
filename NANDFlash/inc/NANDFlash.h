@@ -85,7 +85,7 @@ public:
 
     constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {
         selectNandConfiguration(chipSelect);
-        //TODO: add reset function from manufacturer
+        resetNAND();
     }
 
     inline void sendData(uint8_t data) {
