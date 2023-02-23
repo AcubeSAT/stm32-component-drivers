@@ -36,6 +36,10 @@ public:
         smcDataWrite(moduleBaseAddress | dataAddress, data);
     }
 
+    inline void mramWriteWord(uint32_t dataAddress, uint32_t data) {
+        smcWriteWord(moduleBaseAddress | dataAddress, data);
+    }
+
     /**
      * Basic 8-bit write that takes advantage of the \ref moduleBaseAddress and creates an abstraction
      * to receive as a parameter directly an MRAM address.

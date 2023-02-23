@@ -29,6 +29,7 @@ public:
         NCS3 = 3,
     };
 
+protected:
     /**
      * Initialize the \ref moduleBaseAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
@@ -42,6 +43,10 @@ public:
      */
     inline void smcDataWrite(uint32_t dataAddress, uint8_t data) {
         *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
+    }
+
+    inline void smcWriteWord(uint32_t dataAddress, uint32_t data) {
+        *(reinterpret_cast<volatile uint32_t *>(dataAddress)) = data;
     }
 
     /**
