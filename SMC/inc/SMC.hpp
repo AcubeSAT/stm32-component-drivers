@@ -41,8 +41,8 @@ protected:
      * @param dataAddress EBI address to write to.
      * @param data 8-bit data to write to the address.
      */
-    inline void smcDataWrite(uint32_t dataAddress, uint8_t data) {
-        *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
+    volatile void smcDataWrite(uint32_t dataAddress, uint8_t data) {
+        *(reinterpret_cast<volatile uint8_t * volatile>(dataAddress)) = data;
     }
 
     inline void smcWriteWord(uint32_t dataAddress, uint32_t data) {
@@ -54,8 +54,9 @@ protected:
      * @param dataAddress EBI address to read from.
      * @return 8-bit data saved in that address.
      */
-    inline uint8_t smcDataRead(uint32_t dataAddress) {
-        return *(reinterpret_cast<volatile uint8_t *>(dataAddress));
+     //__attribute__((optimize("O0")))
+     volatile uint8_t smcDataRead(uint32_t dataAddress) {
+        return *(reinterpret_cast<volatile uint8_t * volatile>(dataAddress));
     }
 
     /**

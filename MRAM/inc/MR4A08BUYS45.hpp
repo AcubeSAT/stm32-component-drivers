@@ -32,7 +32,7 @@ public:
      * @param dataAddress MRAM address to write to.
      * @param data 8-bit data to write to the address.
      */
-    inline void mramWriteByte(uint32_t dataAddress, uint8_t data) {
+    volatile void mramWriteByte(uint32_t dataAddress, uint8_t data) {
         smcDataWrite(moduleBaseAddress | dataAddress, data);
     }
 
@@ -46,7 +46,8 @@ public:
      * @param dataAddress MRAM address to write to.
      * @return 8-bit data saved in that address.
      */
-    inline uint8_t mramReadByte(uint32_t dataAddress) {
+     // __attribute__((optimize("O0")))
+     volatile uint8_t mramReadByte(uint32_t dataAddress) {
         return smcDataRead(moduleBaseAddress | dataAddress);
     }
 
