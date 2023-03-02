@@ -105,6 +105,5 @@ public:
 
     uint8_t resetNAND();
 
-
     void readNANDID();
 };

@@ -10,7 +10,8 @@ uint8_t MT29F::resetNAND() {
         vTaskDelay(pdMS_TO_TICKS(1));
         sendCommand(READ_STATUS);
         for (int i = 0; i < 2; i++)
-            status = readData();
+            if (i == 1)
+                status = readData();
     }
     return status;
 }
