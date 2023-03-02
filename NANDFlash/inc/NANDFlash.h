@@ -106,7 +106,6 @@ public:
 
     void resetNAND();
 
-    void initialize();
 
     void readNANDID();
 };
