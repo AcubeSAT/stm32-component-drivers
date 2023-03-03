@@ -56,6 +56,10 @@ private:
         BLOCK_LOCK_READ_STATUS = 0x7A
     };
 
+    struct Address {
+        uint8_t col1, col2, row1, row2, row3;
+    };
+
 public:
     /**
      * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
@@ -104,6 +108,10 @@ public:
     }
 
     uint8_t resetNAND();
+
+    void writeNAND(Address writeAddress, uint8_t data);
+
+    uint8_t readNAND(Address readAddress);
 
     void readNANDID();
 };
