@@ -56,6 +56,10 @@ private:
         BLOCK_LOCK_READ_STATUS = 0x7A
     };
 
+    const static inline uint16_t PageSizeBytes = 8640;
+
+    const static inline uint16_t BlockSizeBytes = 1105920;
+
     struct Address {
         uint8_t col1, col2, row1, row2, row3;
     };
@@ -87,7 +91,8 @@ public:
         }
     }
 
-    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin) {
+    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect),
+                                                                       nandReadyBusyPin(nandReadyBusyPin) {
         selectNandConfiguration(chipSelect);
     }
 
@@ -109,9 +114,11 @@ public:
 
     uint8_t resetNAND();
 
-    void writeNAND(Address writeAddress, uint8_t data);
+    Address setAddress(uint8_t LUN, uint32_t position);
 
-    uint8_t readNAND(Address readAddress);
+    void writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
+
+    uint8_t readNAND(uint8_t LUN, uint32_t position);
 
     void readNANDID();
 };
