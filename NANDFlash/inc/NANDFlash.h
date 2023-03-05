@@ -26,6 +26,7 @@ private:
     const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000;
 
     const PIO_PIN nandReadyBusyPin = PIO_PIN_NONE; //TODO: if PIO_PIN == NONE => throw log message
+    const PIO_PIN nandWriteProtect = PIO_PIN_PA27;
     const PIO_PIN NANDOE = PIO_PIN_PC9;
     const PIO_PIN NANDWE = PIO_PIN_PC10;
     const PIO_PIN NANDCLE = PIO_PIN_PC17;

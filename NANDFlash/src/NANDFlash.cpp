@@ -6,11 +6,11 @@ uint8_t MT29F::resetNAND() {
     if (PIO_PinRead(nandReadyBusyPin)) {
         sendCommand(RESET);
         sendCommand(READ_STATUS);
-        vTaskDelay(pdMS_TO_TICKS(1));
         return readData();
     }
 
 }
+
 
 MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
     uint8_t page = position / PageSizeBytes;
@@ -41,25 +41,30 @@ uint8_t *MT29F::readNANDID() {
 
 
 void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
+    PIO_PinWrite(nandWriteProtect,1);
     Address writeAddress = setAddress(LUN, position);
+    sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
     sendAddress(writeAddress.col2);
     sendAddress(writeAddress.row1);
     sendAddress(writeAddress.row2);
     sendAddress(writeAddress.row3);
-    vTaskDelay(pdMS_TO_TICKS(1));
     sendData(data);
+    sendCommand(PAGE_PROGRAM_CONFIRM);
 }
 
 uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
-    sendCommand(READ_MODE);
-    Address readAddress = setAddress(LUN, position);
-    sendAddress(readAddress.col1);
-    sendAddress(readAddress.col2);
-    sendAddress(readAddress.row1);
-    sendAddress(readAddress.row2);
-    sendAddress(readAddress.row3);
-    for (int i = 0; i < 2; i++)
-        if (i == 1)
-            return readData();
+        uint8_t data = 0;
+        Address readAddress = setAddress(LUN, position);
+        sendCommand(READ_MODE);
+        sendAddress(readAddress.col1);
+        sendAddress(readAddress.col2);
+        sendAddress(readAddress.row1);
+        sendAddress(readAddress.row2);
+        sendAddress(readAddress.row3);
+        sendCommand(READ_CONFIRM);
+        for (volatile int i = 0; i < 10; i++)
+            data = readData();
+        return data;
+
 }
