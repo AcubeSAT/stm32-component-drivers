@@ -29,8 +29,8 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 }
 
 
-uint8_t* MT29F::readNANDID() {
-    uint8_t id[8] = {};
+uint8_t *MT29F::readNANDID() {
+    static uint8_t id[8] = {};
     sendCommand(READID);
     sendAddress(READ_MODE);
     for (int i = 0; i < 8; i++) {
