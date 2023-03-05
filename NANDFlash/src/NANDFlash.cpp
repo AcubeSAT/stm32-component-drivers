@@ -3,15 +3,11 @@
 
 uint8_t MT29F::resetNAND() {
 
-    uint8_t status = 0;
-
     if (PIO_PinRead(nandReadyBusyPin)) {
         sendCommand(RESET);
-        vTaskDelay(pdMS_TO_TICKS(1));
         sendCommand(READ_STATUS);
-        for (int i = 0; i < 2; i++)
-            if (i == 1)
-                return readData();
+        vTaskDelay(pdMS_TO_TICKS(1));
+        return readData();
     }
 
 }
@@ -33,16 +29,14 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 }
 
 
-void MT29F::readNANDID() {
-    uint8_t buffer[5];
-    sendCommand(0x90);
-    sendAddress(0x00);
-    vTaskDelay(pdMS_TO_TICKS(300));
-
-    for (int i = 0; i < 5; i++) {
-        buffer[i] = readData();
-        LOG_DEBUG << buffer[i] << " ";
+uint8_t* MT29F::readNANDID() {
+    uint8_t id[8] = {};
+    sendCommand(READID);
+    sendAddress(READ_MODE);
+    for (int i = 0; i < 8; i++) {
+        id[i] = readData();
     }
+    return id;
 }
 
 
@@ -65,7 +59,6 @@ uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row1);
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
-    vTaskDelay(pdMS_TO_TICKS(1));
     for (int i = 0; i < 2; i++)
         if (i == 1)
             return readData();

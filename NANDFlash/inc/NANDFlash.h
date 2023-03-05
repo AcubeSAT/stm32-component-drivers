@@ -120,5 +120,5 @@ public:
 
     uint8_t readNAND(uint8_t LUN, uint32_t position);
 
-    void readNANDID();
+    uint8_t* readNANDID();
 };
