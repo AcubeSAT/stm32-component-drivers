@@ -122,4 +122,6 @@ public:
     uint8_t readNAND(uint8_t LUN, uint32_t position);
 
     uint8_t* readNANDID();
+
+    void eraseBlock(uint8_t LUN, uint16_t block);
 };
