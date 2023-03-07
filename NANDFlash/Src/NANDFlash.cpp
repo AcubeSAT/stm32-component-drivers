@@ -1,4 +1,4 @@
 #include "NANDFlash.h"
 
-NANDFlash::NANDFlash(NAND_HandleTypeDef *nand) : nand(nand) {}
+//NANDFlash::NANDFlash(NAND_HandleTypeDef *nand) : nand(nand) {}
 

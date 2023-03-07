@@ -7,9 +7,9 @@ private:
     /**
      * The MRAM has a total of 21 address pins, organised as 2,097,152 (2^21) words of 8 bits.
      * The device can store data from address 0 to 2^21-1.
-     * Primarily used for error detection.
+     * Primarily used for error detection and loop limits.
      */
-    static inline constexpr uint32_t memoryAddressLimit = 0x1FFFFF;
+    static inline constexpr uint32_t totalNumberOfBytes = 0x200000;
 
     /**
      * A variable to keep track of the total allocated memory and help in inserting new data.
@@ -32,12 +32,8 @@ public:
      * @param dataAddress MRAM address to write to.
      * @param data 8-bit data to write to the address.
      */
-    volatile void mramWriteByte(uint32_t dataAddress, uint8_t data) {
+    inline void mramWriteByte(uint32_t dataAddress, uint8_t data) {
         smcDataWrite(moduleBaseAddress | dataAddress, data);
-    }
-
-    inline void mramWriteWord(uint32_t dataAddress, uint32_t data) {
-        smcWriteWord(moduleBaseAddress | dataAddress, data);
     }
 
     /**
@@ -46,8 +42,7 @@ public:
      * @param dataAddress MRAM address to write to.
      * @return 8-bit data saved in that address.
      */
-     // __attribute__((optimize("O0")))
-     volatile uint8_t mramReadByte(uint32_t dataAddress) {
+     inline uint8_t mramReadByte(uint32_t dataAddress) {
         return smcDataRead(moduleBaseAddress | dataAddress);
     }
 
