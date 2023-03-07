@@ -42,7 +42,7 @@ protected:
      * @param data 8-bit data to write to the address.
      */
     inline void smcDataWrite(uint32_t dataAddress, uint8_t data) {
-        *(reinterpret_cast<volatile uint8_t * volatile>(dataAddress)) = data;
+        *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
     }
 
     /**
@@ -51,7 +51,7 @@ protected:
      * @return 8-bit data saved in that address.
      */
     inline uint8_t smcDataRead(uint32_t dataAddress) {
-        return *(reinterpret_cast<volatile uint8_t * volatile>(dataAddress));
+        return *(reinterpret_cast<volatile uint8_t *>(dataAddress));
     }
 
     /**
