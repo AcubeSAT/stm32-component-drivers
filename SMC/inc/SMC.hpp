@@ -29,6 +29,7 @@ public:
         NCS3 = 3,
     };
 
+protected:
     /**
      * Initialize the \ref moduleBaseAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
@@ -40,7 +41,7 @@ public:
      * @param dataAddress EBI address to write to.
      * @param data 8-bit data to write to the address.
      */
-    inline void smcDataWrite(uint32_t dataAddress, uint8_t data) {
+    inline void smcWriteByte(uint32_t dataAddress, uint8_t data) {
         *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
     }
 
@@ -49,7 +50,7 @@ public:
      * @param dataAddress EBI address to read from.
      * @return 8-bit data saved in that address.
      */
-    inline uint8_t smcDataRead(uint32_t dataAddress) {
+    inline uint8_t smcReadByte(uint32_t dataAddress) {
         return *(reinterpret_cast<volatile uint8_t *>(dataAddress));
     }
 
