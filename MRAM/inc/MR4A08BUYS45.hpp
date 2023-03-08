@@ -9,7 +9,7 @@ private:
      * The device can store data from address 0 to 2^21-1.
      * Primarily used for error detection and loop limits.
      */
-    static inline constexpr uint32_t totalNumberOfBytes = 0x200000;
+    static inline constexpr uint32_t TotalNumberOfBytes = 0x200000;
 
     /**
      * A variable to keep track of the total allocated memory and help in inserting new data.
