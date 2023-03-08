@@ -16,9 +16,6 @@ private:
      */
     uint32_t nextUnallocatedMemoryAddress = 0;
 
-//     WIP: a map holding the first address (and maybe the total size) specific parameters are
-//     allocated (and allocate).
-//    etl::map<uint8_t, etl::pair<uint32_t, uint32_t>, 10> memoryMapping;
 public:
     /**
      * Utilizes the \ref SMC constructor to initialize the \ref moduleBaseAddress constant.
@@ -42,7 +39,7 @@ public:
      * @param dataAddress MRAM address to write to.
      * @return 8-bit data saved in that address.
      */
-     inline uint8_t mramReadByte(uint32_t dataAddress) {
+    inline uint8_t mramReadByte(uint32_t dataAddress) {
         return smcDataRead(moduleBaseAddress | dataAddress);
     }
 
@@ -52,7 +49,7 @@ public:
      * @param data
      * @param sizeOfData
      */
-    void mramWriteData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
+    void mramWriteData(uint32_t dataAddress, uint8_t *data, uint32_t sizeOfData);
 
     /**
      *
@@ -60,5 +57,5 @@ public:
      * @param data
      * @param sizeOfData
      */
-    void mramReadData(uint32_t dataAddress, uint8_t* data, uint32_t sizeOfData);
+    void mramReadData(uint32_t dataAddress, uint8_t *data, uint32_t sizeOfData);
 };
