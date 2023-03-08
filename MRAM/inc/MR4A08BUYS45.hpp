@@ -30,7 +30,7 @@ public:
      * @param data 8-bit data to write to the address.
      */
     inline void mramWriteByte(uint32_t dataAddress, uint8_t data) {
-        smcDataWrite(moduleBaseAddress | dataAddress, data);
+        smcWriteByte(moduleBaseAddress | dataAddress, data);
     }
 
     /**
@@ -40,22 +40,22 @@ public:
      * @return 8-bit data saved in that address.
      */
     inline uint8_t mramReadByte(uint32_t dataAddress) {
-        return smcDataRead(moduleBaseAddress | dataAddress);
+        return smcReadByte(moduleBaseAddress | dataAddress);
     }
 
     /**
-     *
-     * @param dataAddress
-     * @param data
-     * @param sizeOfData
+     * @param dataAddress Base MRAM address to write to. Data will be written starting from dataAddress to
+     * dataAddress + sizeOfData - 1.
+     * @param data Array of bytes to write to the memory module.
+     * @param sizeOfData Number of bytes to write.
      */
     void mramWriteData(uint32_t dataAddress, uint8_t *data, uint32_t sizeOfData);
 
     /**
-     *
-     * @param dataAddress
-     * @param data
-     * @param sizeOfData
+     * @param dataAddress Base MRAM address to read from. Data will be read starting from dataAddress to
+     * dataAddress + sizeOfData - 1.
+     * @param data Array of bytes to store the data read from the memory module.
+     * @param sizeOfData Number of bytes to read.
      */
     void mramReadData(uint32_t dataAddress, uint8_t *data, uint32_t sizeOfData);
 };
