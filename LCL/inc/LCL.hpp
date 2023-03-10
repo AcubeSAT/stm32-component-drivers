@@ -6,19 +6,6 @@
 #include "peripheral/pio/plib_pio.h"
 #include "peripheral/pwm/plib_pwm0.h"
 
-namespace LCLDefinitions {
-
-    /**
-     *
-     */
-    struct LCLDeviceControl {
-        PWM_CHANNEL_MASK pwmChannelMask;
-        PWM_CHANNEL_NUM pwmChannelNumber;
-        PIO_PIN resetPin;
-        PIO_PIN setPin;
-    };
-}
-
 /**
  * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
  * The LCLs are completely programmable during flight.
@@ -30,22 +17,25 @@ namespace LCLDefinitions {
 class LCL {
 private:
 
-    LCLDefinitions::LCLDeviceControl &controlPins;
-
+    const PWM_CHANNEL_MASK pwmChannelMask;
+    const PWM_CHANNEL_NUM pwmChannel;
+    const PIO_PIN resetPin = PIO_PIN_NONE;
+    const PIO_PIN setPin = PIO_PIN_NONE;
     uint16_t pwmDutyCycle = 0;
     uint16_t pwmFrequency = 0;
-    bool lclOn = false;
-    // inline float currentThreshold = 0;
+    bool lclEnabled = false;
+    float currentThreshold = 0;
 public:
 
-    LCL(LCLDefinitions::LCLDeviceControl controlPinsStruct) : controlPins(controlPinsStruct) {
-        PIO_PinWrite(controlPins.resetPin, false);
-        PIO_PinWrite(controlPins.setPin, true);
+    LCL(PWM_CHANNEL_MASK pwmChannelMask, PWM_CHANNEL_NUM pwmChannel, PIO_PIN resetPin, PIO_PIN setPin)
+        : pwmChannelMask(pwmChannelMask), pwmChannel(pwmChannel), resetPin(resetPin), setPin(setPin) {
+        PIO_PinWrite(resetPin, false);
+        PIO_PinWrite(setPin, true);
     }
 
     inline void changePWMDutyCycle(uint16_t newDutyCycle) {
         pwmDutyCycle = newDutyCycle;
-        PWM0_ChannelDutySet(controlPins.pwmChannelNumber, newDutyCycle);
+        PWM0_ChannelDutySet(pwmChannel, newDutyCycle);
     }
 
     void returnLCLStatus();
