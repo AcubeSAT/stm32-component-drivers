@@ -5,6 +5,8 @@
 #include "definitions.h"
 #include "peripheral/pio/plib_pio.h"
 #include "peripheral/pwm/plib_pwm0.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /**
  * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
@@ -38,11 +40,11 @@ public:
         PWM0_ChannelDutySet(pwmChannel, newDutyCycle);
     }
 
-    void returnLCLStatus();
-
     void enableLCL();
 
     void disableLCL();
+
+    void returnLCLStatus();
 
     void calculateVoltageThreshold();
 
