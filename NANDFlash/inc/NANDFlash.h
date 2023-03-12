@@ -31,7 +31,7 @@ private:
     const PIO_PIN NANDWE = PIO_PIN_PC10;
     const PIO_PIN NANDCLE = PIO_PIN_PC17;
     const PIO_PIN NANDALE = PIO_PIN_PC16;
-    const PIO_PIN NCS = PIO_PIN_PD18;
+    //const PIO_PIN NCS = PIO_PIN_PD19;
     inline static constexpr uint8_t enableNandConfiguration = 1;
 
     enum Commands : uint8_t {
@@ -76,6 +76,7 @@ public:
                 return;
 
             case NCS1:
+                MATRIX_REGS->CCFG_SMCNFCS &= MATRIX_REGS->CCFG_SMCNFCS & 0xF;
                 MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
                 return;
 
@@ -119,9 +120,9 @@ public:
 
     void writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
 
-    uint8_t readNAND(uint8_t LUN, uint32_t position);
+    uint8_t* readNAND(uint8_t LUN, uint32_t position);
 
-    uint8_t* readNANDID();
+    uint8_t* readNANDID(uint8_t* id);
 
     void eraseBlock(uint8_t LUN, uint16_t block);
 };
