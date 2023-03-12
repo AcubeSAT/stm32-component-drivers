@@ -120,9 +120,13 @@ public:
 
     void writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
 
-    uint8_t* readNAND(uint8_t LUN, uint32_t position);
+    void writeNAND(uint8_t LUN, uint32_t position, uint8_t *data);
 
-    uint8_t* readNANDID(uint8_t* id);
+    uint8_t readNAND(uint8_t LUN, uint32_t position);
+
+    uint8_t *readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
+
+    void readNANDID(uint8_t *id);
 
     void eraseBlock(uint8_t LUN, uint16_t block);
 };

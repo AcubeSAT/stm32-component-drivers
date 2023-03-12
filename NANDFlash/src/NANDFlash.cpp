@@ -27,13 +27,12 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 }
 
 
-uint8_t *MT29F::readNANDID(uint8_t *id) {
+void MT29F::readNANDID(uint8_t *id) {
     sendCommand(READID);
     sendCommand(READ_MODE);
     for (int i = 0; i < 8; i++) {
         id[i] = readData();
     }
-    return id;
 }
 
 
@@ -50,9 +49,24 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     sendCommand(PAGE_PROGRAM_CONFIRM);
 }
 
-uint8_t *MT29F::readNAND(uint8_t LUN, uint32_t position) {
-    static uint8_t data[22] = {};
-    uint8_t byte;
+void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
+    uint8_t numberOfAddresses = sizeof(data) / sizeof(uint8_t);
+    PIO_PinWrite(nandWriteProtect, 1);
+    Address writeAddress = setAddress(LUN, position);
+    sendCommand(PAGE_PROGRAM);
+    sendAddress(writeAddress.col1);
+    sendAddress(writeAddress.col2);
+    sendAddress(writeAddress.row1);
+    sendAddress(writeAddress.row2);
+    sendAddress(writeAddress.row3);
+    for (int i=0; i<numberOfAddresses;i++) {
+        while (PIO_PinRead(nandReadyBusyPin) == 0) {}
+        sendData(data[i]);
+    }
+    sendCommand(PAGE_PROGRAM_CONFIRM);
+}
+
+uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
     Address readAddress = setAddress(LUN, position);
     sendCommand(READ_MODE);
     sendAddress(readAddress.col1);
@@ -61,7 +75,21 @@ uint8_t *MT29F::readNAND(uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    for (int i = 0; i < 22; i++) {
+    while (PIO_PinRead(nandReadyBusyPin) == 0) {}
+    return readData();
+}
+
+uint8_t *MT29F::readNAND(uint8_t* data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
+    uint8_t numberOfAddresses = end_position - start_position + 1;
+    Address readAddress = setAddress(LUN, start_position);
+    sendCommand(READ_MODE);
+    sendAddress(readAddress.col1);
+    sendAddress(readAddress.col2);
+    sendAddress(readAddress.row1);
+    sendAddress(readAddress.row2);
+    sendAddress(readAddress.row3);
+    sendCommand(READ_CONFIRM);
+    for (int i = 0; i < numberOfAddresses; i++) {
         while (PIO_PinRead(nandReadyBusyPin) == 0) {}
         data[i] = readData();
     }
