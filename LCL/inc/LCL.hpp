@@ -7,8 +7,8 @@
 #include "task.h"
 
 /**
- * @class A Latchup Current Limiter driver providing all the functionality for these protection circuits.
- * The LCLs are completely programmable during flight.
+ * @class A Latch-up Current Limiter (LCL) driver providing all the functionality for these protection circuits.
+ * The LCLs are completely reprogrammable during flight.
  * For now the class contains functionality only for the On-Board Computer Subsystem but
  * the Science Unit will make use of LCL circuits as well.
  * The main components that constitute a Latch up Current Limiter are a TLC555 timer, an
@@ -53,8 +53,14 @@ public:
         PIO_PinWrite(setPin, true);
     }
 
+    /**
+     * Enable to LCL to monitor and protect the IC from over current.
+     */
     void enableLCL();
 
+    /**
+     * Disable the LCL, cutting the supply voltage to the IC.
+     */
     void disableLCL();
 
     void changePWMDutyCycle(uint16_t newDutyCycle);
