@@ -59,7 +59,7 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     sendAddress(writeAddress.row1);
     sendAddress(writeAddress.row2);
     sendAddress(writeAddress.row3);
-    for (int i=0; i<numberOfAddresses;i++) {
+    for (int i = 0; i < numberOfAddresses; i++) {
         while (PIO_PinRead(nandReadyBusyPin) == 0) {}
         sendData(data[i]);
     }
@@ -79,7 +79,7 @@ uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
     return readData();
 }
 
-uint8_t *MT29F::readNAND(uint8_t* data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
+uint8_t *MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
     uint8_t numberOfAddresses = end_position - start_position + 1;
     Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
@@ -106,4 +106,14 @@ void MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     sendAddress(row2);
     sendAddress(row3);
     sendCommand(ERASE_BLOCK_CONFIRM);
+}
+
+bool MT29F::detectErrorArray() {
+    sendCommand(READ_STATUS);
+    while (PIO_PinRead(nandReadyBusyPin) == 0) {}
+    uint8_t status = readData();
+    while ((status & ArrayReadyMask) == 0) {}
+    if (status & 0x1)
+        return true;
+    else return false;
 }

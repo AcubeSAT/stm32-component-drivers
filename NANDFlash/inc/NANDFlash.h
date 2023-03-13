@@ -61,6 +61,8 @@ private:
 
     const static inline uint16_t BlockSizeBytes = 1105920;
 
+    const static inline uint8_t ArrayReadyMask = 0x20;
+
     struct Address {
         uint8_t col1, col2, row1, row2, row3;
     };
@@ -116,6 +118,8 @@ public:
 
     uint8_t resetNAND();
 
+    void readNANDID(uint8_t *id);
+
     Address setAddress(uint8_t LUN, uint32_t position);
 
     void writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
@@ -126,7 +130,7 @@ public:
 
     uint8_t *readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
 
-    void readNANDID(uint8_t *id);
-
     void eraseBlock(uint8_t LUN, uint16_t block);
+
+    bool detectErrorArray();
 };
