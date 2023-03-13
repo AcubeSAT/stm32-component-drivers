@@ -2,7 +2,7 @@
 
 void LCL::enableLCL() {
     // Todo assert status of GPIOs/log
-    PIO_PinWrite(resetPin, true); // RESET
+    PIO_PinWrite(resetPin, true);
     PWM0_ChannelsStart(pwmChannelMask);
     PIO_PinWrite(setPin, false);
 
