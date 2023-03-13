@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <etl/string.h>
-#include "definitions.h"
 #include "peripheral/pio/plib_pio.h"
 #include "peripheral/pwm/plib_pwm0.h"
 #include "FreeRTOS.h"
