@@ -47,11 +47,7 @@ public:
      * @param resetPin
      * @param setPin
      */
-    LCL(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin)
-            : pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask), resetPin(resetPin), setPin(setPin) {
-        PIO_PinWrite(resetPin, false);
-        PIO_PinWrite(setPin, true);
-    }
+    LCL(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
 
     /**
      * Enable to LCL to monitor and protect the IC from over current.
@@ -62,14 +58,4 @@ public:
      * Disable the LCL, cutting the supply voltage to the IC.
      */
     void disableLCL();
-
-    void changePWMDutyCycle(uint16_t newDutyCycle);
-
-    void returnLCLStatus();
-
-    void calculateVoltageThreshold();
-
-    void calculateCurrentThreshold();
-
-    void changeCurrentThreshHold();
 };
