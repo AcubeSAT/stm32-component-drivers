@@ -26,12 +26,8 @@ private:
     const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000;
 
     const PIO_PIN nandReadyBusyPin = PIO_PIN_NONE; //TODO: if PIO_PIN == NONE => throw log message
-    const PIO_PIN nandWriteProtect = PIO_PIN_PA27;
-    const PIO_PIN NANDOE = PIO_PIN_PC9;
-    const PIO_PIN NANDWE = PIO_PIN_PC10;
-    const PIO_PIN NANDCLE = PIO_PIN_PC17;
-    const PIO_PIN NANDALE = PIO_PIN_PC16;
-    //const PIO_PIN NCS = PIO_PIN_PD19;
+    const PIO_PIN nandWriteProtect = PIO_PIN_NONE;
+
     inline static constexpr uint8_t enableNandConfiguration = 1;
 
     enum Commands : uint8_t {
@@ -84,7 +80,7 @@ public:
                 return;
 
             case NCS1:
-                MATRIX_REGS->CCFG_SMCNFCS &= MATRIX_REGS->CCFG_SMCNFCS & 0xF;
+                MATRIX_REGS->CCFG_SMCNFCS &= 0xF;
                 MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
                 return;
 
@@ -101,8 +97,8 @@ public:
         }
     }
 
-    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin) : SMC(chipSelect),
-                                                                       nandReadyBusyPin(nandReadyBusyPin) {
+    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin, PIO_PIN nandWriteProtect) : SMC(chipSelect),
+                                                                       nandReadyBusyPin(nandReadyBusyPin), nandWriteProtect(nandWriteProtect) {
         selectNandConfiguration(chipSelect);
     }
 
@@ -132,9 +128,9 @@ public:
 
     bool writeNAND(uint8_t LUN, uint32_t position, uint8_t *data);
 
-    uint8_t readNAND(uint8_t LUN, uint32_t position);
+    bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 
-    uint8_t *readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
+    bool readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
 
     bool eraseBlock(uint8_t LUN, uint16_t block);
 

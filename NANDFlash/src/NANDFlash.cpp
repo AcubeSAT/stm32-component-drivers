@@ -5,8 +5,9 @@ uint8_t MT29F::resetNAND() {
     if (PIO_PinRead(nandReadyBusyPin)) {
         sendCommand(RESET);
         sendCommand(READ_STATUS);
-        if(waitDelayHandler())
+        if(waitDelayHandler()) {
             return !NANDisReady;
+        }
         return readData();
     }
 }
@@ -71,7 +72,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     return !detectArrayError();
 }
 
-uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
+bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     Address readAddress = setAddress(LUN, position);
     sendCommand(READ_MODE);
     sendAddress(readAddress.col1);
@@ -80,12 +81,14 @@ uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    if(waitDelayHandler())
+    if(waitDelayHandler()) {
         return !NANDisReady;
-    return readData();
+    }
+    data = readData();
+    return NANDisReady;
 }
 
-uint8_t *MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
+bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
     uint8_t numberOfAddresses = end_position - start_position + 1;
     Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
@@ -96,8 +99,9 @@ uint8_t *MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, ui
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
     for (int i = 0; i < numberOfAddresses; i++) {
-        if(waitDelayHandler())
-            return nullptr;
+        if(waitDelayHandler()) {
+            return !NANDisReady;
+        }
         data[i] = readData();
     }
     return data;
@@ -122,11 +126,13 @@ bool MT29F::detectArrayError() {
         uint8_t status = readData();
         while ((status & ArrayReadyMask) == 0) {
             status = readData();
-            if(waitDelay())
+            if(waitDelay()) {
                 return NANDTimeout;
+            }
         }
-        if (status & 0x1)
+        if (status & 0x1) {
             return true;
+        }
     }
     else return false;
 }
@@ -135,16 +141,18 @@ bool MT29F::isNANDAlive() {
     uint8_t *id = {};
     uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
     readNANDID(id);
-    if (std::equal(std::begin(valid_id), std::end(valid_id), id))
+    if (std::equal(std::begin(valid_id), std::end(valid_id), id)) {
         return true;
+    }
     else return false;
 }
 
 bool MT29F::waitDelay() {
     uint32_t start = xTaskGetTickCount();
     while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
-        if ((xTaskGetTickCount() - start) > TimeoutCycles)
+        if ((xTaskGetTickCount() - start) > TimeoutCycles) {
             return NANDTimeout;
+        }
     }
     return false;
 }
