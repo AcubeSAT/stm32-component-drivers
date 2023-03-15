@@ -2,14 +2,12 @@
 
 
 uint8_t MT29F::resetNAND() {
-    if (PIO_PinRead(nandReadyBusyPin)) {
-        sendCommand(RESET);
-        sendCommand(READ_STATUS);
-        if(waitDelayHandler()) {
-            return !NANDisReady;
-        }
-        return readData();
+    sendCommand(RESET);
+    sendCommand(READ_STATUS);
+    if (waitDelay()) {
+        return !NANDisReady;
     }
+    return readData();
 }
 
 
@@ -32,7 +30,7 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 void MT29F::readNANDID(uint8_t *id) {
     sendCommand(READID);
     sendCommand(READ_MODE);
-    for (int i = 0; i < 8; i++) {
+    for (uint8_t i = 0; i < 8; i++) {
         id[i] = readData();
     }
 }
@@ -62,8 +60,8 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     sendAddress(writeAddress.row1);
     sendAddress(writeAddress.row2);
     sendAddress(writeAddress.row3);
-    for (int i = 0; i < numberOfAddresses; i++) {
-        if(waitDelayHandler()) {
+    for (uint16_t i = 0; i < numberOfAddresses; i++) {
+        if (!waitDelayHandler()) {
             return !NANDisReady;
         }
         sendData(data[i]);
@@ -81,7 +79,7 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    if(waitDelayHandler()) {
+    if (!waitDelayHandler() == 0) {
         return !NANDisReady;
     }
     data = readData();
@@ -98,8 +96,8 @@ bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    for (int i = 0; i < numberOfAddresses; i++) {
-        if(waitDelayHandler()) {
+    for (uint16_t i = 0; i < numberOfAddresses; i++) {
+        if (!waitDelayHandler()) {
             return !NANDisReady;
         }
         data[i] = readData();
@@ -122,19 +120,17 @@ bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
 
 bool MT29F::detectArrayError() {
     sendCommand(READ_STATUS);
-    if(waitDelayHandler()) {
-        uint8_t status = readData();
-        while ((status & ArrayReadyMask) == 0) {
-            status = readData();
-            if(waitDelay()) {
-                return NANDTimeout;
-            }
-        }
-        if (status & 0x1) {
-            return true;
+    uint8_t status = readData();
+    uint32_t start = xTaskGetTickCount();
+    while ((status & ArrayReadyMask) == 0) {
+        status = readData();
+        if ((xTaskGetTickCount() - start) > TimeoutCycles) {
+            return NANDTimeout;
         }
     }
-    else return false;
+    if (status & 0x1) {
+        return true;
+    } else return false;
 }
 
 bool MT29F::isNANDAlive() {
@@ -143,8 +139,7 @@ bool MT29F::isNANDAlive() {
     readNANDID(id);
     if (std::equal(std::begin(valid_id), std::end(valid_id), id)) {
         return true;
-    }
-    else return false;
+    } else return false;
 }
 
 bool MT29F::waitDelay() {
@@ -158,8 +153,7 @@ bool MT29F::waitDelay() {
 }
 
 bool MT29F::waitDelayHandler() {
-    if(waitDelay()) {
-        resetNAND();
+    if (resetNAND() == 0) {
         if (!isNANDAlive()) {
             // TODO: Check if LCL is on and execute its task again if need be
             return !NANDisReady;
