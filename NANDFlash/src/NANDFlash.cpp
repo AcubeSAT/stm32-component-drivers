@@ -47,6 +47,10 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     sendAddress(writeAddress.row3);
     sendData(data);
     sendCommand(PAGE_PROGRAM_CONFIRM);
+    if (detectErrorArray()) {
+        resetNAND();
+        writeNAND(LUN, position, data);
+    }
 }
 
 void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
@@ -64,6 +68,10 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
         sendData(data[i]);
     }
     sendCommand(PAGE_PROGRAM_CONFIRM);
+    if (detectErrorArray()) {
+        resetNAND();
+        writeNAND(LUN, position, data);
+    }
 }
 
 uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
@@ -106,14 +114,29 @@ void MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     sendAddress(row2);
     sendAddress(row3);
     sendCommand(ERASE_BLOCK_CONFIRM);
+    if (detectErrorArray()) {
+        resetNAND();
+        eraseBlock(LUN, block);
+    }
 }
 
 bool MT29F::detectErrorArray() {
     sendCommand(READ_STATUS);
     while (PIO_PinRead(nandReadyBusyPin) == 0) {}
     uint8_t status = readData();
-    while ((status & ArrayReadyMask) == 0) {}
+    while ((status & ArrayReadyMask) == 0) {
+        status = readData();
+    }
     if (status & 0x1)
+        return true;
+    else return false;
+}
+
+bool MT29F::isNANDAlive() {
+    uint8_t *id = {};
+    uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
+    readNANDID(id);
+    if (std::equal(std::begin(valid_id), std::end(valid_id), id))
         return true;
     else return false;
 }

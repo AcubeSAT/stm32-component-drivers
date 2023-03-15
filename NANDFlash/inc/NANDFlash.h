@@ -133,4 +133,6 @@ public:
     void eraseBlock(uint8_t LUN, uint16_t block);
 
     bool detectErrorArray();
+
+    bool isNANDAlive();
 };
