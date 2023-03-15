@@ -98,7 +98,10 @@ public:
     }
 
     constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin, PIO_PIN nandWriteProtect) : SMC(chipSelect),
-                                                                       nandReadyBusyPin(nandReadyBusyPin), nandWriteProtect(nandWriteProtect) {
+                                                                                                 nandReadyBusyPin(
+                                                                                                         nandReadyBusyPin),
+                                                                                                 nandWriteProtect(
+                                                                                                         nandWriteProtect) {
         selectNandConfiguration(chipSelect);
     }
 
@@ -126,7 +129,7 @@ public:
 
     bool writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
 
-    bool writeNAND(uint8_t LUN, uint32_t position, uint8_t *data);
+    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data);
 
     bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 

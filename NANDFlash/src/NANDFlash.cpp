@@ -50,8 +50,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     return !detectArrayError();
 }
 
-bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
-    uint8_t numberOfAddresses = sizeof(data) / sizeof(uint8_t);
+bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data) {
     PIO_PinWrite(nandWriteProtect, 1);
     Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
@@ -87,7 +86,6 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
 }
 
 bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
-    uint8_t byte[20] = {};
     uint8_t numberOfAddresses = end_position - start_position + 1;
     Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
@@ -135,7 +133,7 @@ bool MT29F::detectArrayError() {
 }
 
 bool MT29F::isNANDAlive() {
-    uint8_t *id = {};
+    uint8_t id[8] = {};
     uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
     readNANDID(id);
     if (std::equal(std::begin(valid_id), std::end(valid_id), id)) {
