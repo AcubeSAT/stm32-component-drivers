@@ -9,8 +9,6 @@
 /**
  * @class A Latch-up Current Limiter (LCL) driver providing all the functionality for these protection circuits.
  * The LCLs are completely reprogrammable during flight.
- * For now the class contains functionality only for the On-Board Computer Subsystem but
- * the Science Unit will make use of LCL circuits as well.
  * The main components that constitute a Latch up Current Limiter are a TLC555 timer, an
  * Operational Amplifier, a P-MOSFET, a N-MOSFET.
  * The programmable logic requires a Pulse Width Modulation (PWM) signal, a GPIO for Set and a GPIO for Reset Logic.
@@ -42,10 +40,10 @@ private:
 public:
     /**
      * Constructor to set the necessary control pins for the LCL.
-     * @param pwmChannel
-     * @param pwmChannelMask
-     * @param resetPin
-     * @param setPin
+     * @param pwmChannel @see pwmChannel
+     * @param pwmChannelMask @see pwmChannelMask
+     * @param resetPin @see resetPin
+     * @param setPin @see setPin
      */
     LCL(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
 
