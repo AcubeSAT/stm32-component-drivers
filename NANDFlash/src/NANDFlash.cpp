@@ -37,7 +37,6 @@ void MT29F::readNANDID(uint8_t *id) {
 
 
 bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
-    PIO_PinWrite(nandWriteProtect, 1);
     Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
@@ -51,7 +50,6 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
 }
 
 bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data) {
-    PIO_PinWrite(nandWriteProtect, 1);
     Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
@@ -105,7 +103,6 @@ bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32
 }
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
-    PIO_PinWrite(nandWriteProtect, 1);
     uint8_t row1 = block << 7;
     uint8_t row2 = block >> 1;
     uint8_t row3 = (block >> 9) | (LUN << 3);
