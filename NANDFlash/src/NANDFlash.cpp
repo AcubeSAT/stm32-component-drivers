@@ -61,7 +61,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     sendAddress(writeAddress.row2);
     sendAddress(writeAddress.row3);
     for (uint16_t i = 0; i < numberOfAddresses; i++) {
-        if (!waitDelayHandler()) {
+        if (waitDelay()) {
             return !NANDisReady;
         }
         sendData(data[i]);
@@ -79,7 +79,7 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    if (!waitDelayHandler() == 0) {
+    if (waitDelay() == 0) {
         return !NANDisReady;
     }
     data = readData();
@@ -87,6 +87,7 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
 }
 
 bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
+    uint8_t byte[20] = {};
     uint8_t numberOfAddresses = end_position - start_position + 1;
     Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
@@ -97,12 +98,12 @@ bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
     for (uint16_t i = 0; i < numberOfAddresses; i++) {
-        if (!waitDelayHandler()) {
+        if (waitDelay()) {
             return !NANDisReady;
         }
         data[i] = readData();
     }
-    return data;
+    return NANDisReady;
 }
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
