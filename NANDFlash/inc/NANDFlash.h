@@ -67,6 +67,12 @@ private:
         uint8_t col1, col2, row1, row2, row3;
     };
 
+    const static inline uint8_t TimeoutCycles = 20;
+
+    const static inline bool NANDTimeout = 1;
+
+    const static inline bool NANDisReady = 1;
+
 public:
     /**
      * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
@@ -135,4 +141,8 @@ public:
     bool detectErrorArray();
 
     bool isNANDAlive();
+
+    bool waitDelay();
+
+    bool waitDelayHandler();
 };
