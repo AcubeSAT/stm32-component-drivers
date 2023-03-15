@@ -6,7 +6,7 @@ uint8_t MT29F::resetNAND() {
         sendCommand(RESET);
         sendCommand(READ_STATUS);
         if(waitDelayHandler())
-            resetNAND(); // TODO: Check if LCL is on
+            return !NANDisReady;
         return readData();
     }
 }
@@ -37,7 +37,7 @@ void MT29F::readNANDID(uint8_t *id) {
 }
 
 
-void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
+bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     PIO_PinWrite(nandWriteProtect, 1);
     Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
@@ -48,13 +48,10 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     sendAddress(writeAddress.row3);
     sendData(data);
     sendCommand(PAGE_PROGRAM_CONFIRM);
-    if (detectErrorArray()) {
-        resetNAND();
-        writeNAND(LUN, position, data);
-    }
+    return !detectArrayError();
 }
 
-void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
+bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     uint8_t numberOfAddresses = sizeof(data) / sizeof(uint8_t);
     PIO_PinWrite(nandWriteProtect, 1);
     Address writeAddress = setAddress(LUN, position);
@@ -66,15 +63,12 @@ void MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t *data) {
     sendAddress(writeAddress.row3);
     for (int i = 0; i < numberOfAddresses; i++) {
         if(waitDelayHandler()) {
-            writeNAND(LUN, position, data);
+            return !NANDisReady;
         }
         sendData(data[i]);
     }
     sendCommand(PAGE_PROGRAM_CONFIRM);
-    if (detectErrorArray()) {
-        resetNAND();
-        writeNAND(LUN, position, data);
-    }
+    return !detectArrayError();
 }
 
 uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
@@ -86,9 +80,8 @@ uint8_t MT29F::readNAND(uint8_t LUN, uint32_t position) {
     sendAddress(readAddress.row2);
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
-    if(waitDelayHandler()) {
-        readNAND(LUN, position);
-    }
+    if(waitDelayHandler())
+        return !NANDisReady;
     return readData();
 }
 
@@ -103,15 +96,14 @@ uint8_t *MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, ui
     sendAddress(readAddress.row3);
     sendCommand(READ_CONFIRM);
     for (int i = 0; i < numberOfAddresses; i++) {
-        if(waitDelayHandler()) {
-            readNAND(data, LUN, start_position, end_position);
-        }
+        if(waitDelayHandler())
+            return nullptr;
         data[i] = readData();
     }
     return data;
 }
 
-void MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
+bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     PIO_PinWrite(nandWriteProtect, 1);
     uint8_t row1 = block << 7;
     uint8_t row2 = block >> 1;
@@ -121,13 +113,10 @@ void MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     sendAddress(row2);
     sendAddress(row3);
     sendCommand(ERASE_BLOCK_CONFIRM);
-    if (detectErrorArray()) {
-        resetNAND();
-        eraseBlock(LUN, block);
-    }
+    return !detectArrayError();
 }
 
-bool MT29F::detectErrorArray() {
+bool MT29F::detectArrayError() {
     sendCommand(READ_STATUS);
     if(waitDelayHandler()) {
         uint8_t status = readData();
