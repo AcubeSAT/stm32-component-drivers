@@ -148,8 +148,8 @@ bool MT29F::waitDelay() {
     return false;
 }
 
-bool MT29F::waitDelayHandler() {
-    if (resetNAND() == 0) {
+bool MT29F::errorHandler() {
+    if (resetNAND() != 224) {
         if (!isNANDAlive()) {
             // TODO: Check if LCL is on and execute its task again if need be
             return !NANDisReady;

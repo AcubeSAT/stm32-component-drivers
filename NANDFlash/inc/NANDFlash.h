@@ -143,5 +143,5 @@ public:
 
     bool waitDelay();
 
-    bool waitDelayHandler();
+    bool errorHandler();
 };
