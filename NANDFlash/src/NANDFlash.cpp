@@ -1,3 +1,4 @@
+#include <etl/span.h>
 #include "NANDFlash.h"
 
 
@@ -27,7 +28,7 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 }
 
 
-void MT29F::readNANDID(uint8_t *id) {
+void MT29F::readNANDID(etl::span<uint8_t, 8> id) {
     sendCommand(READID);
     sendAddress(READ_MODE);
     for (uint8_t i = 0; i < 8; i++) {
@@ -49,7 +50,10 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     return !detectArrayError();
 }
 
-bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data) {
+bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data) {
+    if (numberOfAddresses > data.size()){
+        return !NANDisReady;
+    }
     const Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
@@ -83,8 +87,11 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     return NANDisReady;
 }
 
-bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
+bool MT29F::readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
     const uint8_t numberOfAddresses = end_position - start_position + 1;
+    if (numberOfAddresses > data.size()){
+        return !NANDisReady;
+    }
     const Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
     sendAddress(readAddress.col1);

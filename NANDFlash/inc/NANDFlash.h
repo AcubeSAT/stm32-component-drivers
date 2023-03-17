@@ -116,17 +116,17 @@ public:
 
     uint8_t resetNAND();
 
-    void readNANDID(uint8_t *id);
+    void readNANDID(etl::span<uint8_t, 8> id);
 
     Address setAddress(uint8_t LUN, uint32_t position);
 
     bool writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
 
-    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data);
+    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data);
 
     bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 
-    bool readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
+    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
 
     bool eraseBlock(uint8_t LUN, uint16_t block);
 
