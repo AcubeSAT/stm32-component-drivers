@@ -18,8 +18,8 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 
     Address address;
     address.col1 = column & 0xff;
-    address.col2 = (column & 0xff00) >> 8;
-    address.row1 = page | ((block & 0x01) << 7);
+    address.col2 = (column & 0x3f00) >> 8;
+    address.row1 = (page & 0x7f) | ((block & 0x01) << 7);
     address.row2 = (block >> 1) & 0xff;
     address.row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
 
