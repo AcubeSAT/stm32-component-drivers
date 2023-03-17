@@ -106,19 +106,19 @@ public:
     }
 
     inline void sendData(uint8_t data) {
-        smcDataWrite(moduleBaseAddress, data);
+        smcWriteByte(moduleBaseAddress, data);
     }
 
     inline void sendAddress(uint8_t address) {
-        smcDataWrite(triggerNANDALEAddress, address);
+        smcWriteByte(triggerNANDALEAddress, address);
     }
 
     inline void sendCommand(uint8_t command) {
-        smcDataWrite(triggerNANDCLEAddress, command);
+        smcWriteByte(triggerNANDCLEAddress, command);
     }
 
     inline uint8_t readData() {
-        return smcDataRead(moduleBaseAddress);
+        return smcReadByte(moduleBaseAddress);
     }
 
     uint8_t resetNAND();

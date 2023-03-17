@@ -17,11 +17,11 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
     uint16_t block = position / BlockSizeBytes;
 
     Address address;
-    address.col1 = column;
-    address.col2 = column >> 8;
-    address.row1 = page | (block << 7);
-    address.row2 = block >> 1;
-    address.row3 = (block >> 9) | (LUN << 3);
+    address.col1 = column & 0xff;
+    address.col2 = (column & 0xff00) >> 8;
+    address.row1 = page | ((block & 0x01) << 7);
+    address.row2 = (block >> 1) & 0xff;
+    address.row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
 
     return address;
 }
@@ -103,9 +103,9 @@ bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32
 }
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
-    uint8_t row1 = block << 7;
-    uint8_t row2 = block >> 1;
-    uint8_t row3 = (block >> 9) | (LUN << 3);
+    uint8_t row1 = (block & 0x01) << 7;
+    uint8_t row2 = (block >> 1) & 0xff;
+    uint8_t row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
     sendCommand(ERASE_BLOCK);
     sendAddress(row1);
     sendAddress(row2);
