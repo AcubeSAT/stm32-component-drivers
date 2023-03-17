@@ -12,9 +12,9 @@ uint8_t MT29F::resetNAND() {
 
 
 MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
-    uint8_t page = position / PageSizeBytes;
-    uint16_t column = position - page * PageSizeBytes;
-    uint16_t block = position / BlockSizeBytes;
+    const uint8_t page = position / PageSizeBytes;
+    const uint16_t column = position - page * PageSizeBytes;
+    const uint16_t block = position / BlockSizeBytes;
 
     Address address;
     address.col1 = column & 0xff;
@@ -37,7 +37,7 @@ void MT29F::readNANDID(uint8_t *id) {
 
 
 bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
-    Address writeAddress = setAddress(LUN, position);
+    const Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
     sendAddress(writeAddress.col2);
@@ -50,7 +50,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
 }
 
 bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, uint8_t *data) {
-    Address writeAddress = setAddress(LUN, position);
+    const Address writeAddress = setAddress(LUN, position);
     sendCommand(PAGE_PROGRAM);
     sendAddress(writeAddress.col1);
     sendAddress(writeAddress.col2);
@@ -68,7 +68,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses
 }
 
 bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
-    Address readAddress = setAddress(LUN, position);
+    const Address readAddress = setAddress(LUN, position);
     sendCommand(READ_MODE);
     sendAddress(readAddress.col1);
     sendAddress(readAddress.col2);
@@ -84,8 +84,8 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
 }
 
 bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
-    uint8_t numberOfAddresses = end_position - start_position + 1;
-    Address readAddress = setAddress(LUN, start_position);
+    const uint8_t numberOfAddresses = end_position - start_position + 1;
+    const Address readAddress = setAddress(LUN, start_position);
     sendCommand(READ_MODE);
     sendAddress(readAddress.col1);
     sendAddress(readAddress.col2);
@@ -103,9 +103,9 @@ bool MT29F::readNAND(uint8_t *data, uint8_t LUN, uint32_t start_position, uint32
 }
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
-    uint8_t row1 = (block & 0x01) << 7;
-    uint8_t row2 = (block >> 1) & 0xff;
-    uint8_t row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
+    const uint8_t row1 = (block & 0x01) << 7;
+    const uint8_t row2 = (block >> 1) & 0xff;
+    const uint8_t row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
     sendCommand(ERASE_BLOCK);
     sendAddress(row1);
     sendAddress(row2);
@@ -117,21 +117,19 @@ bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
 bool MT29F::detectArrayError() {
     sendCommand(READ_STATUS);
     uint8_t status = readData();
-    uint32_t start = xTaskGetTickCount();
+    const uint32_t start = xTaskGetTickCount();
     while ((status & ArrayReadyMask) == 0) {
         status = readData();
         if ((xTaskGetTickCount() - start) > TimeoutCycles) {
             return NANDTimeout;
         }
     }
-    if (status & 0x1) {
-        return true;
-    } else return false;
+    return (status & 0x1);
 }
 
 bool MT29F::isNANDAlive() {
     uint8_t id[8] = {};
-    uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
+    const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
     readNANDID(id);
     if (std::equal(std::begin(valid_id), std::end(valid_id), id)) {
         return true;
@@ -139,7 +137,7 @@ bool MT29F::isNANDAlive() {
 }
 
 bool MT29F::waitDelay() {
-    uint32_t start = xTaskGetTickCount();
+    const uint32_t start = xTaskGetTickCount();
     while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
         if ((xTaskGetTickCount() - start) > TimeoutCycles) {
             return NANDTimeout;

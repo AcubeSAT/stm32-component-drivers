@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SMC.hpp"
-//#include <cstdint>
 #include "definitions.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -14,13 +13,6 @@
  *  and https://gr.mouser.com/datasheet/2/671/micron_technology_micts05995-1-1759202.pdf
  */
 class MT29F : public SMC {
-public:
-    // WIP enum
-//    enum NandReadyBusyPin : PIO_PIN {
-//        MemoryPartition1 = MEM_NAND_BUSY_1_PIN,
-//        MemoryPartition2 = MEM_NAND_BUSY_2_PIN
-//    };
-
 private:
     const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000;
     const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000;
@@ -53,10 +45,11 @@ private:
         BLOCK_LOCK_READ_STATUS = 0x7A
     };
 
+    /* The number of bytes a page contains*/
     const static inline uint16_t PageSizeBytes = 8640;
-
-    const static inline uint16_t BlockSizeBytes = 1105920;
-
+    /* The number of bytes a block contains*/
+    const static inline uint32_t BlockSizeBytes = 1105920;
+    /* The ARDY bit is bit 5 of the Status Register */
     const static inline uint8_t ArrayReadyMask = 0x20;
 
     struct Address {
@@ -65,9 +58,9 @@ private:
 
     const static inline uint8_t TimeoutCycles = 20;
 
-    const static inline bool NANDTimeout = 1;
+    const static inline bool NANDTimeout = true;
 
-    const static inline bool NANDisReady = 1;
+    const static inline bool NANDisReady = true;
 
 public:
     /**
