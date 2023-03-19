@@ -87,8 +87,7 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     return NANDisReady;
 }
 
-bool MT29F::readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t end_position) {
-    const uint8_t numberOfAddresses = end_position - start_position + 1;
+bool MT29F::readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses) {
     if (numberOfAddresses > data.size()){
         return !NANDisReady;
     }

@@ -126,7 +126,7 @@ public:
 
     bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 
-    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t end_position);
+    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses);
 
     bool eraseBlock(uint8_t LUN, uint16_t block);
 
