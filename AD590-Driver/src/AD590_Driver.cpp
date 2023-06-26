@@ -14,12 +14,12 @@ float AD590::getTemperature() {
     };
 
     if(AFEC0_ChannelResultIsReady(AFEC_CH0)){
-        if (AFEC0_ChannelResultGet(AFEC_CH0) != NULL){
+        if (AFEC0_ChannelResultGet(AFEC_CH0) != 0){
             data =  AFEC0_ChannelResultGet(AFEC_CH0);
         }
     }
     else if(AFEC0_ChannelResultIsReady(AFEC_CH1)){
-        if (AFEC0_ChannelResultGet(AFEC_CH1) != NULL){
+        if (AFEC0_ChannelResultGet(AFEC_CH1) != 0){
             data =  AFEC0_ChannelResultGet(AFEC_CH1);
         }
     }
