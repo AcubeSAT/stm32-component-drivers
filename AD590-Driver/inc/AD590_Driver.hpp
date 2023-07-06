@@ -13,6 +13,9 @@
  */
 
 class AD590 {
+private:
+    const float offsetCurrent = 273.2;
+    const float referenceTemperature = 298.2;
 public:
 
     /**
