@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstdint>
+#include "FreeRTOS.h"
+#include "Logger.hpp"
+#include "task.h"
+#include "Peripheral_Definitions.hpp"
 #include "peripheral/afec/plib_afec0.h"
 
 /**
@@ -14,8 +19,8 @@
 
 class AD590 {
 private:
-    inline constexpr offsetCurrent = 273.2;
-    inline constexpr referenceTemperature = 298.2;
+    inline static constexpr float offsetCurrent  = 298.2;
+    inline static constexpr float referenceTemperature  = 25;
 public:
 
     /**

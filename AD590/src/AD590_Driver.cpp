@@ -18,5 +18,5 @@ void AD590::getTemperature() {
 float AD590::convertADCValueToTemperature(uint16_t ADCconversion){
     float voltageConversion = static_cast<float>(ADCconversion)/4096*3.3;
     float currentConversion = voltageConversion/7870;
-    return currentConversion - offsetCurrent /* + referenceTemperatureAt25 */ ;
+    return currentConversion - offsetCurrent + referenceTemperature ;
 }
