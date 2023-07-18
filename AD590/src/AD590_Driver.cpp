@@ -9,7 +9,15 @@ void AD590::getTemperature() {
 //            float voltageConversion = static_cast<float>(ADCconversion) * PositiveVoltageReference / MaxADCValue;
             float MCUtemperature = convertADCValueToTemperature(ADCconversion);
 //        const float MCUtemperature = (voltageConversion - TypicalVoltageAt25) / TemperatureSensitivity + ReferenceTemperature;
-            LOG_DEBUG << "The temperature of the MCU is: " << MCUtemperature << " degrees Celsius";
+            etl::string<64> log = "";
+            log += "The temperature of the MCU is: ";
+            if (MCUtemperature < 0) {
+                log += " -";
+                etl::to_string(abs(MCUtemperature), log, etl::format_spec().precision(9), true);
+            } else {
+                etl::to_string(MCUtemperature, log, etl::format_spec().precision(9), true);
+            }
+            LOG_DEBUG << log.data() << " degrees Celsius";
             vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
