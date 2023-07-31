@@ -5,7 +5,7 @@ void AD590::getTemperature() {
     AFEC0_ConversionStart();
     vTaskDelay(pdMS_TO_TICKS(1));
 
-        while(!AFEC0_ChannelResultIsReady(AFEC_CH0)){}
+//        while(!AFEC0_ChannelResultIsReady(AFEC_CH0)){}
 
             uint16_t ADCconversion = AFEC0_ChannelResultGet(AFEC_CH0);
 //            float voltageConversion = static_cast<float>(ADCconversion) * PositiveVoltageReference / MaxADCValue;
