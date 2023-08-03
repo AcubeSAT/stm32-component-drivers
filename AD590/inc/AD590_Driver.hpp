@@ -19,8 +19,17 @@
 
 class AD590 {
 private:
-    inline static constexpr float offsetCurrent  = 298.2;
-    inline static constexpr float referenceTemperature  = 25;
+
+    /**
+     * Nominal Current Output at 25°C (298.2 K)
+     */
+    inline static constexpr float offsetCurrent = 298.2;
+
+    /**
+     * Reference temperature constant
+     */
+    inline static constexpr float referenceTemperature = 25;
+
 public:
 
     /**
