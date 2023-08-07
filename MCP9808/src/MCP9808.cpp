@@ -105,7 +105,7 @@ float MCP9808::getTemperature() {
 
     if ((upperByte & 0x10) != 0) {
         upperByte &= 0x0F;
-        result = 256 - upperByte * 16.0f + lowerByte / 16.0f;
+        result = -(256 - (upperByte * 16.0f + lowerByte / 16.0f));
     } else {
         result = upperByte * 16.0f + lowerByte / 16.0f;
     }
