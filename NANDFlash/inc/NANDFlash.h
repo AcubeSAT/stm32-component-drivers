@@ -116,17 +116,59 @@ public:
 
     uint8_t resetNAND();
 
-    void readNANDID(etl::span<uint8_t, 8> id);
+    void readNANDID(etl::array<uint8_t, 8> id);
 
     Address setAddress(uint8_t LUN, uint32_t position);
 
     bool writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
 
-    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data);
+    template<unsigned int size>
+    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::array<uint8_t, size> data) {
+        static_assert(size < PageSizeBytes, "Data to be written in NAND surpass the Page limit");
+        if (numberOfAddresses > data.size()){
+            return !NANDisReady;
+        }
+        const Address writeAddress = setAddress(LUN, position);
+        sendCommand(PAGE_PROGRAM);
+        sendAddress(writeAddress.col1);
+        sendAddress(writeAddress.col2);
+        sendAddress(writeAddress.row1);
+        sendAddress(writeAddress.row2);
+        sendAddress(writeAddress.row3);
+        for (uint16_t i = 0; i < numberOfAddresses; i++) {
+            if (waitDelay()) {
+                return !NANDisReady;
+            }
+            sendData(data[i]);
+        }
+        sendCommand(PAGE_PROGRAM_CONFIRM);
+        return !detectArrayError();
+    }
 
     bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 
-    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses);
+    template <unsigned int size>
+    bool readNAND(etl::array<uint8_t, size> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses) {
+        static_assert(size < PageSizeBytes, "Data to be read from NAND surpass the Page limit");
+        if (numberOfAddresses > size){
+            return !NANDisReady;
+        }
+        const Address readAddress = setAddress(LUN, start_position);
+        sendCommand(READ_MODE);
+        sendAddress(readAddress.col1);
+        sendAddress(readAddress.col2);
+        sendAddress(readAddress.row1);
+        sendAddress(readAddress.row2);
+        sendAddress(readAddress.row3);
+        sendCommand(READ_CONFIRM);
+        for (uint16_t i = 0; i < numberOfAddresses; i++) {
+            if (waitDelay()) {
+                return !NANDisReady;
+            }
+            data[i] = readData();
+        }
+        return NANDisReady;
+    }
 
     bool eraseBlock(uint8_t LUN, uint16_t block);
 

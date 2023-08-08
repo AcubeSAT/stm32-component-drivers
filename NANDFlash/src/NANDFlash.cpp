@@ -1,4 +1,4 @@
-#include <etl/span.h>
+#include <etl/array.h>
 #include "NANDFlash.h"
 
 
@@ -28,7 +28,8 @@ MT29F::Address MT29F::setAddress(uint8_t LUN, uint32_t position) {
 }
 
 
-void MT29F::readNANDID(etl::span<uint8_t, 8> id) {
+void MT29F::readNANDID(etl::array<uint8_t, 8> id) {
+    static_assert(id.size()==8, "NAND's ID array is not 8 digits");
     sendCommand(READID);
     sendAddress(READ_MODE);
     for (uint8_t i = 0; i < 8; i++) {
@@ -50,27 +51,6 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint8_t data) {
     return !detectArrayError();
 }
 
-bool MT29F::writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data) {
-    if (numberOfAddresses > data.size()){
-        return !NANDisReady;
-    }
-    const Address writeAddress = setAddress(LUN, position);
-    sendCommand(PAGE_PROGRAM);
-    sendAddress(writeAddress.col1);
-    sendAddress(writeAddress.col2);
-    sendAddress(writeAddress.row1);
-    sendAddress(writeAddress.row2);
-    sendAddress(writeAddress.row3);
-    for (uint16_t i = 0; i < numberOfAddresses; i++) {
-        if (waitDelay()) {
-            return !NANDisReady;
-        }
-        sendData(data[i]);
-    }
-    sendCommand(PAGE_PROGRAM_CONFIRM);
-    return !detectArrayError();
-}
-
 bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     const Address readAddress = setAddress(LUN, position);
     sendCommand(READ_MODE);
@@ -87,26 +67,6 @@ bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
     return NANDisReady;
 }
 
-bool MT29F::readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses) {
-    if (numberOfAddresses > data.size()){
-        return !NANDisReady;
-    }
-    const Address readAddress = setAddress(LUN, start_position);
-    sendCommand(READ_MODE);
-    sendAddress(readAddress.col1);
-    sendAddress(readAddress.col2);
-    sendAddress(readAddress.row1);
-    sendAddress(readAddress.row2);
-    sendAddress(readAddress.row3);
-    sendCommand(READ_CONFIRM);
-    for (uint16_t i = 0; i < numberOfAddresses; i++) {
-        if (waitDelay()) {
-            return !NANDisReady;
-        }
-        data[i] = readData();
-    }
-    return NANDisReady;
-}
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     const uint8_t row1 = (block & 0x01) << 7;
@@ -134,10 +94,10 @@ bool MT29F::detectArrayError() {
 }
 
 bool MT29F::isNANDAlive() {
-    uint8_t id[8] = {};
+    etl::array<uint8_t,8> id = {};
     const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
     readNANDID(id);
-    if (std::equal(std::begin(valid_id), std::end(valid_id), id)) {
+    if (etl::equal(id.begin(),id.end(), valid_id)) {
         return true;
     } else return false;
 }
