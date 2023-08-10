@@ -152,14 +152,14 @@ public:
 
     bool writeNAND(Structure *pos, AddressConfig op, uint8_t data);
 
-    template<unsigned int size, uint32_t numberOfAddresses>
-    bool writeNAND(Structure *pos, AddressConfig op, etl::array<uint8_t, size> data) {
-        static_assert((numberOfAddresses > size), "Number of addresses is bigger than data size");
-        if(!isValidStructure(pos, op)) return false;
+    template<unsigned int size, Structure *pos, AddressConfig op>
+    bool writeNAND(etl::array<uint8_t, size> data) {
+        static_assert(size > MaxDataBytesPerPage, "Size of data surpasses the Page limit");
+        static_assert(!isValidStructure(pos, op), "The Structure is not valid");
         if (op == POS || op == POS_PAGE) {
-            uint8_t page = pos->position / PageSizeBytes;
-            const uint16_t column = pos->position - page * PageSizeBytes;
-            if((column + size - numberOfAddresses + NumECCBytes) > PageSizeBytes) return false;
+            constexpr uint8_t page = pos->position / PageSizeBytes;
+            constexpr uint16_t column = pos->position - page * PageSizeBytes;
+            static_assert((column + size + NumECCBytes) > PageSizeBytes, "There is not enough space in this page for the data");
         }
 
         const Address writeAddress = setAddress(pos, op);
@@ -169,7 +169,7 @@ public:
         sendAddress(writeAddress.row1);
         sendAddress(writeAddress.row2);
         sendAddress(writeAddress.row3);
-        for (uint16_t i = 0; i < numberOfAddresses; i++) {
+        for (uint16_t i = 0; i < size; i++) {
             if (waitDelay()) {
                 return !NANDisReady;
             }
@@ -180,8 +180,8 @@ public:
     }
 
 
-    template<unsigned int size>
-    bool writeNANDPos(Structure *pos, uint32_t numberOfAddresses, etl::array<uint8_t, size> data) {
+    template<unsigned int size, uint32_t numberOfAddresses>
+    bool UserwriteNAND(Structure *pos, etl::array<uint8_t, size> data) {
         static_assert(size < PageSizeBytes, "Data to be written in NAND surpass the Page limit");
         if (numberOfAddresses > data.size()) {
             return !NANDisReady;
