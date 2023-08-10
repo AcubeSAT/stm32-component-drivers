@@ -65,22 +65,6 @@ void MT29F::readNANDID(etl::array<uint8_t, 8> id) {
     }
 }
 
-bool MT29F::writeNAND(MT29F::Structure *pos, MT29F::AddressConfig op, uint8_t data) {
-    if(!isValidStructure(pos, op)) return false;
-
-    const Address writeAddress = setAddress(pos, PAGE);
-    sendCommand(PAGE_PROGRAM);
-    sendAddress(writeAddress.col1);
-    sendAddress(writeAddress.col2);
-    sendAddress(writeAddress.row1);
-    sendAddress(writeAddress.row2);
-    sendAddress(writeAddress.row3);
-    sendData(data);
-    sendCommand(PAGE_PROGRAM_CONFIRM);
-    return !detectArrayError();
-}
-
-
 //bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
 //    const Address readAddress = setAddress(LUN, position);
 //    sendCommand(READ_MODE);
