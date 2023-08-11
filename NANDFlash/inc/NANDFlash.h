@@ -204,6 +204,9 @@ public:
         return !detectArrayError();
     }
 
+    template<unsigned int size>
+    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataChunker(etl::array<uint8_t, size> data, uint32_t startPos);
+
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
      * by the user.*/
@@ -224,8 +227,10 @@ public:
         if (op == PAGE || op == PAGE_BLOCK) {
             for (size_t page = 0; page < pagesToWrite; page++) {
                 for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
-                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
-                            << (WriteChunkSize * (chunk + (page * MaxChunksPerPage)))); // TODO: add 512-byte mask
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
+                                                                                                  (WriteChunkSize *
+                                                                                                   (chunk + (page *
+                                                                                                             MaxChunksPerPage))));
                     if (!writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite)) return false;
                 }
             }
@@ -237,9 +242,11 @@ public:
                 ++pos->block;
             } else pos->LUN = pos->LUN == 0 ? 1 : 0;
 
-            for (size_t i=0; i<chunksLeft; i++){
-                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
-                        << (WriteChunkSize * (i + (pagesToWrite * MaxChunksPerPage)))); // TODO: add 512-byte mask
+            for (size_t i = 0; i < chunksLeft; i++) {
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data, (WriteChunkSize *
+                                                                                                     (i +
+                                                                                                      (pagesToWrite *
+                                                                                                       MaxChunksPerPage))));
                 if (!writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite)) return false;
             }
         } else {
@@ -248,8 +255,8 @@ public:
             constexpr uint16_t column = pos->position - (pos->page * PageSizeBytes);
             constexpr uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
             for (size_t i = 0; i < chunksFitThisPage; i++) {
-                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
-                        << (WriteChunkSize * i)); // TODO: add 512-byte mask
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
+                                                                                              (WriteChunkSize * i));
                 if (!writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, data)) return false;
                 if (i != (chunksFitThisPage - 1)) {
                     pos->position += (WriteChunkSize + NumECCBytes);
@@ -270,9 +277,10 @@ public:
                     for (size_t chunk = 0;
                          (chunk < (writeChunks - chunksFitTillThisPage) ||
                           (chunk < MaxChunksPerPage)); chunk++) {
-                        etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
-                                << (WriteChunkSize *
-                                    (chunk + chunksFitTillThisPage))); // TODO: add 512-byte mask
+                        etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
+                                                                                                      (WriteChunkSize *
+                                                                                                       (chunk +
+                                                                                                        chunksFitTillThisPage)));
                         if (!writeNAND<size, pos, PAGE_BLOCK>(pos, data)) return false;
                     }
                 }
@@ -285,7 +293,7 @@ public:
     }
 
     template<Structure *pos, AddressConfig op>
-    bool readNAND(uint8_t data){
+    bool readNAND(uint8_t data) {
         static_assert(!isValidStructure(pos, op), "The Structure to read a single byte from is not valid");
 
         const Address readAddress = setAddress(pos, op);
@@ -331,6 +339,77 @@ public:
             data[i] = readData();
         }
         return NANDisReady;
+    }
+
+    /* This function is the more abstract version of the write function where the user does not need to worry about the
+     * size of the data and where they'll be fitted. The position or page the data are written to is configurable
+     * by the user.*/
+    template<unsigned int size, Structure *pos, AddressConfig op>
+    bool abstactReadNAND(etl::array<uint8_t, size> data) {
+        static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
+        constexpr uint32_t quotient = size / WriteChunkSize;
+        constexpr uint32_t readChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
+        constexpr uint16_t pagesToRead = readChunks / MaxChunksPerPage;
+
+        if (op == PAGE || op == PAGE_BLOCK) {
+            for (size_t page = 0; page < pagesToRead; page++) {
+                for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                    if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead)) return false;
+                    data = dataChunker(dataToRead, (WriteChunkSize * (chunk + (page * MaxChunksPerPage))));
+                }
+            }
+            constexpr uint8_t chunksLeft = readChunks - (MaxChunksPerPage * pagesToRead);
+            if ((pos->page + 1) != NumPagesBlock) {
+                ++pos->page;
+            } else if ((pos->block + 1) != MaxNumBlock) {
+                ++pos->block;
+            } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+
+            for (size_t i = 0; i < chunksLeft; i++) {
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead)) return false;
+                data = dataChunker(dataToRead, (WriteChunkSize * (i + (pagesToRead * MaxChunksPerPage))));
+            }
+        } else {
+            pos->page = (op == POS) ? (pos->position / PageSizeBytes) : pos->page;
+            pos->block = (op == POS) ? (pos->page / NumPagesBlock) : pos->block;
+            constexpr uint16_t column = pos->position - (pos->page * PageSizeBytes);
+            constexpr uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
+            for (size_t i = 0; i < chunksFitThisPage; i++) {
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, data)) return false;
+                data = dataChunker(dataToRead, (WriteChunkSize * i));
+                if (i != (chunksFitThisPage - 1)) {
+                    pos->position += (WriteChunkSize + NumECCBytes);
+                } else break;
+            }
+            pos->position = 0;
+            if (chunksFitThisPage < readChunks) {
+                constexpr uint16_t pagesToWriteLeft =
+                        pagesToRead - ((readChunks - chunksFitThisPage) / MaxChunksPerPage);
+                for (size_t page = 0; page < pagesToWriteLeft; page++) {
+                    if ((pos->page + 1) != NumPagesBlock) {
+                        ++pos->page;
+                    } else if ((pos->block + 1) != MaxNumBlock) {
+                        ++pos->block;
+                    } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+                    uint32_t chunksFitTillThisPage = chunksFitThisPage + (page * MaxChunksPerPage);
+                    for (size_t chunk = 0;
+                         (chunk < (readChunks - chunksFitTillThisPage) ||
+                          (chunk < MaxChunksPerPage)); chunk++) {
+                        etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                        if (!readNAND<size, pos, PAGE_BLOCK>(pos, data)) return false;
+                        data = dataChunker(dataToRead, (WriteChunkSize *
+                                                        (chunk + chunksFitTillThisPage)));
+                    }
+                }
+
+            }
+
+        }
+        return true;
+
     }
 
 };
