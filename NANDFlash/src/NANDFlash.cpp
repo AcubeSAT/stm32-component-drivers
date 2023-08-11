@@ -65,22 +65,6 @@ void MT29F::readNANDID(etl::array<uint8_t, 8> id) {
     }
 }
 
-//bool MT29F::readNAND(uint8_t data, uint8_t LUN, uint32_t position) {
-//    const Address readAddress = setAddress(LUN, position);
-//    sendCommand(READ_MODE);
-//    sendAddress(readAddress.col1);
-//    sendAddress(readAddress.col2);
-//    sendAddress(readAddress.row1);
-//    sendAddress(readAddress.row2);
-//    sendAddress(readAddress.row3);
-//    sendCommand(READ_CONFIRM);
-//    if (waitDelay() == 0) {
-//        return !NANDisReady;
-//    }
-//    data = readData();
-//    return NANDisReady;
-//}
-
 
 bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     const uint8_t row1 = (block & 0x01) << 7;

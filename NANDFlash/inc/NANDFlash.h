@@ -150,11 +150,21 @@ public:
 
     constexpr static bool isValidStructure(const Structure *pos, const AddressConfig op);
 
+    bool eraseBlock(uint8_t LUN, uint16_t block);
+
+    bool detectArrayError();
+
+    bool isNANDAlive();
+
+    bool waitDelay();
+
+    bool errorHandler();
+
     template<Structure *pos, AddressConfig op>
     bool writeNAND(uint8_t data) {
         static_assert(!isValidStructure(pos, op), "The Structure to write a single byte to is not valid");
 
-        const Address writeAddress = setAddress(pos, PAGE);
+        const Address writeAddress = setAddress(pos, op);
         sendCommand(PAGE_PROGRAM);
         sendAddress(writeAddress.col1);
         sendAddress(writeAddress.col2);
@@ -196,7 +206,7 @@ public:
 
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
-     * by the user */
+     * by the user.*/
     template<unsigned int size, Structure *pos, AddressConfig op>
     bool abstactWriteNAND(etl::array<uint8_t, size> data) {
         static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
@@ -212,9 +222,24 @@ public:
 //        }
 
         if (op == PAGE || op == PAGE_BLOCK) {
-            for (size_t i = 0; i < pagesToWrite; i++) {
+            for (size_t page = 0; page < pagesToWrite; page++) {
+                for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
+                            << (WriteChunkSize * (chunk + (page * MaxChunksPerPage)))); // TODO: add 512-byte mask
+                    if (!writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite)) return false;
+                }
+            }
+            constexpr uint8_t chunksLeft = writeChunks - (MaxChunksPerPage * pagesToWrite);
+            if ((pos->page + 1) != NumPagesBlock) {
+                ++pos->page;
+                // TODO: add read to see if that page is written already up to numberOfAddresses + NumECCBytes
+            } else if ((pos->block + 1) != MaxNumBlock) {
+                ++pos->block;
+            } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+
+            for (size_t i=0; i<chunksLeft; i++){
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = (data
-                        << (WriteChunkSize * i)); // TODO: add 512-byte mask
+                        << (WriteChunkSize * (i + (pagesToWrite * MaxChunksPerPage)))); // TODO: add 512-byte mask
                 if (!writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite)) return false;
             }
         } else {
@@ -259,38 +284,53 @@ public:
 
     }
 
-    bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
+    template<Structure *pos, AddressConfig op>
+    bool readNAND(uint8_t data){
+        static_assert(!isValidStructure(pos, op), "The Structure to read a single byte from is not valid");
 
-//    template <unsigned int size>
-//    bool readNAND(etl::array<uint8_t, size> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses) {
-//        static_assert(size < PageSizeBytes, "Data to be read from NAND surpass the Page limit");
-//        if (numberOfAddresses > size){
-//            return !NANDisReady;
-//        }
-//        const Address readAddress = setAddress(LUN, start_position);
-//        sendCommand(READ_MODE);
-//        sendAddress(readAddress.col1);
-//        sendAddress(readAddress.col2);
-//        sendAddress(readAddress.row1);
-//        sendAddress(readAddress.row2);
-//        sendAddress(readAddress.row3);
-//        sendCommand(READ_CONFIRM);
-//        for (uint16_t i = 0; i < numberOfAddresses; i++) {
-//            if (waitDelay()) {
-//                return !NANDisReady;
-//            }
-//            data[i] = readData();
-//        }
-//        return NANDisReady;
-//    }
+        const Address readAddress = setAddress(pos, op);
+        sendCommand(READ_MODE);
+        sendAddress(readAddress.col1);
+        sendAddress(readAddress.col2);
+        sendAddress(readAddress.row1);
+        sendAddress(readAddress.row2);
+        sendAddress(readAddress.row3);
+        sendCommand(READ_CONFIRM);
+        if (waitDelay() == 0) {
+            return !NANDisReady;
+        }
+        data = readData();
+        return NANDisReady;
 
-    bool eraseBlock(uint8_t LUN, uint16_t block);
+    }
 
-    bool detectArrayError();
+    template<unsigned int size, Structure *pos, AddressConfig op>
+    bool readNAND(etl::array<uint8_t, size> data) {
+        static_assert(size > MaxDataBytesPerPage, "Size of data surpasses the Page limit");
+        static_assert(!isValidStructure(pos, op), "The Structure is not valid");
+        if (op == POS || op == POS_PAGE) {
+            constexpr uint8_t page = pos->position / PageSizeBytes;
+            constexpr uint16_t column = pos->position - page * PageSizeBytes;
+            static_assert((column + size + NumECCBytes) > PageSizeBytes,
+                          "There is not enough space in this page for the data");
+        }
 
-    bool isNANDAlive();
 
-    bool waitDelay();
+        const Address readAddress = setAddress(pos, op);
+        sendCommand(READ_MODE);
+        sendAddress(readAddress.col1);
+        sendAddress(readAddress.col2);
+        sendAddress(readAddress.row1);
+        sendAddress(readAddress.row2);
+        sendAddress(readAddress.row3);
+        sendCommand(READ_CONFIRM);
+        for (uint16_t i = 0; i < size; i++) {
+            if (waitDelay()) {
+                return !NANDisReady;
+            }
+            data[i] = readData();
+        }
+        return NANDisReady;
+    }
 
-    bool errorHandler();
 };
