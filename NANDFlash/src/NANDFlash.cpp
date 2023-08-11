@@ -1,4 +1,6 @@
-#include <etl/array.h>
+#include "etl/array.h"
+#include "etl/bit.h"
+#include "etl/bitset.h"
 #include "NANDFlash.h"
 
 
@@ -113,5 +115,99 @@ uint8_t MT29F::errorHandler() {
         }
     }
     return 0;
+}
+
+etl::array<uint8_t, MT29F::NumECCBytes>
+MT29F::generateECCBytes(etl::array<uint8_t, MT29F::WriteChunkSize> data) {
+    ECCBits eccBits{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0};
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        if (i & 0x01) {
+            eccBits.LP1 = (etl::popcount(data[i]) % 2) ^ eccBits.LP1;
+        } else {
+            eccBits.LP0 = (etl::popcount(data[i]) % 2) ^ eccBits.LP0;
+        }
+        if (i & 0x02) {
+            eccBits.LP3 = (etl::popcount(data[i]) % 2) ^ eccBits.LP3;
+        } else {
+            eccBits.LP2 = (etl::popcount(data[i]) % 2) ^ eccBits.LP2;
+        }
+        if (i & 0x04) {
+            eccBits.LP5 = (etl::popcount(data[i]) % 2) ^ eccBits.LP5;
+        } else {
+            eccBits.LP4 = (etl::popcount(data[i]) % 2) ^ eccBits.LP4;
+        }
+        if (i & 0x08) {
+            eccBits.LP7 = (etl::popcount(data[i]) % 2) ^ eccBits.LP7;
+        } else {
+            eccBits.LP6 = (etl::popcount(data[i]) % 2) ^ eccBits.LP6;
+        }
+        if (i & 0x10) {
+            eccBits.LP9 = (etl::popcount(data[i]) % 2) ^ eccBits.LP9;
+        } else {
+            eccBits.LP8 = (etl::popcount(data[i]) % 2) ^ eccBits.LP8;
+        }
+        if (i & 0x20) {
+            eccBits.LP11 = (etl::popcount(data[i]) % 2) ^ eccBits.LP11;
+        } else {
+            eccBits.LP10 = (etl::popcount(data[i]) % 2) ^ eccBits.LP10;
+        }
+        if (i & 0x40) {
+            eccBits.LP13 = (etl::popcount(data[i]) % 2) ^ eccBits.LP13;
+        } else {
+            eccBits.LP12 = (etl::popcount(data[i]) % 2) ^ eccBits.LP12;
+        }
+        if (i & 0x80) {
+            eccBits.LP15 = (etl::popcount(data[i]) % 2) ^ eccBits.LP15;
+        } else {
+            eccBits.LP14 = (etl::popcount(data[i]) % 2) ^ eccBits.LP14;
+        }
+        if (i & 0x100) {
+            eccBits.LP17 = (etl::popcount(data[i]) % 2) ^ eccBits.LP17;
+        } else {
+            eccBits.LP16 = (etl::popcount(data[i]) % 2) ^ eccBits.LP16;
+        }
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column7 ^= (data[i] & 0x80);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column6 ^= (data[i] & 0x40);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column5 ^= (data[i] & 0x20);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column4 ^= (data[i] & 0x10);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column3 ^= (data[i] & 0x08);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column2 ^= (data[i] & 0x04);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column1 ^= (data[i] & 0x02);
+    }
+    for (size_t i = 0; i < WriteChunkSize; i++) {
+        eccBits.column0 ^= (data[i] & 0x01);
+    }
+
+    eccBits.CP0 ^= (eccBits.column6 ^ eccBits.column4 ^ eccBits.column2 ^ eccBits.column0);
+    eccBits.CP1 ^= (eccBits.column7 ^ eccBits.column5 ^ eccBits.column3 ^ eccBits.column1);
+    eccBits.CP2 ^= (eccBits.column5 ^ eccBits.column4 ^ eccBits.column1 ^ eccBits.column0);
+    eccBits.CP3 ^= (eccBits.column7 ^ eccBits.column6 ^ eccBits.column3 ^ eccBits.column2);
+    eccBits.CP4 ^= (eccBits.column3 ^ eccBits.column2 ^ eccBits.column1 ^ eccBits.column0);
+    eccBits.CP5 ^= (eccBits.column7 ^ eccBits.column6 ^ eccBits.column5 ^ eccBits.column4);
+
+    etl::array<uint8_t, NumECCBytes> eccBytes = {};
+    eccBytes[0] = (eccBits.LP7 << 7 | eccBits.LP6 << 6 | eccBits.LP5 << 5 | eccBits.LP4 << 4 | eccBits.LP3 << 3 |
+                   eccBits.LP2 << 2 | eccBits.LP1 << 1 | eccBits.LP0);
+    eccBytes[1] = (eccBits.LP15 << 7 | eccBits.LP14 << 6 | eccBits.LP13 << 5 | eccBits.LP12 << 4 | eccBits.LP11 << 3 |
+                   eccBits.LP10 << 2 | eccBits.LP9 << 1 | eccBits.LP8);
+    eccBytes[2] = (eccBits.CP5 << 7 | eccBits.CP4 << 6 | eccBits.CP3 << 5 | eccBits.CP2 << 4 | eccBits.CP1 << 3 |
+                   eccBits.CP0 << 2 | eccBits.LP17 << 1 | eccBits.LP16);
+    return eccBytes;
 }
 

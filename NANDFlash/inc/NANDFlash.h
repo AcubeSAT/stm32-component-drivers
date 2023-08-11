@@ -86,6 +86,12 @@ private:
         uint8_t LUN = 2;
     };
 
+    struct ECCBits {
+        unsigned LP0: 1, LP1: 1, LP2: 1, LP3: 1, LP4: 1, LP5: 1, LP6: 1, LP7: 1, LP8: 1, LP9: 1, LP10: 1, LP11: 1, LP12: 1,
+                LP13: 1, LP14: 1, LP15: 1, LP16: 1, LP17: 1, CP0: 1, CP1: 1, CP2: 1, CP3: 1, CP4: 1, CP5: 1,
+                column0: 1, column1: 1, column2: 1, column3: 1, column4: 1, column5: 1, column6: 1, column7: 1;
+    };
+
     const static inline uint8_t TimeoutCycles = 20;
 
     enum ErrorCodes : const uint8_t{
@@ -164,6 +170,8 @@ public:
     uint8_t waitDelay(); // TODO: use etl::expected
 
     uint8_t errorHandler(); // TODO: use etl::expected
+
+    etl::array<uint8_t, NumECCBytes> generateECCBytes(etl::array<uint8_t, WriteChunkSize> data);
 
     template<Structure *pos, AddressConfig op>
     uint8_t writeNAND(uint8_t data) {               // TODO: use etl::expected
