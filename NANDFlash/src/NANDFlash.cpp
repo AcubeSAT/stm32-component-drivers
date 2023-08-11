@@ -5,10 +5,7 @@
 uint8_t MT29F::resetNAND() {
     sendCommand(RESET);
     sendCommand(READ_STATUS);
-    if (waitDelay()) {
-        return !NANDisReady;
-    }
-    return readData();
+    return waitDelay() == NAND_TIMEOUT ? NAND_TIMEOUT : readData();
 }
 
 
@@ -38,7 +35,7 @@ MT29F::Address MT29F::setAddress(MT29F::Structure *pos, MT29F::AddressConfig mod
     return address;
 }
 
-constexpr bool MT29F::isValidStructure(const MT29F::Structure *pos,const MT29F::AddressConfig op) {
+constexpr bool MT29F::isValidStructure(const MT29F::Structure *pos, const MT29F::AddressConfig op) {
     if (pos->LUN > 1) return false;
     switch (op) {
         case POS:
@@ -66,7 +63,7 @@ void MT29F::readNANDID(etl::array<uint8_t, 8> id) {
 }
 
 
-bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
+uint8_t MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     const uint8_t row1 = (block & 0x01) << 7;
     const uint8_t row2 = (block >> 1) & 0xff;
     const uint8_t row3 = ((block >> 9) & 0x07) | ((LUN & 0x01) << 3);
@@ -75,48 +72,46 @@ bool MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
     sendAddress(row2);
     sendAddress(row3);
     sendCommand(ERASE_BLOCK_CONFIRM);
-    return !detectArrayError();
+    return detectArrayError();
 }
 
-bool MT29F::detectArrayError() {
+uint8_t MT29F::detectArrayError() {
     sendCommand(READ_STATUS);
     uint8_t status = readData();
     const uint32_t start = xTaskGetTickCount();
     while ((status & ArrayReadyMask) == 0) {
         status = readData();
         if ((xTaskGetTickCount() - start) > TimeoutCycles) {
-            return NANDTimeout;
+            return NAND_TIMEOUT;
         }
     }
-    return (status & 0x1);
+    return (status & 0x1) ? NAND_FAIL_OP : 0;
 }
 
 bool MT29F::isNANDAlive() {
     etl::array<uint8_t, 8> id = {};
     const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
     readNANDID(id);
-    if (etl::equal(id.begin(), id.end(), valid_id)) {
-        return true;
-    } else return false;
+    return etl::equal(id.begin(), id.end(), valid_id);
 }
 
-bool MT29F::waitDelay() {
+uint8_t MT29F::waitDelay() {
     const uint32_t start = xTaskGetTickCount();
     while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
         if ((xTaskGetTickCount() - start) > TimeoutCycles) {
-            return NANDTimeout;
+            return NAND_TIMEOUT;
         }
     }
-    return false;
+    return 0;
 }
 
-bool MT29F::errorHandler() {
+uint8_t MT29F::errorHandler() {
     if (resetNAND() != 224) {
         if (!isNANDAlive()) {
             // TODO: Check if LCL is on and execute its task again if need be
-            return !NANDisReady;
+            return NAND_NOT_ALIVE;
         }
     }
-    return NANDisReady;
+    return 0;
 }
 
