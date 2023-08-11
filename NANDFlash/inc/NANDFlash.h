@@ -1,10 +1,12 @@
 #pragma once
 
+#include <etl/span.h>
 #include "SMC.hpp"
 #include "definitions.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "Logger.hpp"
+#include "etl/span.h"
 
 /**
  * This is a driver for MT29F NAND Flash.
@@ -205,7 +207,10 @@ public:
     }
 
     template<unsigned int size>
-    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataChunker(etl::array<uint8_t, size> data, uint32_t startPos);
+    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataChunker(etl::span<uint8_t, size> data, uint32_t startPos) {
+        return etl::array<uint8_t, (WriteChunkSize + NumECCBytes)>(
+                data.subspan(startPos, (WriteChunkSize + NumECCBytes)));
+    }
 
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
@@ -356,7 +361,8 @@ public:
                 for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
                     etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                     if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead)) return false;
-                    data = dataChunker(dataToRead, (WriteChunkSize * (chunk + (page * MaxChunksPerPage))));
+                    etl::move(dataToRead.begin(), dataToRead.end(),
+                              data.begin() + (WriteChunkSize * (chunk + (page * MaxChunksPerPage))));
                 }
             }
             constexpr uint8_t chunksLeft = readChunks - (MaxChunksPerPage * pagesToRead);
@@ -369,7 +375,8 @@ public:
             for (size_t i = 0; i < chunksLeft; i++) {
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                 if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead)) return false;
-                data = dataChunker(dataToRead, (WriteChunkSize * (i + (pagesToRead * MaxChunksPerPage))));
+                etl::move(dataToRead.begin(), dataToRead.end(),
+                          data.begin() + (WriteChunkSize * (i + (pagesToRead * MaxChunksPerPage))));
             }
         } else {
             pos->page = (op == POS) ? (pos->position / PageSizeBytes) : pos->page;
@@ -378,8 +385,9 @@ public:
             constexpr uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
             for (size_t i = 0; i < chunksFitThisPage; i++) {
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
-                if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, data)) return false;
-                data = dataChunker(dataToRead, (WriteChunkSize * i));
+                if (!readNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, dataToRead)) return false;
+                etl::move(dataToRead.begin(), dataToRead.end(),
+                          data.begin() + (WriteChunkSize * i));
                 if (i != (chunksFitThisPage - 1)) {
                     pos->position += (WriteChunkSize + NumECCBytes);
                 } else break;
@@ -399,8 +407,9 @@ public:
                          (chunk < (readChunks - chunksFitTillThisPage) ||
                           (chunk < MaxChunksPerPage)); chunk++) {
                         etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
-                        if (!readNAND<size, pos, PAGE_BLOCK>(pos, data)) return false;
-                        data = dataChunker(dataToRead, (WriteChunkSize *
+                        if (!readNAND<size, pos, PAGE_BLOCK>(pos, dataToRead)) return false;
+                        etl::move(dataToRead.begin(), dataToRead.end(),
+                                  data.begin() + (WriteChunkSize *
                                                         (chunk + chunksFitTillThisPage)));
                     }
                 }
