@@ -211,3 +211,39 @@ MT29F::generateECCBytes(etl::array<uint8_t, MT29F::WriteChunkSize> data) {
     return eccBytes;
 }
 
+etl::array<uint8_t, MT29F::WriteChunkSize> MT29F::detectCorrectECCError(
+        etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> dataECC, etl::array<uint8_t, NumECCBytes> newECC) {
+    etl::array<uint8_t, NumECCBytes> storedECC;
+    etl::span<uint8_t> eccSpan = dataECC.subspan(WriteChunkSize, NumECCBytes);
+    etl::copy(eccSpan.begin(), eccSpan.end(), storedECC.begin());
+
+    if (etl::equal(storedECC.begin(), storedECC.end(), newECC.begin()))
+        return MT29F::dataChunker<WriteChunkSize>(dataECC, 0);
+
+    uint8_t xorECC[NumECCBytes];
+    for (size_t i = 0; i < NumECCBytes; i++) {
+        xorECC[i] = storedECC[i] ^ newECC[i];
+    }
+
+    uint16_t xorECCBytes = xorECC[0] ^ xorECC[1] ^ xorECC[2];
+    uint16_t setBits = etl::popcount(xorECCBytes);
+
+    if (setBits == 12) {
+        uint8_t bitAddress = 0;
+        bitAddress |= ((xorECC[2] & 0x08) | (xorECC[2] & 0x020) | (xorECC[2] & 0x80));
+        // Byte address = (LP17,LP15,LP13,LP11,LP9,LP7,LP5,LP3,LP1)
+        uint16_t byteAddress = 0;
+        for (size_t eccByte = 0; eccByte < 2; eccByte++) {
+            for (size_t offset = 0x01; offset <= 0x80; offset += 0x02) {
+                byteAddress |= (xorECC[eccByte] & offset);
+            }
+        }
+        byteAddress |= (xorECC[2] & 0x01);
+
+        dataECC[byteAddress] ^= (0x01 << bitAddress);
+        return MT29F::dataChunker<WriteChunkSize>(dataECC, 0);
+    } else if (setBits == 1) return {}; // TODO: replace with ECC_ERROR code
+    else return {}; // TODO: replace with UNCORRECTABLE_ERROR
+}
+
+

@@ -77,7 +77,9 @@ private:
             POS = 0x01,
             PAGE,
             POS_PAGE,
-            PAGE_BLOCK
+            PAGE_BLOCK,
+            ECC_ERROR,
+            UNCORRECTABLE_ERROR
     };
 
     struct Structure {
@@ -173,6 +175,10 @@ public:
 
     etl::array<uint8_t, NumECCBytes> generateECCBytes(etl::array<uint8_t, WriteChunkSize> data);
 
+    etl::array<uint8_t, WriteChunkSize>
+    detectCorrectECCError(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> dataECC,
+                          etl::array<uint8_t, NumECCBytes> newECC);     // TODO: use etl::expected
+
     template<Structure *pos, AddressConfig op>
     uint8_t writeNAND(uint8_t data) {               // TODO: use etl::expected
         static_assert(!isValidStructure(pos, op), "The Structure to write a single byte to is not valid");
@@ -218,10 +224,13 @@ public:
     }
 
     template<unsigned int size>
-    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataChunker(etl::span<uint8_t, size> data, uint32_t startPos) {
-        return etl::array<uint8_t, (WriteChunkSize + NumECCBytes)>(
-                data.subspan(startPos, (WriteChunkSize + NumECCBytes)));
+    etl::array<uint8_t, WriteChunkSize> dataChunker(etl::span<uint8_t, size> data, uint32_t startPos) {
+        return etl::array<uint8_t, WriteChunkSize>(
+                data.subspan(startPos, WriteChunkSize));
     }
+
+    template<>
+    etl::array<uint8_t, WriteChunkSize> dataChunker<WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
 
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
