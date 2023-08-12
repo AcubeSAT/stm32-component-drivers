@@ -197,13 +197,25 @@ public:
 
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t writeNAND(etl::array<uint8_t, size> data) {     // TODO: use etl::expected
-        static_assert(size > MaxDataBytesPerPage, "Size of data surpasses the Page limit");
+        uint8_t quotient = size / WriteChunkSize;
+        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? ++quotient : quotient;
+        static_assert((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage,
+                      "Size of data surpasses the Page limit");
         static_assert(!isValidStructure(pos, op), "The Structure is not valid");
         if (op == POS || op == POS_PAGE) {
             constexpr uint8_t page = pos->position / PageSizeBytes;
             constexpr uint16_t column = pos->position - page * PageSizeBytes;
-            static_assert((column + size + NumECCBytes) > PageSizeBytes,
+            static_assert((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes,
                           "There is not enough space in this page for the data");
+        }
+
+        etl::array<uint8_t, (dataChunks * (WriteChunkSize + NumECCBytes))> dataECC(255);
+        for (size_t chunk = 0; chunk < dataChunks; chunk++) {
+            etl::move((data.begin() + (chunk * WriteChunkSize)), (data.begin() + WriteChunkSize),
+                      (dataECC.begin() + (chunk * (WriteChunkSize + NumECCBytes))));
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                    dataChunker(dataECC, (chunk * (WriteChunkSize + NumECCBytes))));
+            etl::move(genECC.begin(), genECC.end(), (dataECC.begin() + (chunk * WriteChunkSize)));
         }
 
         const Address writeAddress = setAddress(pos, op);
@@ -213,11 +225,11 @@ public:
         sendAddress(writeAddress.row1);
         sendAddress(writeAddress.row2);
         sendAddress(writeAddress.row3);
-        for (uint16_t i = 0; i < size; i++) {
+        for (uint16_t i = 0; i < dataECC.size(); i++) {
             if (waitDelay() == NAND_TIMEOUT) {
                 return NAND_TIMEOUT;
             }
-            sendData(data[i]);
+            sendData(dataECC[i]);
         }
         sendCommand(PAGE_PROGRAM_CONFIRM);
         return detectArrayError();
@@ -230,7 +242,8 @@ public:
     }
 
     template<>
-    etl::array<uint8_t, WriteChunkSize> dataChunker<WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
+    etl::array<uint8_t, WriteChunkSize>
+    dataChunker<WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
 
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
@@ -344,15 +357,18 @@ public:
 
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t readNAND(etl::array<uint8_t, size> data) {         // TODO: use etl::expected
-        static_assert(size > MaxDataBytesPerPage, "Size of data surpasses the Page limit");
+        uint8_t quotient = size / WriteChunkSize;
+        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? ++quotient : quotient;
+        static_assert((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage,
+                      "Size of data surpasses the Page limit");
         static_assert(!isValidStructure(pos, op), "The Structure is not valid");
         if (op == POS || op == POS_PAGE) {
             constexpr uint8_t page = pos->position / PageSizeBytes;
             constexpr uint16_t column = pos->position - page * PageSizeBytes;
-            static_assert((column + size + NumECCBytes) > PageSizeBytes,
+            static_assert((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes,
                           "There is not enough space in this page for the data");
         }
-
+        etl::array<uint8_t, (dataChunks * (WriteChunkSize + NumECCBytes))> dataECC = {};
 
         const Address readAddress = setAddress(pos, op);
         sendCommand(READ_MODE);
@@ -362,11 +378,24 @@ public:
         sendAddress(readAddress.row2);
         sendAddress(readAddress.row3);
         sendCommand(READ_CONFIRM);
-        for (uint16_t i = 0; i < size; i++) {
+        for (uint16_t i = 0; i < dataECC.size(); i++) {
             if (waitDelay() == NAND_TIMEOUT) {
                 return NAND_TIMEOUT;
             }
-            data[i] = readData();
+            dataECC[i] = readData();
+        }
+
+        for (size_t chunk = 0; chunk < dataChunks; chunk++) {
+            etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> thisChunkWithECC = {};
+            etl::move((dataECC.begin() + (chunk * (WriteChunkSize + NumECCBytes))),
+                      (dataECC.begin() + ((chunk + 1) * (WriteChunkSize + NumECCBytes))), thisChunkWithECC.begin());
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                    dataChunker(thisChunkWithECC, 0));
+            etl::array<uint8_t, WriteChunkSize> returnedData = detectCorrectECCError(thisChunkWithECC,
+                                                                                     genECC);       // TODO: use etl::expected
+            if (returnedData == etl::array<uint8_t, WriteChunkSize>{}) {
+                return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+            } else etl::move(returnedData.begin(), returnedData.end(), (data.begin() + (chunk * WriteChunkSize)));
         }
         return 0;
     }
