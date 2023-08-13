@@ -117,6 +117,10 @@ uint8_t MT29F::errorHandler() {
     return 0;
 }
 
+template<>
+etl::array<uint8_t, MT29F::WriteChunkSize>
+MT29F::dataChunker<MT29F::WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
+
 etl::array<uint8_t, MT29F::NumECCBytes>
 MT29F::generateECCBytes(etl::array<uint8_t, MT29F::WriteChunkSize> data) {
     ECCBits eccBits{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

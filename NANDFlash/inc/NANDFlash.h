@@ -54,7 +54,7 @@ private:
     /* Number of pages contained in a block */
     const static inline uint8_t NumPagesBlock = 128;
     /* Total number of pages in an LUN */
-    const static inline uint16_t MaxNumPage = 524288;
+    const static inline uint32_t MaxNumPage = 524288;
     /* Total number of blocks in a LUN */
     const static inline uint16_t MaxNumBlock = 4096;
     /* The ARDY bit is bit 5 of the Status Register */
@@ -84,7 +84,7 @@ private:
 
     struct Structure {
         uint64_t position = MaxNumPage * PageSizeBytes; // overall position inside the LUN or inside a specific page
-        uint16_t page = MaxNumPage, block = MaxNumBlock; // overall page number or number of page inside a single block
+        uint32_t page = MaxNumPage, block = MaxNumBlock; // overall page number or number of page inside a single block
         uint8_t LUN = 2;
     };
 
@@ -197,13 +197,13 @@ public:
 
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t writeNAND(etl::array<uint8_t, size> data) {     // TODO: use etl::expected
-        uint8_t quotient = size / WriteChunkSize;
-        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? ++quotient : quotient;
+        constexpr uint8_t quotient = size / WriteChunkSize;
+        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
         static_assert((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage,
                       "Size of data surpasses the Page limit");
         static_assert(!isValidStructure(pos, op), "The Structure is not valid");
         if (op == POS || op == POS_PAGE) {
-            constexpr uint8_t page = pos->position / PageSizeBytes;
+            constexpr uint32_t page = pos->position / PageSizeBytes;
             constexpr uint16_t column = pos->position - page * PageSizeBytes;
             static_assert((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes,
                           "There is not enough space in this page for the data");
@@ -241,9 +241,6 @@ public:
                 data.subspan(startPos, WriteChunkSize));
     }
 
-    template<>
-    etl::array<uint8_t, WriteChunkSize>
-    dataChunker<WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
 
     /* This function is the more abstract version of the write function where the user does not need to worry about the
      * size of the data and where they'll be fitted. The position or page the data are written to is configurable
@@ -253,7 +250,7 @@ public:
         static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
         constexpr uint32_t quotient = size / WriteChunkSize;
         constexpr uint32_t writeChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
-        constexpr uint16_t pagesToWrite = writeChunks / MaxChunksPerPage;
+        constexpr uint32_t pagesToWrite = writeChunks / MaxChunksPerPage;
 
 //        etl::array<uint8_t, size> readData = {};
 //        readNAND<size, pos, op>(readData);
@@ -318,7 +315,7 @@ public:
             }
             pos->position = 0;
             if (chunksFitThisPage < writeChunks) {
-                constexpr uint16_t pagesToWriteLeft =
+                constexpr uint32_t pagesToWriteLeft =
                         pagesToWrite - ((writeChunks - chunksFitThisPage) / MaxChunksPerPage);
                 for (size_t page = 0; page < pagesToWriteLeft; page++) {
                     if ((pos->page + 1) != NumPagesBlock) {
@@ -373,13 +370,13 @@ public:
 
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t readNAND(etl::array<uint8_t, size> data) {         // TODO: use etl::expected
-        uint8_t quotient = size / WriteChunkSize;
-        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? ++quotient : quotient;
+        constexpr uint8_t quotient = size / WriteChunkSize;
+        constexpr uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
         static_assert((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage,
                       "Size of data surpasses the Page limit");
         static_assert(!isValidStructure(pos, op), "The Structure is not valid");
         if (op == POS || op == POS_PAGE) {
-            constexpr uint8_t page = pos->position / PageSizeBytes;
+            constexpr uint32_t page = pos->position / PageSizeBytes;
             constexpr uint16_t column = pos->position - page * PageSizeBytes;
             static_assert((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes,
                           "There is not enough space in this page for the data");
@@ -424,7 +421,7 @@ public:
         static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
         constexpr uint32_t quotient = size / WriteChunkSize;
         constexpr uint32_t readChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
-        constexpr uint16_t pagesToRead = readChunks / MaxChunksPerPage;
+        constexpr uint32_t pagesToRead = readChunks / MaxChunksPerPage;
 
         if (op == PAGE || op == PAGE_BLOCK) {
             for (size_t page = 0; page < pagesToRead; page++) {
@@ -435,7 +432,7 @@ public:
                     etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                             dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
                     etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
-                    if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                    if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
                         return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
                     }
                     etl::move(finalData.begin(), finalData.end(),
@@ -455,7 +452,7 @@ public:
                 etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                         dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
                 etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
-                if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
                     return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
                 }
                 etl::move(finalData.begin(), finalData.end(),
@@ -473,7 +470,7 @@ public:
                 etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                         dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
                 etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
-                if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
                     return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
                 }
                 etl::move(finalData.begin(), finalData.end(),
@@ -484,7 +481,7 @@ public:
             }
             pos->position = 0;
             if (chunksFitThisPage < readChunks) {
-                constexpr uint16_t pagesToWriteLeft =
+                constexpr uint32_t pagesToWriteLeft =
                         pagesToRead - ((readChunks - chunksFitThisPage) / MaxChunksPerPage);
                 for (size_t page = 0; page < pagesToWriteLeft; page++) {
                     if ((pos->page + 1) != NumPagesBlock) {
@@ -502,7 +499,7 @@ public:
                         etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                                 dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
                         etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
-                        if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                        if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
                             return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
                         }
                         etl::move(finalData.begin(), finalData.end(),
