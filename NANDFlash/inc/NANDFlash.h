@@ -265,10 +265,14 @@ public:
         if (op == PAGE || op == PAGE_BLOCK) {
             for (size_t page = 0; page < pagesToWrite; page++) {
                 for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
-                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
-                                                                                                  (WriteChunkSize *
-                                                                                                   (chunk + (page *
-                                                                                                             MaxChunksPerPage))));
+                    etl::array<uint8_t, WriteChunkSize> dataChunk = dataChunker(data,
+                                                                                (WriteChunkSize *
+                                                                                 (chunk + (page *
+                                                                                           MaxChunksPerPage))));
+                    etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                    etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                    etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
                     uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(
                             dataToWrite);    //TODO: use etl::expected
                     if (result != 0) return result;
@@ -283,10 +287,14 @@ public:
             } else pos->LUN = pos->LUN == 0 ? 1 : 0;
 
             for (size_t i = 0; i < chunksLeft; i++) {
-                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data, (WriteChunkSize *
-                                                                                                     (i +
-                                                                                                      (pagesToWrite *
-                                                                                                       MaxChunksPerPage))));
+                etl::array<uint8_t, WriteChunkSize> dataChunk = dataChunker(data, (WriteChunkSize *
+                                                                                   (i +
+                                                                                    (pagesToWrite *
+                                                                                     MaxChunksPerPage))));
+                etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
                 uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite);
                 if (result != 0) return result;
             }
@@ -296,9 +304,13 @@ public:
             constexpr uint16_t column = pos->position - (pos->page * PageSizeBytes);
             constexpr uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
             for (size_t i = 0; i < chunksFitThisPage; i++) {
-                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
-                                                                                              (WriteChunkSize * i));
-                uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, data);
+                etl::array<uint8_t, WriteChunkSize> dataChunk = dataChunker(data,
+                                                                            (WriteChunkSize * i));
+                etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+                uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, dataToWrite);
                 if (result != 0) return result;
                 if (i != (chunksFitThisPage - 1)) {
                     pos->position += (WriteChunkSize + NumECCBytes);
@@ -319,11 +331,15 @@ public:
                     for (size_t chunk = 0;
                          (chunk < (writeChunks - chunksFitTillThisPage) ||
                           (chunk < MaxChunksPerPage)); chunk++) {
-                        etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = dataChunker(data,
-                                                                                                      (WriteChunkSize *
-                                                                                                       (chunk +
-                                                                                                        chunksFitTillThisPage)));
-                        uint8_t result = writeNAND<size, pos, PAGE_BLOCK>(pos, data);
+                        etl::array<uint8_t, WriteChunkSize> dataChunk = dataChunker(data,
+                                                                                    (WriteChunkSize *
+                                                                                     (chunk +
+                                                                                      chunksFitTillThisPage)));
+                        etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+                        etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                        etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                        etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+                        uint8_t result = writeNAND<size, pos, PAGE_BLOCK>(pos, dataToWrite);
                         if (result != 0) return result;
                     }
                 }
@@ -416,22 +432,33 @@ public:
                     etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                     uint8_t result = readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead);
                     if (result != 0) return result;
-                    etl::move(dataToRead.begin(), dataToRead.end(),
+                    etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                            dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                    etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                    if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                        return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                    }
+                    etl::move(finalData.begin(), finalData.end(),
                               data.begin() + (WriteChunkSize * (chunk + (page * MaxChunksPerPage))));
                 }
+                if ((pos->page + 1) != NumPagesBlock) {
+                    ++pos->page;
+                } else if ((pos->block + 1) != MaxNumBlock) {
+                    ++pos->block;
+                } else pos->LUN = pos->LUN == 0 ? 1 : 0;
             }
             constexpr uint8_t chunksLeft = readChunks - (MaxChunksPerPage * pagesToRead);
-            if ((pos->page + 1) != NumPagesBlock) {
-                ++pos->page;
-            } else if ((pos->block + 1) != MaxNumBlock) {
-                ++pos->block;
-            } else pos->LUN = pos->LUN == 0 ? 1 : 0;
-
             for (size_t i = 0; i < chunksLeft; i++) {
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                 uint8_t result = readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead);
                 if (result != 0) return result;
-                etl::move(dataToRead.begin(), dataToRead.end(),
+                etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                        dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                    return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                }
+                etl::move(finalData.begin(), finalData.end(),
                           data.begin() + (WriteChunkSize * (i + (pagesToRead * MaxChunksPerPage))));
             }
         } else {
@@ -443,7 +470,13 @@ public:
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                 uint8_t result = readNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, dataToRead);
                 if (result != 0) return result;
-                etl::move(dataToRead.begin(), dataToRead.end(),
+                etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                        dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                    return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                }
+                etl::move(finalData.begin(), finalData.end(),
                           data.begin() + (WriteChunkSize * i));
                 if (i != (chunksFitThisPage - 1)) {
                     pos->position += (WriteChunkSize + NumECCBytes);
@@ -466,7 +499,13 @@ public:
                         etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
                         uint8_t result = readNAND<size, pos, PAGE_BLOCK>(pos, dataToRead);
                         if (result != 0) return result;
-                        etl::move(dataToRead.begin(), dataToRead.end(),
+                        etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                                dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                        etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                        if(finalData == etl::array<uint8_t, WriteChunkSize>{}){
+                            return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                        }
+                        etl::move(finalData.begin(), finalData.end(),
                                   data.begin() + (WriteChunkSize *
                                                   (chunk + chunksFitTillThisPage)));
                     }
