@@ -37,7 +37,7 @@ MT29F::Address MT29F::setAddress(MT29F::Structure *pos, MT29F::AddressConfig mod
     return address;
 }
 
-constexpr bool MT29F::isValidStructure(const MT29F::Structure *pos, const MT29F::AddressConfig op) {
+constexpr bool MT29F::isValidStructure(MT29F::Structure *pos, MT29F::AddressConfig op) {
     if (pos->LUN > 1) return false;
     switch (op) {
         case POS:
@@ -120,6 +120,7 @@ uint8_t MT29F::errorHandler() {
 template<>
 etl::array<uint8_t, MT29F::WriteChunkSize>
 MT29F::dataChunker<MT29F::WriteChunkSize>(etl::span<uint8_t, WriteChunkSize> data, uint32_t startPos);
+
 
 etl::array<uint8_t, MT29F::NumECCBytes>
 MT29F::generateECCBytes(etl::array<uint8_t, MT29F::WriteChunkSize> data) {
@@ -249,5 +250,150 @@ etl::array<uint8_t, MT29F::WriteChunkSize> MT29F::detectCorrectECCError(
     } else if (setBits == 1) return {}; // TODO: replace with ECC_ERROR code
     else return {}; // TODO: replace with UNCORRECTABLE_ERROR
 }
+
+template<>
+etl::array<uint8_t, MT29F::WriteChunkSize>
+MT29F::dataChunker<(MT29F::WriteChunkSize + MT29F::NumECCBytes)>(
+        etl::span<uint8_t, (MT29F::WriteChunkSize + MT29F::NumECCBytes)>, uint32_t startPos);
+
+uint8_t MT29F::readNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
+    const uint8_t quotient = size / WriteChunkSize;
+    const uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
+    if ((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage) return -1;
+    if (!isValidStructure(pos, op)) return -1;
+    if (op == POS || op == POS_PAGE) {
+        uint32_t page = pos->position / PageSizeBytes;
+        uint16_t column = pos->position - page * PageSizeBytes;
+        if ((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes) return -1;
+    }
+    etl::span<uint8_t> dataECC = {};
+
+    const Address readAddress = setAddress(pos, op);
+    sendCommand(READ_MODE);
+    sendAddress(readAddress.col1);
+    sendAddress(readAddress.col2);
+    sendAddress(readAddress.row1);
+    sendAddress(readAddress.row2);
+    sendAddress(readAddress.row3);
+    sendCommand(READ_CONFIRM);
+    for (uint16_t i = 0; i < (dataChunks * (WriteChunkSize + NumECCBytes)); i++) {
+        if (waitDelay() == NAND_TIMEOUT) {
+            return NAND_TIMEOUT;
+        }
+        dataECC[i] = readData();
+    }
+
+    for (size_t chunk = 0; chunk < dataChunks; chunk++) {
+        etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> thisChunkWithECC = {};
+        etl::move((dataECC.begin() + (chunk * (WriteChunkSize + NumECCBytes))),
+                  (dataECC.begin() + ((chunk + 1) * (WriteChunkSize + NumECCBytes))), thisChunkWithECC.begin());
+        etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                dataChunker(thisChunkWithECC, 0));
+        etl::array<uint8_t, WriteChunkSize> returnedData = detectCorrectECCError(thisChunkWithECC,
+                                                                                 genECC);       // TODO: use etl::expected
+        if (returnedData == etl::array<uint8_t, WriteChunkSize>{}) {
+            return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+        } else etl::move(returnedData.begin(), returnedData.end(), (data.begin() + (chunk * WriteChunkSize)));
+    }
+    return 0;
+}
+
+uint8_t MT29F::abstractReadNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
+    if (!isValidStructure(pos, op)) return -1;
+    const uint32_t quotient = size / WriteChunkSize;
+    const uint32_t readChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
+    const uint32_t pagesToRead = readChunks / MaxChunksPerPage;
+
+    if (op == PAGE || op == PAGE_BLOCK) {
+        for (size_t page = 0; page < pagesToRead; page++) {
+            for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                uint8_t result = readNAND(pos, op, dataToRead, (WriteChunkSize + NumECCBytes));
+                if (result != 0) return result;
+                etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                        dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
+                    return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                }
+                etl::move(finalData.begin(), finalData.end(),
+                          data.begin() + (WriteChunkSize * (chunk + (page * MaxChunksPerPage))));
+            }
+            if ((pos->page + 1) != NumPagesBlock) {
+                ++pos->page;
+            } else if ((pos->block + 1) != MaxNumBlock) {
+                ++pos->block;
+            } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+        }
+        const uint8_t chunksLeft = readChunks - (MaxChunksPerPage * pagesToRead);
+        for (size_t i = 0; i < chunksLeft; i++) {
+            etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+            uint8_t result = readNAND(pos, op, dataToRead, (WriteChunkSize + NumECCBytes));
+            if (result != 0) return result;
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                    dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+            etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+            if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
+                return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+            }
+            etl::move(finalData.begin(), finalData.end(),
+                      data.begin() + (WriteChunkSize * (i + (pagesToRead * MaxChunksPerPage))));
+        }
+    } else {
+        pos->page = (op == POS) ? (pos->position / PageSizeBytes) : pos->page;
+        pos->block = (op == POS) ? (pos->page / NumPagesBlock) : pos->block;
+        const uint16_t column = pos->position - (pos->page * PageSizeBytes);
+        const uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
+        for (size_t i = 0; i < chunksFitThisPage; i++) {
+            etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+            uint8_t result = readNAND(pos, op, dataToRead, (WriteChunkSize + NumECCBytes));
+            if (result != 0) return result;
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                    dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+            etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+            if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
+                return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+            }
+            etl::move(finalData.begin(), finalData.end(),
+                      data.begin() + (WriteChunkSize * i));
+            if (i != (chunksFitThisPage - 1)) {
+                pos->position += (WriteChunkSize + NumECCBytes);
+            } else break;
+        }
+        pos->position = 0;
+        if (chunksFitThisPage < readChunks) {
+            const uint32_t pagesToWriteLeft =
+                    pagesToRead - ((readChunks - chunksFitThisPage) / MaxChunksPerPage);
+            for (size_t page = 0; page < pagesToWriteLeft; page++) {
+                if ((pos->page + 1) != NumPagesBlock) {
+                    ++pos->page;
+                } else if ((pos->block + 1) != MaxNumBlock) {
+                    ++pos->block;
+                } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+                uint32_t chunksFitTillThisPage = chunksFitThisPage + (page * MaxChunksPerPage);
+                for (size_t chunk = 0;
+                     (chunk < (readChunks - chunksFitTillThisPage) ||
+                      (chunk < MaxChunksPerPage)); chunk++) {
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
+                    uint8_t result = readNAND(pos, PAGE_BLOCK, dataToRead, (WriteChunkSize + NumECCBytes));
+                    if (result != 0) return result;
+                    etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
+                            dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
+                    etl::array<uint8_t, WriteChunkSize> finalData = detectCorrectECCError(dataToRead, genECC);
+                    if (finalData == etl::array<uint8_t, WriteChunkSize>{}) {
+                        return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
+                    }
+                    etl::move(finalData.begin(), finalData.end(),
+                              data.begin() + (WriteChunkSize *
+                                              (chunk + chunksFitTillThisPage)));
+                }
+            }
+
+        }
+
+    }
+    return 0;
+}
+
 
 

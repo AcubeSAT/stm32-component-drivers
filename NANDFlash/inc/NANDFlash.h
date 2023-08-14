@@ -73,6 +73,15 @@ private:
         uint8_t col1, col2, row1, row2, row3;
     };
 
+    struct ECCBits {
+        unsigned LP0: 1, LP1: 1, LP2: 1, LP3: 1, LP4: 1, LP5: 1, LP6: 1, LP7: 1, LP8: 1, LP9: 1, LP10: 1, LP11: 1, LP12: 1,
+                LP13: 1, LP14: 1, LP15: 1, LP16: 1, LP17: 1, CP0: 1, CP1: 1, CP2: 1, CP3: 1, CP4: 1, CP5: 1,
+                column0: 1, column1: 1, column2: 1, column3: 1, column4: 1, column5: 1, column6: 1, column7: 1;
+    };
+
+    const static inline uint8_t TimeoutCycles = 20;
+
+public:
     enum AddressConfig : const uint8_t{
             POS = 0x01,
             PAGE,
@@ -88,14 +97,6 @@ private:
         uint8_t LUN = 2;
     };
 
-    struct ECCBits {
-        unsigned LP0: 1, LP1: 1, LP2: 1, LP3: 1, LP4: 1, LP5: 1, LP6: 1, LP7: 1, LP8: 1, LP9: 1, LP10: 1, LP11: 1, LP12: 1,
-                LP13: 1, LP14: 1, LP15: 1, LP16: 1, LP17: 1, CP0: 1, CP1: 1, CP2: 1, CP3: 1, CP4: 1, CP5: 1,
-                column0: 1, column1: 1, column2: 1, column3: 1, column4: 1, column5: 1, column6: 1, column7: 1;
-    };
-
-    const static inline uint8_t TimeoutCycles = 20;
-
     enum ErrorCodes : const uint8_t{
             NAND_NOT_READY = 0x01,
             NAND_TIMEOUT,
@@ -103,7 +104,6 @@ private:
             NAND_NOT_ALIVE
     };
 
-public:
     /**
      * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
      */
@@ -161,7 +161,7 @@ public:
 
     Address setAddress(Structure *pos, AddressConfig mode);
 
-    constexpr static bool isValidStructure(const Structure *pos, const AddressConfig op);
+    constexpr static bool isValidStructure(Structure *pos, AddressConfig op);
 
     uint8_t eraseBlock(uint8_t LUN, uint16_t block); // TODO: use etl::expected
 
@@ -307,7 +307,7 @@ public:
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
                 etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
                 etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
-                uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, dataToWrite);
+                uint8_t result = writeNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToWrite);
                 if (result != 0) return result;
                 if (i != (chunksFitThisPage - 1)) {
                     pos->position += (WriteChunkSize + NumECCBytes);
@@ -336,7 +336,7 @@ public:
                         etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
                         etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
                         etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
-                        uint8_t result = writeNAND<size, pos, PAGE_BLOCK>(pos, dataToWrite);
+                        uint8_t result = writeNAND<size, pos, PAGE_BLOCK>(dataToWrite);
                         if (result != 0) return result;
                     }
                 }
@@ -465,7 +465,7 @@ public:
             constexpr uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
             for (size_t i = 0; i < chunksFitThisPage; i++) {
                 etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
-                uint8_t result = readNAND<(WriteChunkSize + NumECCBytes), pos, op>(pos, dataToRead);
+                uint8_t result = readNAND<(WriteChunkSize + NumECCBytes), pos, op>(dataToRead);
                 if (result != 0) return result;
                 etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                         dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
@@ -494,7 +494,7 @@ public:
                          (chunk < (readChunks - chunksFitTillThisPage) ||
                           (chunk < MaxChunksPerPage)); chunk++) {
                         etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToRead = {};
-                        uint8_t result = readNAND<size, pos, PAGE_BLOCK>(pos, dataToRead);
+                        uint8_t result = readNAND<size, pos, PAGE_BLOCK>(dataToRead);
                         if (result != 0) return result;
                         etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
                                 dataChunker(etl::span<uint8_t, (WriteChunkSize + NumECCBytes)>(dataToRead), 0));
@@ -513,5 +513,9 @@ public:
         }
         return 0;
     }
+
+    uint8_t readNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
+
+    uint8_t abstractReadNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 
 };
