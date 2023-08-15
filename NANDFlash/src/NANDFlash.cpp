@@ -251,6 +251,151 @@ etl::array<uint8_t, MT29F::WriteChunkSize> MT29F::detectCorrectECCError(
     else return {}; // TODO: replace with UNCORRECTABLE_ERROR
 }
 
+uint8_t MT29F::writeNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
+    const uint8_t quotient = size / WriteChunkSize;
+    const uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
+    if ((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage) return -1;
+    if (!isValidStructure(pos, op)) return -1;
+    if (op == POS || op == POS_PAGE) {
+        const uint32_t page = pos->position / PageSizeBytes;
+        const uint16_t column = pos->position - page * PageSizeBytes;
+        if ((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes) return -1;
+    }
+
+    etl::span<uint8_t> dataECC;
+    for (size_t chunk = 0; chunk < dataChunks; chunk++) {
+        uint64_t offsetData = (chunk * WriteChunkSize);
+        etl::move((data.begin() + offsetData), (data.begin() + offsetData + WriteChunkSize),
+                  (dataECC.begin() + (chunk * (WriteChunkSize + NumECCBytes))));
+        etl::array<uint8_t, WriteChunkSize> arrayChunkConversion;
+        uint64_t offsetDataECC = (chunk * (WriteChunkSize + NumECCBytes));
+        etl::move((dataECC.begin() + offsetDataECC),
+                  (dataECC.begin() + offsetDataECC + WriteChunkSize),
+                  arrayChunkConversion.begin());
+        etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(arrayChunkConversion);
+        etl::move(genECC.begin(), genECC.end(), (dataECC.begin() + offsetData));
+    }
+
+    const Address writeAddress = setAddress(pos, op);
+    sendCommand(PAGE_PROGRAM);
+    sendAddress(writeAddress.col1);
+    sendAddress(writeAddress.col2);
+    sendAddress(writeAddress.row1);
+    sendAddress(writeAddress.row2);
+    sendAddress(writeAddress.row3);
+    for (uint16_t i = 0; i < (dataChunks * (WriteChunkSize + NumECCBytes)); i++) {
+        if (waitDelay() == NAND_TIMEOUT) {
+            return NAND_TIMEOUT;
+        }
+        sendData(dataECC[i]);
+    }
+    sendCommand(PAGE_PROGRAM_CONFIRM);
+    return detectArrayError();
+}
+
+uint8_t MT29F::abstractWriteNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data,
+                                 uint64_t size) {
+    if (!isValidStructure(pos, op)) return -1;
+    const uint32_t quotient = size / WriteChunkSize;
+    const uint32_t writeChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
+    const uint32_t pagesToWrite = writeChunks / MaxChunksPerPage;
+
+//        etl::array<uint8_t, size> readData = {};
+//        readNAND<size, pos, op>(readData);
+//
+//        if(etl::find()){
+//
+//        }
+
+    if (op == PAGE || op == PAGE_BLOCK) {
+        for (size_t page = 0; page < pagesToWrite; page++) {
+            for (size_t chunk = 0; chunk < MaxChunksPerPage; chunk++) {
+
+                etl::array<uint8_t, WriteChunkSize> dataChunk = {};
+                uint64_t offset = (WriteChunkSize * (chunk + (page * MaxChunksPerPage)));
+                etl::move((data.begin() + offset), (data.begin() + offset + WriteChunkSize), dataChunk.begin());
+                etl::array<uint8_t, NumECCBytes>
+                        genECC = generateECCBytes(dataChunk);
+                etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+                uint8_t result = writeNAND(pos, op, dataToWrite,
+                                           (WriteChunkSize + NumECCBytes));    //TODO: use etl::expected
+                if (result != 0) return result;
+            }
+        }
+        const uint8_t chunksLeft = writeChunks - (MaxChunksPerPage * pagesToWrite);
+        if ((pos->page + 1) != NumPagesBlock) {
+            ++pos->page;
+            // TODO: add read to see if that page is written already up to numberOfAddresses + NumECCBytes
+        } else if ((pos->block + 1) != MaxNumBlock) {
+            ++pos->block;
+        } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+
+        for (size_t i = 0; i < chunksLeft; i++) {
+            etl::array<uint8_t, WriteChunkSize> dataChunk = {};
+            uint64_t offset = WriteChunkSize * (i + (pagesToWrite * MaxChunksPerPage));
+            etl::move((data.begin() + offset), (data.begin() + offset + WriteChunkSize), dataChunk.begin());
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+            etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+            etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+            etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+            uint8_t result = writeNAND(pos, op, dataToWrite, (WriteChunkSize + NumECCBytes));
+            if (result != 0) return result;
+        }
+    } else {
+        pos->page = (op == POS) ? (pos->position / PageSizeBytes) : pos->page;
+        pos->block = (op == POS) ? (pos->page / NumPagesBlock) : pos->block;
+        const uint16_t column = pos->position - (pos->page * PageSizeBytes);
+        const uint8_t chunksFitThisPage = (PageSizeBytes - column) / (WriteChunkSize + NumECCBytes);
+        for (size_t i = 0; i < chunksFitThisPage; i++) {
+            etl::array<uint8_t, WriteChunkSize> dataChunk = {};
+            uint64_t offset = WriteChunkSize * i;
+            etl::move((data.begin() + offset), (data.begin() + offset + WriteChunkSize), dataChunk.begin());
+            etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+            etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+            etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+            etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+            uint8_t result = writeNAND(pos, op, dataToWrite, (WriteChunkSize + NumECCBytes));
+            if (result != 0) return result;
+            if (i != (chunksFitThisPage - 1)) {
+                pos->position += (WriteChunkSize + NumECCBytes);
+            } else break;
+        }
+        pos->position = 0;
+        if (chunksFitThisPage < writeChunks) {
+            const uint32_t pagesToWriteLeft =
+                    pagesToWrite - ((writeChunks - chunksFitThisPage) / MaxChunksPerPage);
+            for (size_t page = 0; page < pagesToWriteLeft; page++) {
+                if ((pos->page + 1) != NumPagesBlock) {
+                    ++pos->page;
+                    // TODO: add read to see if that page is written already up to numberOfAddresses + NumECCBytes
+                } else if ((pos->block + 1) != MaxNumBlock) {
+                    ++pos->block;
+                } else pos->LUN = pos->LUN == 0 ? 1 : 0;
+                uint32_t chunksFitTillThisPage = chunksFitThisPage + (page * MaxChunksPerPage);
+                for (size_t chunk = 0;
+                     (chunk < (writeChunks - chunksFitTillThisPage) ||
+                      (chunk < MaxChunksPerPage)); chunk++) {
+                    etl::array<uint8_t, WriteChunkSize> dataChunk = {};
+                    uint64_t offset = (WriteChunkSize * (chunk + chunksFitTillThisPage));
+                    etl::move((data.begin() + offset), (data.begin() + offset + WriteChunkSize), dataChunk.begin());
+                    etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(dataChunk);
+                    etl::array<uint8_t, (WriteChunkSize + NumECCBytes)> dataToWrite = {};
+                    etl::move(dataChunk.begin(), dataChunk.end(), dataToWrite.begin());
+                    etl::move(genECC.begin(), genECC.end(), (dataToWrite.begin() + WriteChunkSize));
+                    uint8_t result = writeNAND(pos, PAGE_BLOCK, dataToWrite, size);
+                    if (result != 0) return result;
+                }
+            }
+
+        }
+
+    }
+    return 0;
+
+}
+
 template<>
 etl::array<uint8_t, MT29F::WriteChunkSize>
 MT29F::dataChunker<(MT29F::WriteChunkSize + MT29F::NumECCBytes)>(
@@ -298,7 +443,8 @@ uint8_t MT29F::readNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::spa
     return 0;
 }
 
-uint8_t MT29F::abstractReadNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
+uint8_t
+MT29F::abstractReadNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
     if (!isValidStructure(pos, op)) return -1;
     const uint32_t quotient = size / WriteChunkSize;
     const uint32_t readChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
@@ -394,6 +540,8 @@ uint8_t MT29F::abstractReadNAND(MT29F::Structure *pos, MT29F::AddressConfig op, 
     }
     return 0;
 }
+
+
 
 
 

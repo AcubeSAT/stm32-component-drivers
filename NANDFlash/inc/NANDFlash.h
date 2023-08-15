@@ -1,6 +1,6 @@
 #pragma once
 
-#include <etl/span.h>
+#include "etl/span.h"
 #include "SMC.hpp"
 #include "definitions.h"
 #include "FreeRTOS.h"
@@ -513,6 +513,10 @@ public:
         }
         return 0;
     }
+
+    uint8_t writeNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
+
+    uint8_t abstractWriteNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 
     uint8_t readNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 
