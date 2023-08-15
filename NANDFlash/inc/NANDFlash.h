@@ -516,7 +516,7 @@ public:
 
     uint8_t writeNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 
-    uint8_t abstractWriteNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
+    uint8_t abstractWriteNAND(Structure *pos, AddressConfig op, etl::span<const uint8_t> data, uint64_t size);
 
     uint8_t readNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 

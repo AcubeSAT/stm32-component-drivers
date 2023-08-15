@@ -293,7 +293,7 @@ uint8_t MT29F::writeNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::sp
     return detectArrayError();
 }
 
-uint8_t MT29F::abstractWriteNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data,
+uint8_t MT29F::abstractWriteNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<const uint8_t> data,
                                  uint64_t size) {
     if (!isValidStructure(pos, op)) return -1;
     const uint32_t quotient = size / WriteChunkSize;
