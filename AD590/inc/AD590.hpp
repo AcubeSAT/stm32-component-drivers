@@ -65,9 +65,13 @@ private:
     /**
      * Value of the resistor that maps the current to 3.3 voltage and the difference of sampling.
      */
-    static float resistorValue ;
+    float resistorValue ;
 
 public:
+    /**
+     * Variable in which the acd conversion result from channel 0 is stored.
+     */
+    static inline uint16_t adc_ch0;
 
     AD590(){
         resistorValue = 7.870;
@@ -83,6 +87,6 @@ public:
     /**
      * Gets the analog temperature from the AD590 temperature sensor, converts it to digital and prints it.
      */
-    void getTemperature(uint16_t adc_ch0);
+    void getTemperature();
 };
 

@@ -1,6 +1,6 @@
 #include "AD590.hpp"
 
-void AD590::getTemperature(uint16_t adc_ch0) {
+void AD590::getTemperature() {
 
         float MCUtemperature = convertADCValueToTemperature(adc_ch0);
 
@@ -14,7 +14,6 @@ void AD590::getTemperature(uint16_t adc_ch0) {
         }
         LOG_DEBUG << log.data() << " degrees Celsius";
         vTaskDelay(pdMS_TO_TICKS(1000));
-
 }
 
 float AD590::convertADCValueToTemperature(uint16_t ADCconversion){
