@@ -5,31 +5,6 @@
 #include "Logger.hpp"
 #include "task.h"
 #include "Peripheral_Definitions.hpp"
-#include "peripheral/afec/plib_afec0.h"
-
-/**
- * AD590 temperature sensor driver
- *
- * This is a simple driver to use the AD590 sensor on ATSAMV71Q21B microcontrollers.
- *
- * For more details about the operation of the sensor, see the datasheets found at:
- * https://www.mouser.com/catalog/specsheets/intersil_fn3171.pdf
- * and https://www.analog.com/media/en/technical-documentation/data-sheets/ad590.pdf
- *
- * ------BREAKOUT PINOUT---------
- *
- * GND to GND
- * 5V to 5V
- *
- * Without op-amp :
- * TEMP-RAW to PD30 (EXT2 on the ATSAMV71)
- *
- * With op-amp :
- * TEMP-OPAMP to PD30 (EXT2 on the ATSAMV71)
- * OPAMP-VCC to 3V3
- *
- *
- */
 
 #if AD590_AFEC_Peripheral == 0
 
@@ -37,7 +12,6 @@
 #define AD590_AFEC_ChannelResultGet AFEC0_ChannelResultGet
 #define AD590_AFEC_ConversionStart AFEC0_ConversionStart
 #define AD590_AFEC_ChannelResultIsReady AFEC0_ChannelResultIsReady
-
 
 #elif AD590_AFEC_Peripheral == 1
 
@@ -48,6 +22,16 @@
 
 #endif
 
+/**
+ * AD590 temperature sensor driver
+ *
+ * This is a simple driver to use the AD590 sensor on ATSAMV71Q21B microcontrollers.
+ *
+ * For more details about the operation of the sensor, see the datasheets found at:
+ * https://www.mouser.com/catalog/specsheets/intersil_fn3171.pdf
+ * and https://www.analog.com/media/en/technical-documentation/data-sheets/ad590.pdf
+ *
+ */
 
 class AD590 {
 private:
@@ -63,19 +47,33 @@ private:
     inline static constexpr float referenceTemperature = 25;
 
     /**
-     * Value of the resistor that maps the current to 3.3 voltage and the difference of sampling.
+     * Number of bits that the Analog to Digital (ADC) conversion result consists of.
      */
-    float resistorValue ;
+    const int numOfBits;
+
+    /**
+     * Value of the voltage that we connect the sensor to.
+     */
+    const int voltageValue;
+
+    /**
+     * Value of the resistor, in kilo-ohms (kΩ), that maps the current output of the sensor onto the range 0-3.3V.
+     */
+    const float resistorValue ;
+
+    /**
+     * Number of the AFEC peripheral channel being used.
+     */
+    const AFEC_CHANNEL_NUM adcChannelNumber;
 
 public:
     /**
-     * Variable in which the acd conversion result from channel 0 is stored.
+     * Variable in which the Analog to Digital (ADC) conversion result from channel 0 is stored.
      */
-    static inline uint16_t adc_ch0;
+    static uint16_t adcResult;
 
-    AD590(){
-        resistorValue = 7.870;
-    }
+    AD590(int numOfBits,int voltageValue, float resistorValue, AFEC_CHANNEL_NUM adcChannelNumber): numOfBits(numOfBits),voltageValue(voltageValue),resistorValue(resistorValue), adcChannelNumber(adcChannelNumber) {}
+
 
     /**
      * Converts the voltage to current and finally to temperature in Celsius.
@@ -87,6 +85,6 @@ public:
     /**
      * Gets the analog temperature from the AD590 temperature sensor, converts it to digital and prints it.
      */
-    void getTemperature();
+    float getTemperature();
 };
 
