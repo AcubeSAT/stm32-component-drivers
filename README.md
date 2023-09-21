@@ -58,3 +58,14 @@ The configuration for the pins is done through the SMC peripheral on the Harmony
 The configuration of the SMC peripheral is as shown below for the EQM OBC/ADCS Board
 
 ![img.png](Media/mram_conf.png)
+
+##AD590
+
+### AD590 Connections:
+| Pin Number | Connection | Connection on the dev board | Notes |
+| ------ | ----- | ----- | ----- |
+| 1 | GND | Set to ground |  |
+| 2 | 5V | Set to 5V from the dev board |  |
+| 3 | TEMP-RAW | Connect to PD30 (EXT2 on the ATSAMV71) | Whithout the op-amp |
+| 4 | TEMP-OPAMP | Connect to PD30 (EXT2 on the ATSAMV71) | With op-amp |
+| 5 | OPAMP-VCC | Set to 3V3 from the dev board | With op-amp |
