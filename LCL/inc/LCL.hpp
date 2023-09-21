@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "peripheral/pio/plib_pio.h"
 #include "peripheral/pwm/plib_pwm0.h"
+#include "peripheral/dacc/plib_dacc.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -14,17 +15,7 @@
  * The programmable logic requires a Pulse Width Modulation (PWM) signal, a GPIO for Set and a GPIO for Reset Logic.
  */
 class LCL {
-private:
-    /**
-     * The Pulse Width Modulation (PWM) channel used for setting the CONT voltage of the LCL.
-     */
-    const PWM_CHANNEL_NUM pwmChannel;
-
-    /**
-     * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
-     */
-    const PWM_CHANNEL_MASK pwmChannelMask;
-
+protected:
     /**
      * The Reset Pin force disables the LCL when driven Low, overriding the Set Pin.
      * Drive High to start the sequence that enables the LCL.
@@ -45,8 +36,23 @@ public:
      * @param resetPin @see resetPin
      * @param setPin @see setPin
      */
-    LCL(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
+    LCL(PIO_PIN resetPin, PIO_PIN setPin);
+};
 
+class LCLPWM : public LCL{
+private:
+    /**
+    * The Pulse Width Modulation (PWM) channel used for setting the CONT voltage of the LCL.
+    */
+    const PWM_CHANNEL_NUM pwmChannel;
+
+    /**
+     * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
+     */
+    const PWM_CHANNEL_MASK pwmChannelMask;
+public:
+
+    LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
     /**
      * Enable to LCL to monitor and protect the protected IC from over current.
      * Sequence to enable the LCL is as follows:
@@ -68,5 +74,15 @@ public:
      * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
      * @note Configure the default state of the PWM signal to be Low (instead of High) when the channel is turned off.
      */
+    void disableLCL();
+};
+
+class LCLDACC:public LCL{
+private:
+    const DACC_CHANNEL_NUM dacChannel = DACC_CHANNEL_0;
+
+public:
+    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin);
+    void enableLCL();
     void disableLCL();
 };
