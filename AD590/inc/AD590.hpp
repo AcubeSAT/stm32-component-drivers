@@ -61,16 +61,24 @@ private:
      */
     const float resistorValue ;
 
+public:
+
     /**
      * Number of the AFEC peripheral channel being used.
      */
     const AFEC_CHANNEL_NUM adcChannelNumber;
 
-public:
     /**
      * Variable in which the Analog to Digital (ADC) conversion result from channel 0 is stored.
      */
-    static uint16_t adcResult;
+     uint16_t adcResult;
+
+    /**
+     * Sets the Analog to Digital conversion result.
+     * @param adcResult
+     */
+    void setADCResult(const uint16_t adcResult);
+
 
     AD590(int numOfBits,int voltageValue, float resistorValue, AFEC_CHANNEL_NUM adcChannelNumber): numOfBits(numOfBits),voltageValue(voltageValue),resistorValue(resistorValue), adcChannelNumber(adcChannelNumber) {}
 

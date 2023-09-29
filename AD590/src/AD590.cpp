@@ -1,5 +1,9 @@
 #include "AD590.hpp"
 
+void AD590::setADCResult(const uint16_t ADCResult) {
+    adcResult = ADCResult;
+}
+
 float AD590::getTemperature() {
         return convertADCValueToTemperature(adcResult);
 }
