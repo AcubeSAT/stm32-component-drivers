@@ -43,6 +43,13 @@ void LCLDACC::enableLCL() {
 
 void LCLDACC::disableLCL() {
     // Disable the DACC channel (dacChannel)
+    if (DACC_IsReady(dacChannel))
+    {
+        DACC_DataWrite (dacChannel, 0);
+    }
+    else{
+        //error handling code here
+    }
 
     // Drive resetPin and setPin as needed for DAC operation
     PIO_PinWrite(resetPin, false);
