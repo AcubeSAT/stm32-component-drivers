@@ -316,4 +316,3 @@ public:
     uint8_t abstractReadNAND(Structure *pos, AddressConfig op, etl::span<uint8_t> data, uint64_t size);
 
 };
-

@@ -57,7 +57,7 @@ typedef MT_uint16 bus_t;
 	This function is called during driver initialization.
 */
 
-void PLATFORM_Init();
+void PLATFORM_Init(void);
 
 /**
  	Open NAND device.

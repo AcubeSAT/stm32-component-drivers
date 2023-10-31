@@ -4,7 +4,7 @@
 #include "NANDFlash.h"
 
 
-uint8_t MT29F::reset  NAND() {
+uint8_t MT29F::resetNAND() {
     sendCommand(RESET);
     sendCommand(READ_STATUS);
     return waitDelay() == NAND_TIMEOUT ? NAND_TIMEOUT : readData();
