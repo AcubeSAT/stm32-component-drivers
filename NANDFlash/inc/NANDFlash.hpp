@@ -33,7 +33,6 @@ private:
                 return;
 
             case NCS1:
-                MATRIX_REGS->CCFG_SMCNFCS &= 0xF;
                 MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(enableNandConfiguration);
                 return;
 
