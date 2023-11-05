@@ -33,7 +33,7 @@
 #include <time.h>
 #endif
 
-#include "nand_MT29F_lld.h"
+#include "nand_MT29F_lld.hpp"
 
 /* uncomment this line to show the address translation */
 /* #define DEBUG_PRINT_ADDRESS */
