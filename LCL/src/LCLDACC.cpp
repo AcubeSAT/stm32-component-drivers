@@ -34,3 +34,13 @@ void LCLDACC::disableLCL() {
     PIO_PinWrite(resetPin, false);
     PIO_PinWrite(setPin, true);
 }
+
+void LCLDACC::increment() {
+    /* Write next data sample */
+    dac_count = dac_count + DAC_COUNT_INCREMENT;
+
+    if (dac_count > DAC_COUNT_MAX)
+        dac_count=0;
+
+    DACC_DataWrite(DACC_CHANNEL_0, dac_count);
+}
