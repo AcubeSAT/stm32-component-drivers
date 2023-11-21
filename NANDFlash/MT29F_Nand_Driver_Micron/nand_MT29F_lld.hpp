@@ -29,6 +29,7 @@
 
 #include "common.hpp"
 #include "nand_hw_if.hpp"
+#include "time.h"
 
 /******************************************************************************
  * 								USER SETTINGS AREA

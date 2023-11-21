@@ -1605,10 +1605,10 @@ MT_uint8 NAND_OTP_Mode_Protect(nand_addr_t addr) {
 
     /* x8 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
-        ret = NAND_OTP_Page_Program(addr, write_buf, device_info.data_bytes_per_page);
+        ret = NAND_Page_Program(addr, write_buf, device_info.data_bytes_per_page);
         /* x16 */
     else
-        ret = NAND_OTP_Page_Program(addr, write_buf, (device_info.data_bytes_per_page>>2));
+        ret = NAND_Page_Program(addr, write_buf, (device_info.data_bytes_per_page>>2));
 
     if(NAND_SUCCESS != ret) {
         /* in case of program error, exit in OTP mode */
