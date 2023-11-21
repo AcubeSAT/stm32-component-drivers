@@ -2,16 +2,18 @@
 #include "LCLDACC.hpp"
 
 LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin):LCL(resetPin, setPin), dacChannel(dacChannel) {
-    disableLCL();
+    //disableLCL();
 }
 
 void LCLDACC::enableLCL() {
+    DACC_DataWrite (dacChannel, 0xff);//value
     if (DACC_IsReady(dacChannel))
     {
         DACC_DataWrite (dacChannel, 0xff);//value
     }
     else{
         //error handling code here
+        DACC_Initialize();
     }
     PIO_PinWrite(setPin, false);
 
@@ -22,12 +24,13 @@ void LCLDACC::enableLCL() {
 
 void LCLDACC::disableLCL() {
     // Disable the DACC channel (dacChannel)
+    DACC_DataWrite (dacChannel, 0);
     if (DACC_IsReady(dacChannel))
     {
         DACC_DataWrite (dacChannel, 0);
     }
     else{
-        //error handling code here
+        DACC_Initialize();
     }
 
     // Drive resetPin and setPin as needed for DAC operation
@@ -35,12 +38,3 @@ void LCLDACC::disableLCL() {
     PIO_PinWrite(setPin, true);
 }
 
-void LCLDACC::increment() {
-    /* Write next data sample */
-    dac_count = dac_count + DAC_COUNT_INCREMENT;
-
-    if (dac_count > DAC_COUNT_MAX)
-        dac_count=0;
-
-    DACC_DataWrite(DACC_CHANNEL_0, dac_count);
-}
