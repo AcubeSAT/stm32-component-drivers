@@ -164,10 +164,10 @@ public:
     }
 
     bool isNANDAlive(){
-            etl::array<uint8_t, 8> id = {};
-            const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
-            readNANDID(id);
-            return etl::equal(id.begin(), id.end(), valid_id);
+        etl::array<uint8_t, 8> id = {};
+        const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
+        readNANDID(id);
+        return etl::equal(id.begin(), id.end(), valid_id);
     }
 
     uint8_t eraseBlock(uint8_t LUN, uint16_t block){

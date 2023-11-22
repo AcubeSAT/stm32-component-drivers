@@ -1,6 +1,6 @@
 /**
   @file
-  Filename:		nand_MT29F_lld.c
+  Filename:		nand_MT29F_lld.cpp
   Description:  Library routines for the Software Drivers for NAND flash
 
   � 2012 Micron Technology, Inc. All Rights Reserved
