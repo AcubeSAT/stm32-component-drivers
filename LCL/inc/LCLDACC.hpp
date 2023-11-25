@@ -28,6 +28,7 @@ public:
     * with power again.
     */
     void enableLCL() override;
+
     /**
     * Disable the LCL, cutting the supply voltage to the IC. To achieve this, the Reset Pin is driven Low to force the
     * SR Latch state to Low, cutting the power towards the IC and as an extra step, the PWM signal is closed, setting

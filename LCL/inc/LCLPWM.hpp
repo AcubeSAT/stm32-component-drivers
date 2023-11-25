@@ -1,7 +1,8 @@
 #pragma once
+
 #include "LCL.hpp"
 
-class LCLPWM : public LCL{
+class LCLPWM : public LCL {
 private:
     /**
     * The Pulse Width Modulation (PWM) channel used for setting the CONT voltage of the LCL.
@@ -15,6 +16,7 @@ private:
 public:
 
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
+
     /**
      * Enable to LCL to monitor and protect the protected IC from over current.
      * Sequence to enable the LCL is as follows:

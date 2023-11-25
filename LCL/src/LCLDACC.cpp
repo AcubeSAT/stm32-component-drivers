@@ -1,8 +1,8 @@
-#include <Logger.hpp>
 #include "LCL.hpp"
 #include "LCLDACC.hpp"
 
-LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin):LCL(resetPin, setPin), dacChannel(dacChannel) {
+LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin) : LCL(resetPin, setPin),
+                                                                                  dacChannel(dacChannel) {
     disableLCL();
 }
 
@@ -27,4 +27,3 @@ void LCLDACC::disableLCL() {
     PIO_PinWrite(resetPin, false);
     PIO_PinWrite(setPin, true);
 }
-

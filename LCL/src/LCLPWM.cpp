@@ -5,7 +5,8 @@ LCLPWM::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_
         : LCL(resetPin, setPin), pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask) {
     disableLCL();
 }
-void LCLPWM::enableLCL(){
+
+void LCLPWM::enableLCL() {
     PIO_PinWrite(resetPin, true);
     PWM0_ChannelsStart(pwmChannelMask);
     PIO_PinWrite(setPin, false);
