@@ -25,14 +25,14 @@ Use a pair of Pull-Up Resistors each, one from Data and one from Clock, up to VC
 ### MCP9808 Connections:
 | Breakout Pin | Connection | Notes |
 | ------ | ----- | ----- |
-| SDA | I2C Data | Connect to PD27 |
-| SCL | I2C Clock | Connect to PD28 |
+| SDA | I2C Data | Connect to PD27, connector J505 of the ATSAM dev board |
+| SCL | I2C Clock | Connect to PD28, connector J505 of the ATSAM dev board |
 | Alert | GPIO | Unused |
 | GND | Ground | Set to common ground |
 | A2 | A2 | Set to common ground |
 | A1 | A1 | Set to common ground |
 | A0 | A0 | Set to common ground |
-| Vdd | Power 3V3 | Set to 3V3 from the dev board |
+| Vdd | Power 3V3 | Set to 3V3 on the Power header of the ATSAM dev board |
 
 Our breakout board currently skips two pins Pin 4 and Pin 7. For example MCP's Pin 4 is connected to the breakout's Pin 5. 
 
