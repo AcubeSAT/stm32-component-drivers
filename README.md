@@ -16,25 +16,23 @@ The default code in this repository is using the address 000, so the below instr
 
 ### Pins 
 
-Data CPU Pin PD27 is assigned to D20 on the Dev board
+I2C Data Pin PD27 is assigned to D20 on the Dev board
 
-Clock CPU Pin PD28 is assigned to D21 on the Dev board
+I2C Clock Pin PD28 is assigned to D21 on the Dev board
 
-Use a pair of Pull-Up Resistors each, one from Data and one from Clock, up to VCC.
-
-For a simple connection using small jumpers, a pair of 1kΩ each is appropriate. 
+Use a pair of Pull-Up Resistors each, one from Data and one from Clock, up to VCC. For a simple connection using small jumpers, a pair of 1kΩ each is appropriate. (you can skip this step if you are using the [breakout board](https://www.adafruit.com/product/1782)).
 
 ### MCP9808 Connections:
-| Pin Number | Connection | Notes |
+| Breakout Pin | Connection | Notes |
 | ------ | ----- | ----- |
-| 1 | Data | Use a pull up resistor to 3.3V |
-| 2 | Clock | Use a pull up resistor to 3.3V |
-| 3 | Alert | Unused |
-| 4 | Ground | Set to one of the dev board's grounds |
-| 5 | A2 | Set to ground |
-| 6 | A1 | Set to ground |
-| 7 | A0 | Set to ground |
-| 8 | Vdd | Set to 3V3 from the dev board |
+| SDA | I2C Data | Connect to PD27 |
+| SCL | I2C Clock | Connect to PD28 |
+| Alert | GPIO | Unused |
+| GND | Ground | Set to common ground |
+| A2 | A2 | Set to common ground |
+| A1 | A1 | Set to common ground |
+| A0 | A0 | Set to common ground |
+| Vdd | Power 3V3 | Set to 3V3 from the dev board |
 
 Our breakout board currently skips two pins Pin 4 and Pin 7. For example MCP's Pin 4 is connected to the breakout's Pin 5. 
 
