@@ -8,6 +8,8 @@ Libraries for interfacing various hardware components and ICs with ATSAM microco
 
 Each subsystem shall define MCP9808_TWI_PORT in a platform specific header file.
 
+[The Breakout Board](https://www.adafruit.com/product/1782) we use for testing.
+
 ### Connecting the MCP9808 at the Xplained V71 Dev Board
 
 You should set the I2C_USER_ADDRESS to a defined value. This is done by setting the A0-A1-A2 pins of the temperature sensor.
@@ -20,10 +22,10 @@ I2C Data Pin PD27 is assigned to D20 on the Dev board
 
 I2C Clock Pin PD28 is assigned to D21 on the Dev board
 
-Use a pair of Pull-Up Resistors each, one from Data and one from Clock, up to VCC. For a simple connection using small jumpers, a pair of 1kΩ each is appropriate. (you can skip this step if you are using the [breakout board](https://www.adafruit.com/product/1782)).
+Use a pair of Pull-Up Resistors each, one from Data and one from Clock, up to VCC. For a simple connection using small jumpers, a pair of 1kΩ each is appropriate. (you can skip this step if you are using the breakout board)
 
 ### MCP9808 Connections:
-| Breakout Pin | Connection | Notes |
+| Breakout Board Pin | Connection | Notes |
 | ------ | ----- | ----- |
 | SDA | I2C Data | Connect to PD27, connector J505 of the ATSAM dev board |
 | SCL | I2C Clock | Connect to PD28, connector J505 of the ATSAM dev board |
