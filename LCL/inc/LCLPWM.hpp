@@ -13,6 +13,18 @@ private:
      * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
      */
     const PWM_CHANNEL_MASK pwmChannelMask;
+
+    /**
+     * The Reset Pin force disables the LCL when driven Low, overriding the Set Pin.
+     * Drive High to start the sequence that enables the LCL.
+     */
+    const PIO_PIN resetPin;
+
+    /**
+     * The Set Pin force enables the LCL when driven Low. If the Set and Reset pins are High and the CONT voltage is
+     * higher than the THRES voltage, the LCL maintains its status.
+     */
+    const PIO_PIN setPin;
 public:
 
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);

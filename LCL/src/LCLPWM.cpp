@@ -2,7 +2,7 @@
 #include "LCLPWM.hpp"
 
 LCLPWM::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin)
-        : LCL(resetPin, setPin), pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask) {
+        : LCL(), pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask), resetPin(resetPin), setPin(setPin) {
     disableLCL();
 }
 

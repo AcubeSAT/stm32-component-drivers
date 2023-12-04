@@ -1,16 +1,29 @@
 #pragma once
+
 #include "LCL.hpp"
 
 
-class LCLDACC:public LCL{
+class LCLDACC : public LCL {
 private:
     /**
    * The DACC channel used for setting the voltage of the LCL.
    */
-    const DACC_CHANNEL_NUM dacChannel = DACC_CHANNEL_0;
+    const DACC_CHANNEL_NUM dacChannel;
 
+    /**
+     * The Reset Pin force disables the LCL when driven Low, overriding the Set Pin.
+     * Drive High to start the sequence that enables the LCL.
+     */
+    const PIO_PIN resetPin;
+
+    /**
+     * The Set Pin force enables the LCL when driven Low. If the Set and Reset pins are High and the CONT voltage is
+     * higher than the THRES voltage, the LCL maintains its status.
+     */
+    const PIO_PIN setPin;
 public:
     LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin);
+
     /**
     * Enable to LCL to monitor and protect the protected IC from over current.
     * Sequence to enable the LCL is as follows:
