@@ -47,25 +47,26 @@ bool MT29F::isNANDAlive() {
     return false;
 }
 
-//uint8_t MT29F::waitDelay() {
-//    const uint32_t start = xTaskGetTickCount();
-//    while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
-//        if ((xTaskGetTickCount() - start) > TimeoutCycles) {
-//            return NAND_TIMEOUT;
-//        }
-//    }
-//    return 0;
-//}
+uint8_t MT29F::waitDelay() {
+    const uint32_t start = xTaskGetTickCount();
+    while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
+        if ((xTaskGetTickCount() - start) > TimeoutCycles) {
+            return NAND_TIMEOUT;
+        }
+    }
+    return 0;
+}
 
-//uint8_t MT29F::errorHandler() {
-//    if (resetNAND() != 224) {
-//        if (!isNANDAlive()) {
-//            // TODO: Check if LCL is on and execute its task again if need be
-//            return NAND_NOT_ALIVE;
-//        }
-//    }
-//    return 0;
-//}
+uint8_t MT29F::errorHandler() {
+    if (resetNAND() != 224) {
+        if (!isNANDAlive()) {
+            // TODO: Check if LCL is on and execute its task again if need be
+            return STATUS_FAIL;
+        }
+    }
+    return 0;
+}
+
 //
 //etl::array<uint8_t, MT29F::WriteChunkSize> MT29F::detectCorrectECCError(
 //        etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> dataECC, etl::array<uint8_t, NumECCBytes> newECC) {
@@ -113,44 +114,10 @@ bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> d
     NAND_Page_Program(addr, data.data(), data.size());
 }
 
-//uint8_t MT29F::readNAND(MT29F::Structure *pos, MT29F::AddressConfig op, etl::span<uint8_t> data, uint64_t size) {
-//    const uint8_t quotient = size / WriteChunkSize;
-//    const uint8_t dataChunks = (size - (quotient * WriteChunkSize)) > 0 ? (quotient + 1) : quotient;
-//    if ((dataChunks * (WriteChunkSize + NumECCBytes)) > MaxDataBytesPerPage) return -1;
-//    if (!isValidStructure(pos, op)) return -1;
-//    if (op == POS || op == POS_PAGE) {
-//        uint32_t page = pos->position / PageSizeBytes;
-//        uint16_t column = pos->position - page * PageSizeBytes;
-//        if ((column + (dataChunks * (WriteChunkSize + NumECCBytes))) > PageSizeBytes) return -1;
-//    }
-//    etl::span<uint8_t> dataECC = {};
-//
-//    const Address readAddress = setAddress(pos, op);
-//    sendCommand(READ_MODE);
-//    sendAddress(readAddress.col1);
-//    sendAddress(readAddress.col2);
-//    sendAddress(readAddress.row1);
-//    sendAddress(readAddress.row2);
-//    sendAddress(readAddress.row3);
-//    sendCommand(READ_CONFIRM);
-//    for (uint16_t i = 0; i < (dataChunks * (WriteChunkSize + NumECCBytes)); i++) {
-//        if (waitDelay() == NAND_TIMEOUT) {
-//            return NAND_TIMEOUT;
-//        }
-//        dataECC[i] = readData();
-//    }
-//
-//    for (size_t chunk = 0; chunk < dataChunks; chunk++) {
-//        etl::span<uint8_t, (WriteChunkSize + NumECCBytes)> thisChunkWithECC = {};
-//        etl::move((dataECC.begin() + (chunk * (WriteChunkSize + NumECCBytes))),
-//                  (dataECC.begin() + ((chunk + 1) * (WriteChunkSize + NumECCBytes))), thisChunkWithECC.begin());
-//        etl::array<uint8_t, NumECCBytes> genECC = generateECCBytes(
-//                dataChunker(thisChunkWithECC, 0));
-//        etl::array<uint8_t, WriteChunkSize> returnedData = detectCorrectECCError(thisChunkWithECC,
-//                                                                                 genECC);       // TODO: use etl::expected
-//        if (returnedData == etl::array<uint8_t, WriteChunkSize>{}) {
-//            return ECC_ERROR; // TODO: return the equivalent error from detectCorrectECCError
-//        } else etl::move(returnedData.begin(), returnedData.end(), (data.begin() + (chunk * WriteChunkSize)));
-//    }
-//    return 0;
-//}
+bool MT29F::readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data) {
+    nand_addr_t addr;
+    addr.lun = LUN;
+    addr.page = page;
+    addr.column = column;
+    NAND_Page_Read(addr, data.data(), data.size());
+}

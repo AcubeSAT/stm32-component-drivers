@@ -25,6 +25,8 @@ private:
     inline static constexpr uint8_t
             enableNandConfiguration = 1;
 
+    const static inline uint8_t TimeoutCycles = 20;
+
     /**
      * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
      */
@@ -52,8 +54,11 @@ private:
     }
 
 public:
-    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin, PIO_PIN nandWriteProtect) : SMC(chipSelect), nandReadyBusyPin(nandReadyBusyPin),
-                                                                                                 nandWriteProtect(nandWriteProtect) {
+    constexpr MT29F(ChipSelect chipSelect, PIO_PIN nandReadyBusyPin, PIO_PIN nandWriteProtect) : SMC(chipSelect),
+                                                                                                 nandReadyBusyPin(
+                                                                                                         nandReadyBusyPin),
+                                                                                                 nandWriteProtect(
+                                                                                                         nandWriteProtect) {
         selectNandConfiguration(chipSelect);
     }
 
@@ -89,7 +94,6 @@ public:
 
     bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data);
 
-    bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
+    bool readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data);
 
-    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses);
 };
