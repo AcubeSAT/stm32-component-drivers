@@ -75,7 +75,7 @@ public:
 
     uint8_t resetNAND(); // TODO: use etl::expected
 
-    void readNANDID(etl::array<uint8_t, 8>& id);
+    bool readNANDID(etl::array<uint8_t, 8> id);
 
     uint8_t eraseBlock(uint8_t LUN, uint16_t block); // TODO: use etl::expected
 
@@ -87,9 +87,7 @@ public:
 
     uint8_t errorHandler(); // TODO: use etl::expected
 
-    bool writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
-
-    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data);
+    bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data);
 
     bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
 
