@@ -1,30 +1,42 @@
-#include "LCL.hpp"
 #include "LCLDACC.hpp"
+#include "Logger.hpp"
 
-LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin) : LCL(),
-                                                                                  dacChannel(dacChannel),
-                                                                                  resetPin(resetPin), setPin(setPin) {
-    disableLCL();
+LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin) : LCL(resetPin, setPin),
+                                                                                  dacChannel(dacChannel) {
 }
 
 void LCLDACC::enableLCL() {
-    DACC_DataWrite(dacChannel, 2048); // Set initial arbitrary data value (1.618 V)
+    DACC_DataWrite(dacChannel, volts);
+    const TickType_t startTime = xTaskGetTickCount();
 
     while (!DACC_IsReady(dacChannel)) {
         // Wait until DACC is ready
+        const TickType_t currentTime = xTaskGetTickCount();
+        if ((currentTime - startTime) >= maxDelay) {
+            LOG_DEBUG << " DACC_IsReady timed out.";
+            DACC_Initialize();
+            break;
+        }
     }
-    DACC_DataWrite(dacChannel, 2048); // Set data value again after ensuring DACC is ready
     PIO_PinWrite(resetPin, true);
     PIO_PinWrite(setPin, false);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(smallDelay));
     PIO_PinWrite(setPin, true);
 }
 
 void LCLDACC::disableLCL() {
-    // Disable the DACC channel (dacChannel)
-    DACC_DataWrite(dacChannel, 0x00);
-    //can't use DACC_IsReady(dacChannel) because this runs before the DACC_Initialization in main.
-    // Drive resetPin and setPin as needed for DAC operation
+    TickType_t startTime = xTaskGetTickCount();
+    DACC_DataWrite(dacChannel, zeroVolts);
+
+    while (!DACC_IsReady(dacChannel)) {
+        // Wait until DACC is ready
+        const TickType_t currentTime = xTaskGetTickCount();
+        if ((currentTime - startTime) >= maxDelay) {
+            LOG_DEBUG << " DACC_IsReady timed out.";
+            DACC_Initialize();
+            break;
+        }
+    }
     PIO_PinWrite(resetPin, false);
     PIO_PinWrite(setPin, true);
 }

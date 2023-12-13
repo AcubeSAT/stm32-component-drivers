@@ -11,17 +11,35 @@ private:
     const DACC_CHANNEL_NUM dacChannel;
 
     /**
-     * The Reset Pin force disables the LCL when driven Low, overriding the Set Pin.
-     * Drive High to start the sequence that enables the LCL.
+     * The value for volts to write in the DACC_Channel
+     * The final value is calculated using the following formula: V = Vref * ( value / resolution )
+     * where: Vref=3.3V and resolution = 12 bit = 4096
+     * this value has been selected arbitrarily
      */
-    const PIO_PIN resetPin;
+    static constexpr uint16_t volts = 2048;
 
     /**
-     * The Set Pin force enables the LCL when driven Low. If the Set and Reset pins are High and the CONT voltage is
-     * higher than the THRES voltage, the LCL maintains its status.
+     * Value to output 0 Volts
      */
-    const PIO_PIN setPin;
+    static constexpr uint16_t zeroVolts = 0;
+
+    /**
+    * This variable is used to store the maximum time the task should wait for the DACC_CHANNEL to be ready to  in ticks.
+    * The number 1000ms was considered a good value arbitrarily
+    */
+    static constexpr TickType_t maxDelay = pdMS_TO_TICKS(1000);
+
+    /**
+     * A small delay to make sure signals have reached the pins before sending another signal to them*/
+    static constexpr TickType_t smallDelay = pdMS_TO_TICKS(10);
+
 public:
+    /**
+    * Constructor to set the necessary control pins for the LCL.
+    * @param dacChannel @see dacChanel
+    * @param resetPin @see resetPin
+    * @param setPin @see setPin
+    */
     LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin);
 
     /**
@@ -40,12 +58,12 @@ public:
     * @note If a surge is detected and the power is cut, the MCU will have to call the @fn enableLCL to provide the IC
     * with power again.
     */
-    void enableLCL() override;
+    void enableLCL();
 
     /**
     * Disable the LCL, cutting the supply voltage to the IC. To achieve this, the Reset Pin is driven Low to force the
     * SR Latch state to Low, cutting the power towards the IC and as an extra step, the PWM signal is closed, setting
     * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
     */
-    void disableLCL() override;
+    void disableLCL();
 };

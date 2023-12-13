@@ -15,18 +15,24 @@
  * The programmable logic requires a Pulse Width Modulation (PWM) signal, a GPIO for Set and a GPIO for Reset Logic.
  */
 class LCL {
+protected:
+    /**
+     * The Reset Pin force disables the LCL when driven Low, overriding the Set Pin.
+     * Drive High to start the sequence that enables the LCL.
+     */
+    const PIO_PIN resetPin = PIO_PIN_NONE;
 
-public:
+    /**
+     * The Set Pin force enables the LCL when driven Low. If the Set and Reset pins are High and the CONT voltage is
+     * higher than the THRES voltage, the LCL maintains its status.
+     */
+    const PIO_PIN setPin = PIO_PIN_NONE;
+
+protected:
     /**
      * Constructor to set the necessary control pins for the LCL.
-     * @param pwmChannel @see pwmChannel
-     * @param pwmChannelMask @see pwmChannelMask
      * @param resetPin @see resetPin
      * @param setPin @see setPin
      */
-    LCL() = default;
-
-    virtual void enableLCL() = 0;
-
-    virtual void disableLCL() = 0;
+    LCL(PIO_PIN resetPin, PIO_PIN setPin) {};
 };
