@@ -62,20 +62,28 @@ public:
         selectNandConfiguration(chipSelect);
     }
 
-    inline void sendData(uint8_t data) {
+    inline void PLATFORM_SendData(uint8_t data) {
         smcWriteByte(moduleBaseAddress, data);
     }
 
-    inline void sendAddress(uint8_t address) {
+    inline void PLATFORM_SendAddr(uint8_t address) {
         smcWriteByte(triggerNANDALEAddress, address);
     }
 
-    inline void sendCommand(uint8_t command) {
+    inline void PLATFORM_SendCmd(uint8_t command) {
         smcWriteByte(triggerNANDCLEAddress, command);
     }
 
-    inline uint8_t readData() {
+    inline uint8_t PLATFORM_ReadData() {
         return smcReadByte(moduleBaseAddress);
+    }
+
+    inline void PLATFORM_Open(void){
+
+    }
+
+    inline void PLATFORM_Close(void){
+
     }
 
     uint8_t resetNAND(); // TODO: use etl::expected
@@ -88,7 +96,7 @@ public:
 
     bool isNANDAlive();
 
-    uint8_t waitDelay(); // TODO: use etl::expected
+    uint8_t PLATFORM_Wait(int nanoseconds); // TODO: use etl::expected
 
     uint8_t errorHandler(); // TODO: use etl::expected
 

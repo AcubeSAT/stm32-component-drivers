@@ -3,7 +3,6 @@
 #include "etl/bitset.h"
 #include "NANDFlash.hpp"
 
-
 uint8_t MT29F::resetNAND() {
     NAND_Reset();
 }
@@ -47,8 +46,8 @@ bool MT29F::isNANDAlive() {
     return false;
 }
 
-uint8_t MT29F::waitDelay() {
-    const uint32_t start = xTaskGetTickCount();
+uint8_t MT29F::PLATFORM_Wait(int start) {
+    start = xTaskGetTickCount();
     while ((PIO_PinRead(nandReadyBusyPin) == 0)) {
         if ((xTaskGetTickCount() - start) > TimeoutCycles) {
             return NAND_TIMEOUT;
@@ -105,7 +104,7 @@ uint8_t MT29F::errorHandler() {
 
 
 
-bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data){
+bool MT29F::writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::span<uint8_t> data){
     nand_addr_t addr;
     addr.lun = LUN;
     addr.page = page;

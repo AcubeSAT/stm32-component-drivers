@@ -26,7 +26,6 @@
    Second release	1.1		03/2013		Added OTP functions
 
 *******************************************************************************/
-
 #include <string.h>
 
 #ifdef TIMEOUT_SUPPORT
@@ -61,6 +60,8 @@ MT_uint8 __wait_for_ready();
 MT_uint8 __is_valid_addr(nand_addr_t addr);
 MT_uint8 __compare_addr(nand_addr_t first_addr, nand_addr_t second_addr);
 void __build_cycle_addr(nand_addr_t addr, MT_uint8 *addr_cycle_stream);
+
+MT29F mt29f(SMC::NCS3, MEM_NAND_BUSY_1_PIN, MEM_NAND_WR_ENABLE_PIN);
 
 /******************************************************************************
  *						NAND Low Level Driver Functions
@@ -105,7 +106,6 @@ MT_uint8 Init_Driver(void) {
     return driver_status;
 }
 
-
 /**
     The RESET (90h) command must be issued to all CE#s as the first command
     after power-on.
@@ -124,17 +124,17 @@ MT_uint8 NAND_Reset(void) {
     MT_uint8 ret;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_RESET);
+    mt29f.PLATFORM_SendCmd(CMD_RESET);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return ret;
 }
@@ -165,21 +165,21 @@ MT_uint8 NAND_Read_ID(flash_width *buffer) {
         return DRIVER_STATUS_NOT_INITIALIZED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_READID);
-    PLATFORM_SendAddr(ADDR_READ_ID);
+    mt29f.PLATFORM_SendCmd(CMD_READID);
+    mt29f.PLATFORM_SendAddr(ADDR_READ_ID);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WHR);
+    mt29f.PLATFORM_Wait(TIME_WHR);
 
     /* read output */
     for(i=0; i<NUM_OF_READID_BYTES; i++)
-        buffer[i] = PLATFORM_ReadData();
+        buffer[i] =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 }
@@ -206,21 +206,21 @@ MT_uint8 NAND_Read_ID_ONFI(flash_width *buffer) {
     MT_uint32 i;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_READID);
-    PLATFORM_SendAddr(ADDR_READ_ID_ONFI);
+    mt29f.PLATFORM_SendCmd(CMD_READID);
+    mt29f.PLATFORM_SendAddr(ADDR_READ_ID_ONFI);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WHR);
+    mt29f.PLATFORM_Wait(TIME_WHR);
 
     /* read output */
     for(i=0; i<NUM_OF_READIDONFI_BYTES; i++)
-        buffer[i] = PLATFORM_ReadData();
+        buffer[i] =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 }
@@ -252,14 +252,14 @@ MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
     MT_uint32 i;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_READ_PARAM_PAGE);
-    PLATFORM_SendAddr(ADDR_PARAM_PAGE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_PARAM_PAGE);
+    mt29f.PLATFORM_SendAddr(ADDR_PARAM_PAGE);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
@@ -268,10 +268,10 @@ MT_uint8 NAND_Read_Param_Page(param_page_t *ppage) {
 
     /* read output */
     for(i=0; i<NUM_OF_PPAGE_BYTES; i++)
-        rbuf[i] = PLATFORM_ReadData();
+        rbuf[i] =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /*
      * Fill the parameter page data structure in the right way
@@ -396,22 +396,22 @@ MT_uint8 NAND_Set_Feature(flash_width feature_address, flash_width subfeature) {
         return NAND_UNSUPPORTED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_SET_FEATURE);
-    PLATFORM_SendAddr(feature_address);
+    mt29f.PLATFORM_SendCmd(CMD_SET_FEATURE);
+    mt29f.PLATFORM_SendAddr(feature_address);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_ADL);
+    mt29f.PLATFORM_Wait(TIME_ADL);
 
     /* send sub-feature parameter */
-    PLATFORM_SendData(subfeature);	/* p0 */
-    PLATFORM_SendData(0x00);		/* p1 reserved */
-    PLATFORM_SendData(0x00);		/* p2 reserved */
-    PLATFORM_SendData(0x00);		/* p3 reserved */
+    mt29f.PLATFORM_SendData(subfeature);	/* p0 */
+    mt29f.PLATFORM_SendData(0x00);		/* p1 reserved */
+    mt29f.PLATFORM_SendData(0x00);		/* p2 reserved */
+    mt29f.PLATFORM_SendData(0x00);		/* p3 reserved */
 
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
@@ -419,7 +419,7 @@ MT_uint8 NAND_Set_Feature(flash_width feature_address, flash_width subfeature) {
         return ret;
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return ret;
 }
@@ -457,14 +457,14 @@ MT_uint8 NAND_Get_Feature(flash_width feature_address, flash_width *subfeature) 
         return NAND_UNSUPPORTED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_GET_FEATURE);
-    PLATFORM_SendAddr(feature_address);
+    mt29f.PLATFORM_SendCmd(CMD_GET_FEATURE);
+    mt29f.PLATFORM_SendAddr(feature_address);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
@@ -472,13 +472,13 @@ MT_uint8 NAND_Get_Feature(flash_width feature_address, flash_width *subfeature) 
         return ret;
 
     /* send sub-feature parameter */
-    *subfeature = PLATFORM_ReadData(); /* p0 */
+    *subfeature =  mt29f.PLATFORM_ReadData(); /* p0 */
     /*
      * skip p1, p2 and p3 because they are reserved and their value are 00h
      */
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return ret;
 }
@@ -506,19 +506,19 @@ flash_width NAND_Read_Status() {
         return DRIVER_STATUS_NOT_INITIALIZED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_READ_STATUS);
+    mt29f.PLATFORM_SendCmd(CMD_READ_STATUS);
 
     /* wait */
-    PLATFORM_Wait(TIME_WHR);
+    mt29f.PLATFORM_Wait(TIME_WHR);
 
     /* read value */
-    ret = PLATFORM_ReadData();
+    ret =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return ret;
 }
@@ -559,24 +559,24 @@ flash_width NAND_Read_Status_Enhanced(nand_addr_t addr) {
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command  */
-    PLATFORM_SendCmd(CMD_READ_STATUS_ENHANCED);
+    mt29f.PLATFORM_SendCmd(CMD_READ_STATUS_ENHANCED);
 
     /* send row address (3rd, 4th, 5th cycle) */
-    PLATFORM_SendAddr(row_address[2]);
-    PLATFORM_SendAddr(row_address[3]);
-    PLATFORM_SendAddr(row_address[4]);
+    mt29f.PLATFORM_SendAddr(row_address[2]);
+    mt29f.PLATFORM_SendAddr(row_address[3]);
+    mt29f.PLATFORM_SendAddr(row_address[4]);
 
     /* wait */
-    PLATFORM_Wait(TIME_WHR);
+    mt29f.PLATFORM_Wait(TIME_WHR);
 
     /* read value */
-    ret = PLATFORM_ReadData();
+    ret =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return ret;
 }
@@ -618,21 +618,21 @@ MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command  */
-    PLATFORM_SendCmd(CMD_ERASE_BLOCK);
+    mt29f.PLATFORM_SendCmd(CMD_ERASE_BLOCK);
 
     /* send row address (3rd, 4th, 5th cycle) */
-    PLATFORM_SendAddr(row_address[2]);
-    PLATFORM_SendAddr(row_address[3]);
-    PLATFORM_SendAddr(row_address[4]);
+    mt29f.PLATFORM_SendAddr(row_address[2]);
+    mt29f.PLATFORM_SendAddr(row_address[3]);
+    mt29f.PLATFORM_SendAddr(row_address[4]);
 
     /* send confirm command */
-    PLATFORM_SendCmd(CMD_ERASE_BLOCK_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_ERASE_BLOCK_CONFIRM);
 
     /* wait */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout occurs */
@@ -642,7 +642,7 @@ MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* check if erase is good */
     if(!(status_reg & STATUS_WRITE_PROTECTED))
@@ -707,17 +707,17 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command  */
-    PLATFORM_SendCmd(CMD_READ_MODE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(row_address[i]);
+        mt29f.PLATFORM_SendAddr(row_address[i]);
 
     /* return to read mode */
-    PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
     /* wait */
     ret = __wait_for_ready();
@@ -728,13 +728,13 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
 
     /* read data */
     for(i=0; i<lenght; i++)
-        buffer[i] = PLATFORM_ReadData();
+        buffer[i] =  mt29f.PLATFORM_ReadData();
 
     /* read status register on exit */
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     if(status_reg & STATUS_FAIL)
         return NAND_READ_FAILED;
@@ -797,26 +797,26 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
     __build_cycle_addr(addr, address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(address[i]);
+        mt29f.PLATFORM_SendAddr(address[i]);
 
     /* send data */
     for(k=0; k<lenght; k++)
-        PLATFORM_SendData(buffer[k]);
+        mt29f.PLATFORM_SendData(buffer[k]);
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* check if program is good */
     if(!(status_reg & STATUS_WRITE_PROTECTED))
@@ -891,17 +891,17 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_READ_MODE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(row_address[i]);
+        mt29f.PLATFORM_SendAddr(row_address[i]);
 
     /* return to read mode */
-    PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
     /* wait */
     ret = __wait_for_ready();
@@ -912,13 +912,13 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
 
     /* read data */
     for(k=0; k<lenght; k++)
-        buffer[k] = PLATFORM_ReadData();
+        buffer[k] =  mt29f.PLATFORM_ReadData();
 
     /* read status register on exit */
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     if(status_reg & STATUS_FAIL)
         return NAND_READ_FAILED;
@@ -988,26 +988,26 @@ MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 len
     __build_cycle_addr(addr, address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(address[i]);
+        mt29f.PLATFORM_SendAddr(address[i]);
 
     /* send data */
     for(k=0; k<lenght; k++)
-        PLATFORM_SendData(buffer[k]);
+        mt29f.PLATFORM_SendData(buffer[k]);
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* check if program is good */
     if(!(status_reg & STATUS_WRITE_PROTECTED))
@@ -1032,14 +1032,14 @@ MT_uint8 NAND_Read_Unique_Id(flash_width *buffer) {
         return DRIVER_STATUS_NOT_INITIALIZED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command and/or address */
-    PLATFORM_SendCmd(CMD_READ_UNIQ_ID);
-    PLATFORM_SendAddr(ADDR_READ_UNIQ_ID);
+    mt29f.PLATFORM_SendCmd(CMD_READ_UNIQ_ID);
+    mt29f.PLATFORM_SendAddr(ADDR_READ_UNIQ_ID);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
 
     ret = __wait_for_ready();
 
@@ -1049,10 +1049,10 @@ MT_uint8 NAND_Read_Unique_Id(flash_width *buffer) {
 
     /* read output */
     for(i=0; i<NUM_OF_UNIQUEID_BYTES; i++)
-        buffer[i] = (MT_uint8) PLATFORM_ReadData();
+        buffer[i] = (MT_uint8)  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 
@@ -1134,22 +1134,22 @@ MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr) {
     __build_cycle_addr(dest_addr, dest_address_stream);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_READ_MODE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 
     /* send source address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(src_address_stream[i]);
+        mt29f.PLATFORM_SendAddr(src_address_stream[i]);
 
     /* read for internal data move */
 
     /* send command */
-    PLATFORM_SendCmd(CMD_READ_INTERNAL_DATA_MOVE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_INTERNAL_DATA_MOVE);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
@@ -1159,16 +1159,16 @@ MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr) {
     /* program for internal data move */
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PROGRAM_INTERNAL_DATA_MOVE);
+    mt29f.PLATFORM_SendCmd(CMD_PROGRAM_INTERNAL_DATA_MOVE);
 
     /* send destination address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(dest_address_stream[i]);
+        mt29f.PLATFORM_SendAddr(dest_address_stream[i]);
 
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
     /* wait (see datasheet for details) */
-    PLATFORM_Wait(TIME_WB);
+    mt29f.PLATFORM_Wait(TIME_WB);
     ret = __wait_for_ready();
 
     /* return if timeout */
@@ -1178,7 +1178,7 @@ MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr) {
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* check if program is good */
     if(!(status_reg & STATUS_WRITE_PROTECTED))
@@ -1285,13 +1285,13 @@ MT_uint8 NAND_Lock(void) {
         return DRIVER_STATUS_NOT_INITIALIZED;
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_LOCK);
+    mt29f.PLATFORM_SendCmd(CMD_LOCK);
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 }
@@ -1338,26 +1338,26 @@ MT_uint8 NAND_Unlock(nand_addr_t start_block, nand_addr_t end_block) {
     __build_cycle_addr(end_block, end_address_stream);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_LOW);
+    mt29f.PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_LOW);
 
     /* send row address (3rd, 4th, 5th cycle) */
-    PLATFORM_SendAddr(start_address_stream[2]);
-    PLATFORM_SendAddr(start_address_stream[3]);
-    PLATFORM_SendAddr(start_address_stream[4]);
+    mt29f.PLATFORM_SendAddr(start_address_stream[2]);
+    mt29f.PLATFORM_SendAddr(start_address_stream[3]);
+    mt29f.PLATFORM_SendAddr(start_address_stream[4]);
 
     /* send command */
-    PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_HIGH);
+    mt29f.PLATFORM_SendCmd(CMD_BLOCK_UNLOCK_HIGH);
 
     /* send row address (3rd, 4th, 5th cycle) */
-    PLATFORM_SendAddr(end_address_stream[2]);
-    PLATFORM_SendAddr(end_address_stream[3]);
-    PLATFORM_SendAddr(end_address_stream[4]);
+    mt29f.PLATFORM_SendAddr(end_address_stream[2]);
+    mt29f.PLATFORM_SendAddr(end_address_stream[3]);
+    mt29f.PLATFORM_SendAddr(end_address_stream[4]);
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 
@@ -1394,20 +1394,20 @@ MT_uint8 NAND_Read_Lock_Status(nand_addr_t block_addr) {
     __build_cycle_addr(block_addr, block_addr_stream);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command*/
-    PLATFORM_SendCmd(CMD_BLOCK_LOCK_READ_STATUS);
+    mt29f.PLATFORM_SendCmd(CMD_BLOCK_LOCK_READ_STATUS);
 
     /* send row address (3rd, 4th, 5th cycle) */
-    PLATFORM_SendAddr(block_addr_stream[2]);
-    PLATFORM_SendAddr(block_addr_stream[3]);
-    PLATFORM_SendAddr(block_addr_stream[4]);
+    mt29f.PLATFORM_SendAddr(block_addr_stream[2]);
+    mt29f.PLATFORM_SendAddr(block_addr_stream[3]);
+    mt29f.PLATFORM_SendAddr(block_addr_stream[4]);
 
-    block_lock_status_reg = PLATFORM_ReadData();
+    block_lock_status_reg =  mt29f.PLATFORM_ReadData();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* return the value of block status register */
     return block_lock_status_reg;
@@ -1681,26 +1681,26 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
     __build_cycle_addr(addr, address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(address[i]);
+        mt29f.PLATFORM_SendAddr(address[i]);
 
     /* send data */
     for(k=0; k<lenght; k++)
-        PLATFORM_SendData(buffer[k]);
+        mt29f.PLATFORM_SendData(buffer[k]);
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     return NAND_SUCCESS;
 }
@@ -1768,26 +1768,26 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
     __build_cycle_addr(addr, address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(address[i]);
+        mt29f.PLATFORM_SendAddr(address[i]);
 
     /* send data */
     for(k=0; k<lenght; k++)
-        PLATFORM_SendData(buffer[k]);
+        mt29f.PLATFORM_SendData(buffer[k]);
 
     /* send command */
-    PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_PAGE_PROGRAM_CONFIRM);
 
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     /* check if program is good */
     if(status_reg & STATUS_FAIL)
@@ -1850,17 +1850,17 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command  */
-    PLATFORM_SendCmd(CMD_READ_MODE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(row_address[i]);
+        mt29f.PLATFORM_SendAddr(row_address[i]);
 
     /* return to read mode */
-    PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
     /* wait */
     ret = __wait_for_ready();
@@ -1871,13 +1871,13 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
 
     /* read data */
     for(i=0; i<lenght; i++)
-        buffer[i] = PLATFORM_ReadData();
+        buffer[i] =  mt29f.PLATFORM_ReadData();
 
     /* read status register on exit */
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     if(status_reg & STATUS_FAIL)
         return NAND_READ_FAILED;
@@ -1949,17 +1949,17 @@ MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 le
     __build_cycle_addr(addr, row_address);
 
     /* init board transfer */
-    PLATFORM_Open();
+    mt29f.PLATFORM_Open();
 
     /* send command */
-    PLATFORM_SendCmd(CMD_READ_MODE);
+    mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 
     /* send address */
     for(i=0; i<NUM_OF_ADDR_CYCLE; i++)
-        PLATFORM_SendAddr(row_address[i]);
+        mt29f.PLATFORM_SendAddr(row_address[i]);
 
     /* return to read mode */
-    PLATFORM_SendCmd(CMD_READ_CONFIRM);
+    mt29f.PLATFORM_SendCmd(CMD_READ_CONFIRM);
 
     /* wait */
     ret = __wait_for_ready();
@@ -1970,13 +1970,13 @@ MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 le
 
     /* read data */
     for(k=0; k<lenght; k++)
-        buffer[k] = PLATFORM_ReadData();
+        buffer[k] =  mt29f.PLATFORM_ReadData();
 
     /* read status register on exit */
     status_reg = NAND_Read_Status();
 
     /* close board transfer */
-    PLATFORM_Close();
+    mt29f.PLATFORM_Close();
 
     if(status_reg & STATUS_FAIL)
         return NAND_READ_FAILED;
@@ -2006,7 +2006,7 @@ MT_uint8 __wait_for_ready() {
     MT_uint32 clock_start = (MT_uint32) clock();
 #endif
 
-    PLATFORM_SendCmd(CMD_READ_STATUS);
+    mt29f.PLATFORM_SendCmd(CMD_READ_STATUS);
 
 #ifndef TIMEOUT_SUPPORT
 
@@ -2018,7 +2018,7 @@ MT_uint8 __wait_for_ready() {
 
 #else
 
-    while ( (BIT_USED_TO_POLL != (BIT_USED_TO_POLL & PLATFORM_ReadData())) \
+    while ( (BIT_USED_TO_POLL != (BIT_USED_TO_POLL &  mt29f.PLATFORM_ReadData())) \
 				&& ((MT_uint32) clock() < (MT_uint32) (clock_start + NUM_OF_TICKS_TO_TIMEOUT)) )
 			{  /* do nothing */ }
 
@@ -2028,7 +2028,7 @@ MT_uint8 __wait_for_ready() {
 		else
 			ret = NAND_SUCCESS;
 
-		PLATFORM_SendCmd(CMD_READ_MODE);
+        mt29f.PLATFORM_SendCmd(CMD_READ_MODE);
 		return ret;
 
 #endif
