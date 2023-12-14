@@ -26,6 +26,7 @@
    Second release	1.1		03/2013		Added OTP functions
 
 *******************************************************************************/
+#pragma once
 #include "common.hpp"
 #include "nand_hw_if.hpp"
 #include "time.h"
