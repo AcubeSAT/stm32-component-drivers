@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <etl/span.h>
 #include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
@@ -56,274 +55,21 @@
  * https://gitlab.com/acubesat/obc/atsam-component-drivers/-/tree/old-stm32
  */
 class MCP9808 {
-public:
-    /**
-     * Set the I2C address depending on the pin configuration of the physical device
-     * @see I2C_USER_ADDRESS
-     * @param i2cUserAddress user selectable address
-     */
-    explicit MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
-
-    /**
-     * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
-     */
-
-    /**
-     * Hysteresis temperature options.
-     */
-    enum class HysteresisTemperatureOptions : uint16_t {
-        THYST_0C = 0x000u,
-        THYST_1_5C = 0x200u,
-        THYST_3C = 0x400u,
-        THYST_6C = 0x600u
-    };
-
-    /**
-     * Every measurement resolution option.
-     */
-    enum class MeasurementResolution : uint16_t {
-        RES_0_50C = 0x00,
-        RES_0_25C = 0x01,
-        RES_0_125C = 0x02,
-        RES_0_0625C = 0x03
-    };
-
-    /**
-     * Enter low power mode (SHDN - shutdown mode)
-     */
-    void enableLowPowerMode();
-
-    /**
-     * Exit low power mode (SHDN - shutdown mode)
-     */
-    void disableLowPowerMode();
-
-    /**
-     * Enable locking of the critical temperature (TCRIT) register
-     */
-    void enableCriticalTemperatureLock();
-
-    /**
-     * Enable locking of the temperature window (T_UPPER, T_LOWER) registers
-     */
-    void enableTemperatureWindowLock();
-
-    /**
-     * Enable temperature alerts.
-     * Alert output is asserted as a comparator/interrupt or critical temperature
-     */
-    void enableAlertStatus();
-
-    /**
-     * Disable temperature alerts.
-     * Alert output is not asserted by the device (power-up default)
-     */
-    void disableAlertStatus();
-
-    /**
-     * Enable alert control mode.
-     */
-    void enableAlertControl();
-
-    /**
-     * Disable alert control mode.
-     */
-    void disableAlertControl();
-
-    /**
-     * An alert is emitted only when T_ambient > T_crit (T_UPPER and T_LOWER temperature boundaries are disabled)
-     */
-    void setAlertSelectionOnCriticalTemperature();
-
-    /**
-     * Alert output for T_UPPER, T_LOWER and T_CRIT (power-up default)
-     */
-    void setAlertSelectionOnAll();
-
-    /**
-     * Set the polarity of the emitted alert active-high
-     */
-    void setAlertPolarityActiveHigh();
-
-    /**
-     * Set the polarity of the emitted alert active-low
-     */
-    void setAlertPolarityActiveLow();
-
-    /**
-     * Set the alert mode to comparator output
-     */
-    void setAlertModeComparator();
-
-    /**
-     * Set the alert mode to interrupt output
-     */
-    void setAlertModeInterrupt();
-
-    /**
-     * Set the hysteresis temperature (THYST)
-     * Available options are: 0, 1.5, 3, 6 degrees Celsius
-     * @param option desired hysteresis temperature option
-     */
-    void setHysteresisTemperature(HysteresisTemperatureOptions option);
-
-    /**
-     * Set the interrupts to be cleared on the next read attempt (namely, a temperature
-     * reading or a command in general)
-     */
-    void clearInterrupts();
-
-    /**
-     * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
-     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits, t
-     * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
-     * @param setting the desired measurement resolution option
-     */
-    void setResolution(MeasurementResolution setting);
-
-    /**
-     * Set upper temperature limit
-     * @param temp the desired upper temperature limit
-     */
-    void setUpperTemperatureLimit(float temp);
-
-    /**
-     * Set lower temperature limit
-     * @param temp the desired lower temperature limit
-     */
-    void setLowerTemperatureLimit(float temp);
-
-    /**
-     * Set critical temperature limit
-     * @param temp the desired critical temperature limit
-     */
-    void setCriticalTemperatureLimit(float temp);
-
-    /**
-     * Get the current ambient temperature (in Celsius)
-     * @returns the current ambient temperature
-     */
-    float getTemperature();
-
-    /**
-     * Returns the Critical Temperature (in Celsius)
-     * @return the Critical Temperature
-     */
-    float getCriticalTemperatureLimit();
-
-    /**
-     * Returns the Upper Temperature Limit (in Celsius)
-     * @return the Upper Temperature Limit
-     */
-    float getUpperTemperatureLimit();
-
-    /**
-     * Returns the Lower Temperature Limit (in Celsius)
-     * @return the Lower Temperature Limit
-     */
-    float getLowerTemperatureLimit();
-
-    /**
-     * Check the Manufacturer ID register against the expected value.
-     * @return Returns true if the device is connected and responds correctly.
-     */
-    bool isDeviceConnected();
-
-    /**
-     * Getter function
-     * @return the I2C_USER_ADDRESS private variable
-     */
-    inline uint8_t getI2CUserAddress() const {
-        return I2C_USER_ADDRESS;
-    }
-
 private:
-    /**
-     * Low-power mode (SHDN) options.
-     */
-    enum class LowPowerMode : uint16_t {
-        LOWPWR_ENABLE = 0x100,
-        LOWPWR_DISABLE = 0x000
-    };
-
-    /**
-     * Critical temperature register locking options.
-     */
-    enum class CriticalTemperatureRegisterLock : uint16_t {
-        TCRIT_LOCK_ENABLE = 0x80,
-        TCRIT_LOCK_DISABLE = 0x00
-    };
-
-    /**
-     * WINLOCK T_upper and T_lower temperature window locking options.
-     */
-    enum class TemperatureWindowLock : uint16_t {
-        WINLOCK_ENABLE = 0x40,
-        WINLOCK_DISABLE = 0x00
-    };
-
-    /**
-     * Output status options, see datasheet p. 19.
-     */
-    enum class AlertStatus : uint16_t {
-        ALERT_ENABLE = 0x10,
-        ALERT_DISABLE = 0x00
-    };
-
-    /**
-     * Every output control option.
-     */
-    enum class AlertControl : uint16_t {
-        ALERT_CONTROL_ENABLE = 0x08,
-        ALERT_CONTROL_DISABLE = 0x00
-    };
-
-    /**
-     * Every alert output selection option.
-     */
-    enum class AlertSelection : uint16_t {
-        ALERT_SELECT_CRITONLY = 0x04,
-        ALERT_SELECT_ALL = 0x00
-    };
-
-    /**
-     * Every alert output modes.
-     */
-    enum class AlertMode : uint16_t {
-        ALERT_MODE_IRQ = 0x01,
-        ALERT_MODE_COMPARATOR = 0x00
-    };
-
-    /**
-     * Every polarity of alerts option.
-     */
-    enum class AlertPolarity : uint16_t {
-        ALERT_POLARITY_ACTIVE_HIGH = 0x02,
-        ALERT_POLARITY_ACTIVE_LOW = 0x00
-    };
-
-    /**
-     * The maximum number of bytes to write via High Speed Two-Wired Interface
-     */
-    enum NumOfBytesToTransfer : uint8_t {
-        TRANSFER_1BYTE = 1,
-        TRANSFER_2BYTES = 2,
-        TRANSFER_3BYTES = 3
-    };
 
     /**
      * Wait period before a sensor read is skipped
      */
-    const uint8_t TIMEOUT_TICKS = 100;
+    const uint8_t TimeoutTicks = 100;
 
     /**
-     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
-     */
+    * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
+    */
 
     /**
-     * MCP9808 temperature sensor register addresses.
-     */
-    enum class Register : uint8_t {
+    * MCP9808 temperature sensor register addresses.
+    */
+    enum Register {
         REG_RFU = 0x00u,
         REG_CONFIG = 0x01u,
         REG_TUPPER = 0x02u,
@@ -336,23 +82,23 @@ private:
     };
 
     /**
-     * The required value in order to set interrupts to be cleared on next read of CONFIG register.
-     */
-    static constexpr uint8_t IRQ_CLEAR = 0x20;
+    * The required value in order to set interrupts to be cleared on next read of CONFIG register.
+    */
+    const uint8_t IRQ_CLEAR = 0x20;
 
     /**
-     * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
-     */
+    * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
+    */
     const uint8_t I2C_USER_ADDRESS = 0x00;
 
     /**
-     * System constants - INTERNAL USE ONLY!
-     */
+    * System constants - INTERNAL USE ONLY!
+    */
 
     /**
-     * Configuration masks
-     */
-    enum class Mask : uint16_t {
+    * Configuration masks
+    */
+    enum Mask {
         TCRIT_LOCK_MASK = 0xFF7Fu,
         WINLOCK_MASK = 0xFFBFu,
         IRQ_CLEAR_MASK = 0xFFDFu,
@@ -361,33 +107,31 @@ private:
         ALERT_SELECT_MASK = 0xFFFBu,
         ALERT_POLARITY_MASK = 0xFFFDu,
         ALERT_MODE_MASK = 0xFFFEu,
-        RES_MASK = 0x00FCu,
+        RES_MASK = 0x00FC,
         THYST_MASK = 0xF9FFu,
-        SHDN_MASK = 0xFEFFu,
-        TUPPER_TLOWER_TCRIT_MASK = 0x1FFCu,
-        CLEAR_MASK = 0x0000u
+        SHDN_MASK = 0xFEFFu
     };
 
     /**
-     * Base slave bus address manufacturer-defined, used on the I2C bus.
-     */
+    * Base slave bus address manufacturer-defined, used on the I2C bus.
+    */
     const uint8_t I2C_BASE_ADDRESS = 0x18u;
 
     /**
-     * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
-     */
+    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
+    */
     const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
 
     /**
-     * Custom bus address for usage in read-write requests.
-     */
+    * Custom bus address for usage in read-write requests.
+    */
     const uint8_t I2C_BUS_ADDRESS = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
                                                           I2C_USER_ADDRESS);
 
     /**
-     * Manufacturer's ID.
-     */
-    static constexpr uint8_t MANUFACTURER_ID = 0x0054u;
+    * Manufacturer's ID.
+    */
+    const uint8_t MANUFACTURER_ID = 0x0054u;
 
     /**
      * High Speed Two-Wired Interface transaction error
@@ -395,21 +139,163 @@ private:
     TWIHS_ERROR error;
 
     /**
-     * Enter/exit low power mode (SHDN - shutdown mode)
-     * @param setting the desired low power mode option
+    * Write a value to a register. Microchip-specific functions are used.
+    * NOTE: this writes data as they are, so be careful!
+    *
+    * @param address the address of the desired register
+    * @param data the data octets to be written
+    */
+    void writeRegister(uint8_t address, uint16_t data);
+
+    /**
+    * Read a value from a register. About register reading operations
+    * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
+    * @param address the address of the desired register
+    * @param data a variable to save the data from the desired register
+    */
+    uint16_t readRegister(uint8_t address);
+
+    /**
+    * Safely change a setting on the register
+    * This is the recommended function to use when changing settings,
+    * and is used in all public functions that change settings.
+    *
+    * @param address the address of the desired register
+    * @param mask the appropriate bitmask to access the particular
+    * setting bit or group of bits
+    * @param setting the new value of the setting to be changed
+    * (also found in mcp9808-constants.hpp)
+    */
+    void setRegister(uint8_t address, Mask mask, uint16_t setting);
+
+    /**
+     * Function that prevents hanging when a I2C device is not responding.
      */
+    inline void waitForResponse() {
+        auto start = xTaskGetTickCount();
+        while (MCP9808_TWIHS_IsBusy()) {
+            if (xTaskGetTickCount() - start > TimeoutTicks) {
+                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
+                          << " has timed out";
+                MCP9808_TWIHS_Initialize();
+            }
+            taskYIELD();
+        }
+    };
+
+public:
+
+    /**
+   * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
+   */
+
+    /**
+     * Hysteresis temperature options.
+     */
+    enum HysteresisTemperatureOptions {
+        THYST_0C = 0x000u,
+        THYST_1_5C = 0x200u,
+        THYST_3C = 0x400u,
+        THYST_6C = 0x600u
+    };
+
+    /**
+    * Low-power mode (SHDN) options.
+    */
+    enum LowPowerMode {
+        LOWPWR_ENABLE = 0x100,
+        LOWPWR_DISABLE = 0x000
+    };
+
+    /**
+    * Critical temperature register locking options.
+    */
+    enum CriticalTemperatureRegisterLock {
+        TCRIT_LOCK_ENABLE = 0x80,
+        TCRIT_LOCK_DISABLE = 0x00
+    };
+
+    /**
+    * WINLOCK T_upper and T_lower temperature window locking options.
+    */
+    enum TemperatureWindowLock {
+        WINLOCK_ENABLE = 0x40,
+        WINLOCK_DISABLE = 0x00
+    };
+
+    /**
+    *  Output status options, see datasheet p. 19.
+    */
+    enum AlertStatus {
+        ALERT_ENABLE = 0x10,
+        ALERT_DISABLE = 0x00
+    };
+
+    /**
+    * Every output control option.
+    */
+    enum AlertControl {
+        ALERT_CONTROL_DISABLE = 0x08,
+        ALERT_CONTROL_ENABLE = 0x00
+    };
+
+    /**
+    * Every alert output selection option.
+    */
+    enum AlertSelection {
+        ALERT_SELECT_CRITONLY = 0x04,
+        ALERT_SELECT_ALL = 0x00
+    };
+
+    /**
+    * Every alert output modes.
+    */
+    enum AlertMode {
+        ALERT_MODE_IRQ = 0x01,
+        ALERT_MODE_COMPARATOR = 0x00
+    };
+
+    /**
+    * Every polarity of alerts option.
+    */
+    enum AlertPolarity {
+        ALERT_POLARITY_ACTIVE_HIGH = 0x02,
+        ALERT_POLARITY_ACTIVE_LOW = 0x00
+    };
+
+    /**
+    * Every measurement resolution option.
+    */
+    enum MeasurementResolution {
+        RES_0_50C = 0x00,
+        RES_0_25C = 0x01,
+        RES_0_125C = 0x02,
+        RES_0_0625C = 0x03
+    };
+
+    /**
+     * Set the hysteresis temperature (THYST)
+     * Available options are: 0, 1.5, 3, 6 degrees Celsius
+     * @param option desired hysteresis temperature option
+     */
+    void setHysteresisTemperature(HysteresisTemperatureOptions option);
+
+    /**
+    * Enter/exit low power mode (SHDN - shutdown mode)
+    * @param setting the desired low power mode option
+    */
     void setLowPowerMode(LowPowerMode setting);
 
     /**
-     * Set locking status of the critical temperature (TCRIT) register
-     * @param setting the desired critical temperature locking option
-     */
+    * Set locking status of the critical temperature (TCRIT) register
+    * @param setting the desired critical temperature locking option
+    */
     void setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
 
     /**
-     * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
-     * @param setting the desired locking status option
-     */
+    * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
+    * @param setting the desired locking status option
+    */
     void setTemperatureWindowLock(TemperatureWindowLock setting);
 
     /**
@@ -446,63 +332,36 @@ private:
     void setAlertMode(AlertMode setting);
 
     /**
-     * Write a value to a register. Microchip-specific functions are used.
-     * NOTE: this writes data as they are, so be careful!
-     *
-     * @param data the data octets to be written
-     * @param numOfBytes the number of bytes to be written
-     */
-    void writeRegister(etl::span<uint8_t> data);
+    * Set the interrupts to be cleared on the next read attempt (namely, a temperature
+    * reading or a command in general)
+    */
+    void clearInterrupts();
 
     /**
-     * Read a value from a register. About register reading operations
-     * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
-     * @param address the address of the desired register
-     * @param data a variable to save the data from the desired register
+     * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
+     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits, t
+     * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
+     * @param setting the desired measurement resolution option
      */
-    uint16_t readRegister(Register address);
+    void setResolution(MeasurementResolution setting);
 
     /**
-     * Safely change a setting on the register
-     * This is the recommended function to use when changing settings,
-     * and is used in all public functions that change settings.
-     *
-     * @param address the address of the desired register
-     * @param mask the appropriate bitmask to access the particular
-     * setting bit or group of bits
-     * @param setting the new value of the setting to be changed
-     * (also found in mcp9808-constants.hpp)
+     * Get the current temperature reading (in Celsius)
+     * @returns the current temperature
      */
-    void setRegister(Register address, Mask mask, uint16_t setting);
+    float getTemperature();
 
     /**
-     * Function that prevents hanging when a I2C device is not responding.
+     * Check the Manufacturer ID register against the expected value.
+     * @return Returns true if the device is connected and responds correctly.
      */
-    inline void waitForResponse() const {
-        const auto Start = xTaskGetTickCount();
-        while (MCP9808_TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - Start > TIMEOUT_TICKS) {
-                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
-                          << " has timed out";
-                MCP9808_TWIHS_Initialize();
-            }
-            taskYIELD()
-        }
-    };
+    bool isDeviceConnected();
 
     /**
-     * Converts floating point number to the binary representation
-     * specified at page 22 of the datasheet.
-     *
-     * @param value the floating point number to be converted
-     * @return the binary representation
+     * Getter function
+     * @return the I2C_USER_ADDRESS private variable
      */
-    static uint16_t floatToCustomFormat(float value);
-
-    /**
-     * Reads the temperature from TEMP, TUPPER, TLOWER and TCRIT registers.
-     * @param reg the register to read
-     * @return the temperature stored in the register
-     */
-    float getTemperature(Register reg);
+    inline uint8_t getI2CUserAddress() const {
+        return I2C_USER_ADDRESS;
+    }
 };
