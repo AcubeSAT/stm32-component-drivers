@@ -184,7 +184,6 @@ private:
     };
 
 public:
-
     /**
      * Set the I2C address depending on the pin configuration of the physical device
      * @see I2C_USER_ADDRESS
