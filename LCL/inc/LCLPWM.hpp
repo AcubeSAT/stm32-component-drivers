@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LCL.hpp"
+#include "peripheral/pwm/plib_pwm0.h"
 
 class LCLPWM : public LCL {
 private:
@@ -21,8 +22,9 @@ public:
     * @param pwmChannelMask @see pwmChannelMask
     * @param resetPin @see resetPin
     * @param setPin @see setPin
+    * @param dutyCycle duty cycle threshold
     */
-    LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin);
+    LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin, uint16_t dutyCycle = 0);
 
     /**
      * Enable to LCL to monitor and protect the protected IC from over current.
@@ -46,4 +48,10 @@ public:
      * @note Configure the default state of the PWM signal to be Low (instead of High) when the channel is turned off.
      */
     void disableLCL();
+
+    /**
+     * Sets the duty cycle of the PWM signal
+     * @param dutyCycle duty cycle threshold
+     * */
+    void setCurrentThreshold(uint16_t dutyCycle);
 };

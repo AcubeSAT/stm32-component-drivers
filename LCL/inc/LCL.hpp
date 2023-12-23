@@ -2,8 +2,6 @@
 
 #include <cstdint>
 #include "peripheral/pio/plib_pio.h"
-#include "peripheral/pwm/plib_pwm0.h"
-#include "peripheral/dacc/plib_dacc.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -12,7 +10,7 @@
  * The LCLs are completely reprogrammable during flight.
  * The main components that constitute a Latch up Current Limiter are a TLC555 timer, an
  * Operational Amplifier, a P-MOSFET, a N-MOSFET.
- * The programmable logic requires a Pulse Width Modulation (PWM) signal, a GPIO for Set and a GPIO for Reset Logic.
+ * The programmable logic requires a Pulse Width Modulation (PWM) signal or Digital to Analog Converter (DAC), a GPIO for Set and a GPIO for Reset Logic.
  */
 class LCL {
 protected:
@@ -34,5 +32,5 @@ protected:
      * @param resetPin @see resetPin
      * @param setPin @see setPin
      */
-    LCL(PIO_PIN resetPin, PIO_PIN setPin) {};
+    LCL(PIO_PIN resetPin, PIO_PIN setPin): resetPin(resetPin), setPin(setPin) {}
 };

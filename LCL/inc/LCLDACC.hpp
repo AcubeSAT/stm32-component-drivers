@@ -1,27 +1,24 @@
 #pragma once
 
 #include "LCL.hpp"
-
+#include "peripheral/dacc/plib_dacc.h"
+#include "etl/expected.h"
 
 class LCLDACC : public LCL {
 private:
     /**
-   * The DACC channel used for setting the voltage of the LCL.
-   */
+     * The DACC channel used for setting the voltage of the LCL.
+     * */
     const DACC_CHANNEL_NUM dacChannel;
-
     /**
-     * The value for volts to write in the DACC_Channel
-     * The final value is calculated using the following formula: V = Vref * ( value / resolution )
-     * where: Vref=3.3V and resolution = 12 bit = 4096
-     * this value has been selected arbitrarily
-     */
-    static constexpr uint16_t volts = 2048;
+     * A variable to store the voltage setting (CAN or NAND)
+     * */
+    uint16_t voltageSetting;
 
     /**
      * Value to output 0 Volts
      */
-    static constexpr uint16_t zeroVolts = 0;
+    static constexpr uint16_t DACDisableValue = 0;
 
     /**
     * This variable is used to store the maximum time the task should wait for the DACC_CHANNEL to be ready to  in ticks.
@@ -35,12 +32,25 @@ private:
 
 public:
     /**
+    * The value for volts to write in the DACC_Channel
+    * The final value is calculated using the following formula: V = Vref * ( value / resolution )
+    * where: Vref=3.3V and resolution = 12 bit = 4096
+    * CAN: 0.925V
+    * NAND: 0.726V
+    */
+    enum DACVolts : uint16_t {
+        CAN = 1148,
+        NAND = 901
+    };
+
+    /**
     * Constructor to set the necessary control pins for the LCL.
     * @param dacChannel @see dacChanel
     * @param resetPin @see resetPin
     * @param setPin @see setPin
+    * @param dacVolts @see DACVolts
     */
-    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin);
+    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, DACVolts dacVolts);
 
     /**
     * Enable to LCL to monitor and protect the protected IC from over current.
@@ -66,4 +76,11 @@ public:
     * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
     */
     void disableLCL();
+
+    /**
+     * This is a helper function that checks if the DACC data have been writen successfully to the DACC channel.
+     * The timeout ensures that the code will not stuck in the loop.
+     * @param voltage @see DACVolts
+     * */
+    etl::expected<bool, bool> writeDACCDataWithTimeout(uint16_t voltage);
 };
