@@ -8,17 +8,13 @@ class LCLDACC : public LCL {
 private:
     /**
      * The DACC channel used for setting the voltage of the LCL.
-     * */
+     */
     const DACC_CHANNEL_NUM dacChannel;
-    /**
-     * A variable to store the voltage setting (CAN or NAND)
-     * */
-    uint16_t voltageSetting;
 
     /**
-     * Value to output 0 Volts
+     * A variable to store the voltage setting (CAN or NAND)
      */
-    static constexpr uint16_t DACDisableValue = 0;
+    uint16_t voltageSetting;
 
     /**
     * This variable is used to store the maximum time the task should wait for the DACC_CHANNEL to be ready to  in ticks.
@@ -27,7 +23,8 @@ private:
     static constexpr TickType_t maxDelay = pdMS_TO_TICKS(1000);
 
     /**
-     * A small delay to make sure signals have reached the pins before sending another signal to them*/
+     * A small delay to make sure signals have reached the pins before sending another signal to them
+     */
     static constexpr TickType_t smallDelay = pdMS_TO_TICKS(10);
 
 public:
@@ -38,9 +35,10 @@ public:
     * CAN: 0.925V
     * NAND: 0.726V
     */
-    enum DACVolts : uint16_t {
+    enum DACThreshold : uint16_t {
         CAN = 1148,
-        NAND = 901
+        NAND = 901,
+        DACDisableValue = 0
     };
 
     /**
@@ -50,7 +48,7 @@ public:
     * @param setPin @see setPin
     * @param dacVolts @see DACVolts
     */
-    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, DACVolts dacVolts);
+    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, DACThreshold dacVolts);
 
     /**
     * Enable to LCL to monitor and protect the protected IC from over current.

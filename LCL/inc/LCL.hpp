@@ -26,7 +26,6 @@ protected:
      */
     const PIO_PIN setPin = PIO_PIN_NONE;
 
-protected:
     /**
      * Constructor to set the necessary control pins for the LCL.
      * @param resetPin @see resetPin
