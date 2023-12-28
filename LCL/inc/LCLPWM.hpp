@@ -26,7 +26,7 @@ public:
     * The final value is calculated using the following formula: V = Vmax * Duty_Cycles
     * where: Vmax=3.3V
     * 16 bits resolution
-    * Curent duty Cycle % = 50%
+    * Current duty Cycle % = 50%
     */
     enum PWMThreshold : uint16_t {
         CAMERA = 0x8000,
