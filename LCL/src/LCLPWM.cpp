@@ -1,9 +1,11 @@
 #include "LCLPWM.hpp"
 
 LCLPWM::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-               uint16_t dutyCycle) : LCL(resetPin, setPin), pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask) {
+               PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
+                                          pwmChannelMask(pwmChannelMask),
+                                          voltageSetting(static_cast<uint16_t>(dutyCycles)) {
 
-    setCurrentThreshold(dutyCycle);
+    setCurrentThreshold(voltageSetting);
     disableLCL();
 }
 
@@ -26,4 +28,3 @@ void LCLPWM::disableLCL() {
 void LCLPWM::setCurrentThreshold(uint16_t dutyCycle) {
     PWM0_ChannelDutySet(pwmChannel, dutyCycle);
 }
-

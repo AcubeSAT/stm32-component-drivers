@@ -17,14 +17,33 @@ private:
 
 public:
     /**
+     * A variable to store the voltage setting (CAN or NAND)
+     */
+    uint16_t voltageSetting;
+
+    /**
+    * The value for duty cycles to write in the pwmChannel
+    * The final value is calculated using the following formula: V = Vmax * Duty_Cycles
+    * where: Vmax=3.3V
+    * 16 bits resolution
+    * Curent duty Cycle % = 50%
+    */
+    enum PWMThreshold : uint16_t {
+        CAMERA = 0x8000,
+        PWMDisableValue = 0
+
+    };
+
+    /**
     * Constructor to set the necessary control pins for the LCL.
     * @param pwmChannel @see pwmChannel
     * @param pwmChannelMask @see pwmChannelMask
     * @param resetPin @see resetPin
     * @param setPin @see setPin
-    * @param dutyCycle duty cycle threshold
+    * @param dutyCycles duty cycle threshold
     */
-    LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin, uint16_t dutyCycle = 0);
+    LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
+           PWMThreshold dutyCycles = PWMDisableValue);
 
     /**
      * Enable to LCL to monitor and protect the protected IC from over current.

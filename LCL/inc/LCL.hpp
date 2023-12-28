@@ -31,5 +31,5 @@ protected:
      * @param resetPin @see resetPin
      * @param setPin @see setPin
      */
-    LCL(PIO_PIN resetPin, PIO_PIN setPin): resetPin(resetPin), setPin(setPin) {}
+    LCL(PIO_PIN resetPin, PIO_PIN setPin) : resetPin(resetPin), setPin(setPin) {}
 };
