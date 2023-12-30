@@ -25,6 +25,6 @@ void LCLPWM::disableLCL() {
     PIO_PinWrite(setPin, true);
 }
 
-void LCLPWM::setCurrentThreshold(uint16_t dutyCycle) {
-    PWM0_ChannelDutySet(pwmChannel, dutyCycle);
+void LCLPWM::setCurrentThreshold(uint16_t dutyCyclePercent) {
+    PWM0_ChannelDutySet(pwmChannel, ConstantInPWMRegister * dutyCyclePercent);
 }

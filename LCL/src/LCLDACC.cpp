@@ -2,8 +2,8 @@
 #include "Logger.hpp"
 
 LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin,
-                 DACThreshold dacVolts) : LCL(resetPin, setPin), dacChannel(dacChannel),
-                                          voltageSetting(static_cast<uint16_t>(dacVolts)) {
+                 DACThreshold voltageSetting) : LCL(resetPin, setPin), dacChannel(dacChannel),
+                                                voltageSetting(static_cast<std::underlying_type_t<DACThreshold>>(voltageSetting)) {
 }
 
 etl::expected<bool, bool> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
@@ -15,7 +15,7 @@ etl::expected<bool, bool> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
         // Wait until DACC is ready
         const TickType_t currentTime = xTaskGetTickCount();
         if ((currentTime - startTime) >= maxDelay) {
-            LOG_ERROR << " LCL DAC timed out.";
+            LOG_ERROR << "LCL DAC channel " << static_cast<int>(dacChannel) << " timed out.";
             DACC_Initialize();
             dacTimedOut = true;
             return etl::unexpected(dacTimedOut);

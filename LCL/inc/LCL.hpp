@@ -32,4 +32,14 @@ protected:
      * @param setPin @see setPin
      */
     LCL(PIO_PIN resetPin, PIO_PIN setPin) : resetPin(resetPin), setPin(setPin) {}
+
+    /**
+     * Enable the LCL
+     */
+    virtual void enableLCL() = 0;
+
+    /**
+     * Disable the LCL
+     */
+    virtual void disableLCL() = 0;
 };
