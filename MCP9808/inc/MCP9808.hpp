@@ -144,8 +144,9 @@ private:
     *
     * @param address the address of the desired register
     * @param data the data octets to be written
+    * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(uint8_t address, uint16_t data);
+    void writeRegister(uint8_t address, uint8_t* data, uint8_t numOfBytes);
 
     /**
     * Read a value from a register. About register reading operations

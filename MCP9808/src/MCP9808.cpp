@@ -1,33 +1,25 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(uint8_t address, uint16_t data) {
-    uint8_t txData[] = {
-            address,
-            static_cast<uint8_t>(data >> 8),
-            static_cast<uint8_t>(data & 0x00FF)
-    };
+void MCP9808::writeRegister(uint8_t address, uint8_t* data, uint8_t numOfBytes) {
 
-    uint8_t ackData = 0;
-
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
-        waitForResponse();
-        error = MCP9808_TWIHS_ErrorGet();
+    if (numOfBytes == 1) {
+        uint8_t txData[] = {address, data[0]};
+        if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, txData, numOfBytes + 1)) {
+            waitForResponse();
+            error = MCP9808_TWIHS_ErrorGet();
+        }
     }
-
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, txData, 3)) {
-        waitForResponse();
-        error = MCP9808_TWIHS_ErrorGet();
+    else if (numOfBytes == 2) {
+        uint8_t txData[] = {address, data[0], data[1]};
+        if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, txData, numOfBytes + 1)) {
+            waitForResponse();
+            error = MCP9808_TWIHS_ErrorGet();
+        }
     }
 }
 
 uint16_t MCP9808::readRegister(uint8_t address) {
     uint8_t buffer[2];
-    uint8_t ackData = 0;
-
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &ackData, 1)) {
-        waitForResponse();
-        error = MCP9808_TWIHS_ErrorGet();
-    }
 
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &address, 1)) {
         waitForResponse();
@@ -47,7 +39,16 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
     uint16_t previous = readRegister(address);
 
     uint16_t newSetting = (mask & previous) | setting;
-    writeRegister(address, newSetting);
+
+    if (address == REG_CONFIG) {
+        uint8_t data[] = {static_cast<uint8_t>(newSetting >> 8),
+                          static_cast<uint8_t>(newSetting & 0x00FF)};
+        writeRegister(address, data, 2);
+    }
+    else {
+        uint8_t data[] = {static_cast<uint8_t>(newSetting & 0x00FF)};
+        writeRegister(address, data, 1);
+    }
 }
 
 void MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
