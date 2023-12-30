@@ -35,8 +35,8 @@ public:
     * Current duty Cycle %  for the CAMERA = 50%
     */
     enum PWMThreshold : uint16_t {
-        CAMERA = static_cast<uint16_t>(0.5),
-        PWMDisableValue = 1
+        CAMERA = 50,
+        PWMDisableValue = 100
     };
 
     /**

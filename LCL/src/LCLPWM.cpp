@@ -26,5 +26,5 @@ void LCLPWM::disableLCL() {
 }
 
 void LCLPWM::setCurrentThreshold(uint16_t dutyCyclePercent) {
-    PWM0_ChannelDutySet(pwmChannel, ConstantInPWMRegister * dutyCyclePercent);
+    PWM0_ChannelDutySet(pwmChannel, ConstantInPWMRegister * dutyCyclePercent/100);
 }
