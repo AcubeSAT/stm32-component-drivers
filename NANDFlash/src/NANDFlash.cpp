@@ -8,7 +8,7 @@ uint8_t MT29F::resetNAND() {
 }
 
 bool MT29F::readNANDID(etl::array<uint8_t, 8> id) {
-    NAND_Read_ID_ONFI(id.data());
+    return NAND_Read_ID(id.data()) == NAND_SUCCESS;
 }
 
 uint8_t MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
@@ -34,7 +34,7 @@ bool MT29F::isNANDAlive() {
         return false;
     }
 
-    if (status & !STATUS_FAIL) {
+    if (status & STATUS_FAIL) {
         etl::array<uint8_t, 8> id = {};
         readNANDID(id);
 
