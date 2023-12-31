@@ -11,7 +11,7 @@ etl::expected<bool, bool> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
     const TickType_t startTime = xTaskGetTickCount();
     bool dacTimedOut = false;
 
-    while (!DACC_IsReady(dacChannel)) {
+    while (not DACC_IsReady(dacChannel)) {
         // Wait until DACC is ready
         const TickType_t currentTime = xTaskGetTickCount();
         if ((currentTime - startTime) >= maxDelay) {
@@ -25,7 +25,7 @@ etl::expected<bool, bool> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
 }
 
 void LCLDACC::enableLCL() {
-    if (!writeDACCDataWithTimeout(voltageSetting)) {
+    if (not writeDACCDataWithTimeout(voltageSetting)) {
         PIO_PinWrite(resetPin, true);
         PIO_PinWrite(setPin, false);
         vTaskDelay(pdMS_TO_TICKS(smallDelay));
@@ -34,7 +34,7 @@ void LCLDACC::enableLCL() {
 }
 
 void LCLDACC::disableLCL() {
-    if (!writeDACCDataWithTimeout(DACDisableValue)) {
+    if (not writeDACCDataWithTimeout(DACDisableValue)) {
         PIO_PinWrite(resetPin, false);
         PIO_PinWrite(setPin, true);
     }
