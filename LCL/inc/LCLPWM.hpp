@@ -1,7 +1,7 @@
 #pragma once
 
 #include "LCL.hpp"
-#include "peripheral/pwm/plib_pwm0.h"
+#include "HAL_PWM.hpp"
 
 class LCLPWM : public LCL {
 public:
