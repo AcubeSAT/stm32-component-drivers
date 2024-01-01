@@ -2,10 +2,10 @@
 #include "HAL_PWM.hpp"
 
 LCLPWM::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-               PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
-                                          pwmChannelMask(pwmChannelMask),
-                                          voltageSetting(static_cast<uint16_t>(dutyCycles)) {
-
+                uint8_t peripheralNumber, PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
+                                                                    pwmChannelMask(pwmChannelMask),
+                                                                    peripheralNumber(peripheralNumber),
+                                                                    voltageSetting(static_cast<uint16_t>(dutyCycles)) {
     setCurrentThreshold(voltageSetting);
     disableLCL();
 }
@@ -27,5 +27,5 @@ void LCLPWM::disableLCL() {
 }
 
 void LCLPWM::setCurrentThreshold(uint16_t dutyCyclePercent) {
-    HAL_PWM::PWM_ChannelDutySet<0>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent/100);
+    HAL_PWM::PWM_ChannelDutySet<0>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / 100);
 }

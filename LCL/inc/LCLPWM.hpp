@@ -48,7 +48,7 @@ public:
     * @param dutyCycles duty cycle threshold
     */
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-           PWMThreshold dutyCycles = PWMDisableValue);
+           uint8_t peripheralNumber, PWMThreshold dutyCycles = PWMDisableValue);
 
     /**
      * Enable the LCL to monitor and protect the protected IC from over current.
@@ -89,4 +89,6 @@ private:
      * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
      */
     const PWM_CHANNEL_MASK pwmChannelMask;
+
+    const uint8_t peripheralNumber;
 };
