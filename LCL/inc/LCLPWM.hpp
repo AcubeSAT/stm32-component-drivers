@@ -3,6 +3,7 @@
 #include "LCL.hpp"
 #include "HAL_PWM.hpp"
 
+template<uint8_t n>
 class LCLPWM : public LCL {
 public:
     /**
@@ -45,6 +46,7 @@ public:
     * @param pwmChannelMask @see pwmChannelMask
     * @param resetPin @see resetPin
     * @param setPin @see setPin
+    * @param peripheralNumber @see peripheralNumber
     * @param dutyCycles duty cycle threshold
     */
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
@@ -90,5 +92,8 @@ private:
      */
     const PWM_CHANNEL_MASK pwmChannelMask;
 
+    /**
+     * Stores the PWM peripheral (0 or 1)
+     */
     const uint8_t peripheralNumber;
 };

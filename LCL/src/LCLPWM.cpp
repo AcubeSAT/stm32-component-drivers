@@ -1,18 +1,21 @@
 #include "LCLPWM.hpp"
 #include "HAL_PWM.hpp"
 
-LCLPWM::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-                uint8_t peripheralNumber, PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
-                                                                    pwmChannelMask(pwmChannelMask),
-                                                                    peripheralNumber(peripheralNumber),
-                                                                    voltageSetting(static_cast<uint16_t>(dutyCycles)) {
+template<uint8_t n>
+LCLPWM<n>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
+                  uint8_t peripheralNumber, PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
+                                                                       pwmChannelMask(pwmChannelMask),
+                                                                       peripheralNumber(peripheralNumber),
+                                                                       voltageSetting(
+                                                                               static_cast<uint16_t>(dutyCycles)) {
     setCurrentThreshold(voltageSetting);
     disableLCL();
 }
 
-void LCLPWM::enableLCL() {
+template<uint8_t n>
+void LCLPWM<n>::enableLCL() {
     PIO_PinWrite(resetPin, true);
-    HAL_PWM::PWM_ChannelsStart<0>(pwmChannelMask);
+    HAL_PWM::PWM_ChannelsStart<peripheralNumber>(pwmChannelMask);
     PIO_PinWrite(setPin, false);
 
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -20,12 +23,14 @@ void LCLPWM::enableLCL() {
     PIO_PinWrite(setPin, true);
 }
 
-void LCLPWM::disableLCL() {
-    HAL_PWM::PWM_ChannelsStop<0>(pwmChannelMask);
+template<uint8_t n>
+void LCLPWM<n>::disableLCL() {
+    HAL_PWM::PWM_ChannelsStop<peripheralNumber>(pwmChannelMask);
     PIO_PinWrite(resetPin, false);
     PIO_PinWrite(setPin, true);
 }
 
-void LCLPWM::setCurrentThreshold(uint16_t dutyCyclePercent) {
-    HAL_PWM::PWM_ChannelDutySet<0>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / 100);
+template<uint8_t n>
+void LCLPWM<n>::setCurrentThreshold(uint16_t dutyCyclePercent) {
+    HAL_PWM::PWM_ChannelDutySet<peripheralNumber>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / 100);
 }
