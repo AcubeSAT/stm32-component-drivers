@@ -1,9 +1,9 @@
 #include "LCLPWM.hpp"
-#include "HAL_PWM.hpp"
 
+template class LCLPWM<0>;
 template<uint8_t n>
 LCLPWM<n>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-                  PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
+                  PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),pwmChannelMask(pwmChannelMask),
                                              voltageSetting(static_cast<uint16_t>(dutyCycles)) {
     setCurrentThreshold(voltageSetting);
     disableLCL();
