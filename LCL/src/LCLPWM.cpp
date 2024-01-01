@@ -3,11 +3,8 @@
 
 template<uint8_t n>
 LCLPWM<n>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-                  uint8_t peripheralNumber, PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
-                                                                       pwmChannelMask(pwmChannelMask),
-                                                                       peripheralNumber(peripheralNumber),
-                                                                       voltageSetting(
-                                                                               static_cast<uint16_t>(dutyCycles)) {
+                  PWMThreshold dutyCycles) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
+                                             voltageSetting(static_cast<uint16_t>(dutyCycles)) {
     setCurrentThreshold(voltageSetting);
     disableLCL();
 }
