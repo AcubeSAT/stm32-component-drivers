@@ -44,4 +44,3 @@ template<>
 void HAL_PWM::PWM_ChannelDutySet<1>(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
     PWM1_ChannelDutySet(pwmChannel, dutyCycle);
 }
-

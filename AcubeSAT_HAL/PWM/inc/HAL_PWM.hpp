@@ -46,4 +46,3 @@ public:
     template<uint8_t peripheralNumber>
     static void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle);
 };
-
