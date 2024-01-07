@@ -3,7 +3,7 @@
 #include "LCL.hpp"
 #include "HAL_PWM.hpp"
 
-template<uint8_t n>
+template<uint8_t PWMPeripheral>
 class LCLPWM : public LCL {
 public:
     /**
@@ -22,7 +22,7 @@ public:
      * which in our case is the delay of the High signal and not the duration of it.
      * In this case a 7500 delay in a 7500 half period will set the High signal duration to 0.
      */
-    uint16_t ConstantInPWMRegister = 7500;
+    static constexpr uint16_t ConstantInPWMRegister = 7500;
 
     /**
     * The value for duty cycles % to write in the pwmChannel
@@ -42,11 +42,11 @@ public:
 
     /**
     * Constructor to set the necessary control pins for the LCL.
+    * @tparam PWMPeripheral @see peripheralNumber
     * @param pwmChannel @see pwmChannel
     * @param pwmChannelMask @see pwmChannelMask
     * @param resetPin @see resetPin
     * @param setPin @see setPin
-    * @param peripheralNumber @see peripheralNumber
     * @param dutyCycles duty cycle threshold
     */
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
@@ -91,9 +91,4 @@ private:
      * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
      */
     const PWM_CHANNEL_MASK pwmChannelMask;
-
-    /**
-     * Stores the PWM peripheral (0 or 1)
-     */
-    static constexpr uint8_t peripheralNumber = n;
 };
