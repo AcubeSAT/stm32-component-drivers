@@ -31,7 +31,7 @@ void HAL_PWM::PWM_ChannelsStop<1>(PWM_CHANNEL_MASK channelMask) {
 }
 
 template<uint8_t peripheralNumber>
-void HAL_PWM::PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t duty) {
+void HAL_PWM::PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
     static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
 }
 

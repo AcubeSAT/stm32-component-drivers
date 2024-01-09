@@ -7,9 +7,9 @@ template<uint8_t PWMPeripheral>
 class LCLPWM : public LCL {
 public:
     /**
-     * A variable to store the voltage setting (CAN or NAND)
+     * A variable to store the voltage setting
      */
-    uint16_t voltageSetting;
+    uint16_t voltageSetting = PWMDisableValue;
 
     /**
      * This variable will store the value to set dutyCycles to 0%
