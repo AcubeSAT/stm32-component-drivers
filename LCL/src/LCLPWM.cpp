@@ -1,4 +1,3 @@
-#include <type_traits>
 #include "LCLPWM.hpp"
 #include "Logger.hpp"
 
@@ -13,7 +12,7 @@ LCLPWM<PWMPeripheral>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmCh
                               PIO_PIN setPin,
                               PWMThreshold dutyCyclePercent) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
                                                          pwmChannelMask(pwmChannelMask),
-                                                         voltageSetting(static_cast<typename std::underlying_type<PWMThreshold>::type>(dutyCyclePercent)) {
+                                                         voltageSetting(static_cast<std::underlying_type_t<PWMThreshold>>(dutyCyclePercent)) {
     setCurrentThreshold(voltageSetting);
     disableLCL();
 }
