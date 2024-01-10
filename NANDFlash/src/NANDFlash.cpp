@@ -8,7 +8,11 @@ uint8_t MT29F::resetNAND() {
 }
 
 bool MT29F::readNANDID(etl::array<uint8_t, 8> id) {
-    return NAND_Read_ID(id.data()) == NAND_SUCCESS;
+    PLATFORM_SendCmd(CMD_READID);
+    PLATFORM_SendAddr(ADDR_READ_ID);
+    for (uint8_t i = 0; i < 8; i++) {
+        id[i] = PLATFORM_ReadData();
+    }
 }
 
 uint8_t MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
@@ -28,22 +32,10 @@ uint8_t MT29F::eraseBlock(uint8_t LUN, uint16_t block) {
 }
 
 bool MT29F::isNANDAlive() {
-    flash_width status = NAND_Read_Status();
-
-    if (status == DRIVER_STATUS_NOT_INITIALIZED) {
-        return false;
-    }
-
-    if (status & STATUS_FAIL) {
-        etl::array<uint8_t, 8> id = {};
-        readNANDID(id);
-
-        const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
-
-        return etl::equal(id.begin(), id.end(), valid_id);
-    }
-
-    return false;
+    etl::array<uint8_t, 8> id = {};
+    const uint8_t valid_id[8] = {0x2C, 0x68, 0x00, 0x27, 0xA9, 0x00, 0x00, 0x00};
+    readNANDID(id);
+    (etl::equal(id.begin(), id.end(), valid_id));
 }
 
 uint8_t MT29F::PLATFORM_Wait(int start) {
