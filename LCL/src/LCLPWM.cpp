@@ -38,8 +38,8 @@ void LCLPWM<PWMPeripheral>::disableLCL() {
 
 template<uint8_t PWMPeripheral>
 void LCLPWM<PWMPeripheral>::setCurrentThreshold(uint16_t dutyCyclePercent) {
-    if (dutyCyclePercent <= 100) {
-        HAL_PWM::PWM_ChannelDutySet<PWMPeripheral>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / 100);
+    if (dutyCyclePercent <= PWMDisableValue) {
+        HAL_PWM::PWM_ChannelDutySet<PWMPeripheral>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / PWMDisableValue);
     } else {
         LOG_ERROR << "dutyCyclePercent is out of bounds (0-100)";
     }

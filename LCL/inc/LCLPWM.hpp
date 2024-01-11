@@ -30,7 +30,7 @@ public:
      * The final value is calculated using the following formula: V = Vmax * High_Signal_Duration%,
      * where:
      * - Vmax = 3.3V
-     * - High_Signal_Duration% = 1 - duty cycles %
+     * - High_Signal_Duration% = 1 - duty Cycle % (ex. 1 - 0.5 for CAMERA)
      * - 16 bits resolution
      *
      * Current duty Cycle % for the CAMERA = 50%
