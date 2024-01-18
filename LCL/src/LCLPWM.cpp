@@ -14,7 +14,6 @@ LCLPWM<PWMPeripheral>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmCh
                                                                pwmChannelMask(pwmChannelMask),
                                                                voltageSetting(
                                                                        static_cast<std::underlying_type_t<PWMThreshold>>(dutyCyclePercent)) {
-    setCurrentThreshold(voltageSetting);
     disableLCL();
 }
 
@@ -22,6 +21,10 @@ template<uint8_t PWMPeripheral>
 void LCLPWM<PWMPeripheral>::enableLCL() {
     PIO_PinWrite(resetPin, true);
     HAL_PWM::PWM_ChannelsStart<PWMPeripheral>(pwmChannelMask);
+
+    vTaskDelay(pdMS_TO_TICKS(10));
+
+    setCurrentThreshold(voltageSetting);
     PIO_PinWrite(setPin, false);
 
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -39,7 +42,8 @@ void LCLPWM<PWMPeripheral>::disableLCL() {
 template<uint8_t PWMPeripheral>
 void LCLPWM<PWMPeripheral>::setCurrentThreshold(uint16_t dutyCyclePercent) {
     if (dutyCyclePercent <= PWMDisableValue) {
-        HAL_PWM::PWM_ChannelDutySet<PWMPeripheral>(pwmChannel, ConstantInPWMRegister * dutyCyclePercent / PWMDisableValue);
+        HAL_PWM::PWM_ChannelDutySet<PWMPeripheral>(pwmChannel,
+                                                   dutyCyclePercent * ConstantInPWMRegister / PWMDisableValue);
     } else {
         LOG_ERROR << "dutyCyclePercent is out of bounds (0-100)";
     }
