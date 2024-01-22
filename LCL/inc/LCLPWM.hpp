@@ -15,12 +15,11 @@ public:
      * This variable will store the value to set dutyCycles to 0%.
      * In our current configuration, we have:
      * - CPOL bit is set to '0', which sets the polarity to LOW.
-     * - CES bit is set to '0', which sets the interrupt to occur at the end of the counter period.
-     * - Center Aligned Waveform
+     * - Left Aligned Waveform
      * - Period = 15000
      * So, with this configuration when we are setting the duty cycle we are actually setting the counter period,
      * which in our case is the delay of the High signal and not the duration of it.
-     * In this case a 15000U delay in a 15000 period will set the High signal duration to 0.
+     * In this case a 15000 delay in a 15000 period will set the High signal duration to 0.
      */
     static constexpr uint16_t ConstantInPWMRegister = 15000U;
 
