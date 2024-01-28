@@ -47,7 +47,7 @@ public:
      * @param pwmChannelMask @see pwmChannelMask
      * @param resetPin @see resetPin
      * @param setPin @see setPin
-     * @param dutyCycles duty cycle threshold
+     * @param dutyCyclePercent duty cycle percent threshold
      */
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
            PWMThreshold dutyCyclePercent = PWMDisableValue);
