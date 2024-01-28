@@ -31,10 +31,11 @@ public:
      * - Vmax = 3.3V
      * - High_Signal_Duration% = 1 - duty Cycle % (ex. 1 - 0.5 for CAMERA)
      * - 16 bits resolution
-     *
-     * Current duty Cycle % for the CAMERA = 50%
      */
     enum PWMThreshold : uint16_t {
+        CAN = 72,
+        NAND = 78,
+        MRAM = 53,
         CAMERA = 50,
         PWMDisableValue = 100
     };
@@ -49,7 +50,7 @@ public:
      * @param dutyCycles duty cycle threshold
      */
     LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin, PIO_PIN setPin,
-           PWMThreshold dutyCycles = PWMDisableValue);
+           PWMThreshold dutyCyclePercent = PWMDisableValue);
 
     /**
      * Enable the LCL to monitor and protect the protected IC from overcurrent.
