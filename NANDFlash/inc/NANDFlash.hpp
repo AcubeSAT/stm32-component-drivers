@@ -1,6 +1,5 @@
 #pragma once
 
-#include "etl/span.h"
 #include "SMC.hpp"
 #include "definitions.h"
 #include "FreeRTOS.h"
@@ -47,25 +46,25 @@ private:
             BLOCK_LOCK_READ_STATUS = 0x7A
     };
 
-    /* Number of bytes contained in a page */
+/* Number of bytes contained in a page */
     const static inline uint16_t PageSizeBytes = 8640;
-    /* Number of bytes contained in a block */
+/* Number of bytes contained in a block */
     const static inline uint32_t BlockSizeBytes = 1105920;
-    /* Number of pages contained in a block */
+/* Number of pages contained in a block */
     const static inline uint8_t NumPagesBlock = 128;
-    /* Total number of pages in an LUN */
+/* Total number of pages in an LUN */
     const static inline uint32_t MaxNumPage = 524288;
-    /* Total number of blocks in a LUN */
+/* Total number of blocks in a LUN */
     const static inline uint16_t MaxNumBlock = 4096;
-    /* The ARDY bit is bit 5 of the Status Register */
+/* The ARDY bit is bit 5 of the Status Register */
     const static inline uint8_t ArrayReadyMask = 0x20;
-    /* Chunk size of data to be written in addition to ECC parity bits */
+/* Chunk size of data to be written in addition to ECC parity bits */
     const static inline uint16_t WriteChunkSize = 512;
-    /* Max number of chunks contained in a page */
+/* Max number of chunks contained in a page */
     const static inline uint8_t MaxChunksPerPage = PageSizeBytes / WriteChunkSize;
-    /* Number of ECC bytes per write data chunk */
+/* Number of ECC bytes per write data chunk */
     const static inline uint16_t NumECCBytes = 3;
-    /* Max number of data bytes available in a page including ECC bytes */
+/* Max number of data bytes available in a page including ECC bytes */
     const static inline uint16_t MaxDataBytesPerPage = PageSizeBytes - (MaxChunksPerPage * NumECCBytes);
 
 
@@ -104,9 +103,9 @@ public:
             NAND_NOT_ALIVE
     };
 
-    /**
-     * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
-     */
+/**
+ * @param chipSelect Number of the Chip Select used for enabling the Nand Flash Die.
+ */
     inline constexpr void selectNandConfiguration(ChipSelect chipSelect) {
         switch (chipSelect) {
             case NCS0:
@@ -242,9 +241,9 @@ public:
     }
 
 
-    /* This function is the more abstract version of the write function where the user does not need to worry about the
-     * size of the data and where they'll be fitted. The position or page the data are written to is configurable
-     * by the user.*/
+/* This function is the more abstract version of the write function where the user does not need to worry about the
+ * size of the data and where they'll be fitted. The position or page the data are written to is configurable
+ * by the user.*/
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t abstactWriteNAND(etl::array<uint8_t, size> data) {     // TODO: use etl::expected
         static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
@@ -413,9 +412,9 @@ public:
         return 0;
     }
 
-    /* This function is the more abstract version of the write function where the user does not need to worry about the
-     * size of the data and where they'll be fitted. The position or page the data are written to is configurable
-     * by the user.*/
+/* This function is the more abstract version of the write function where the user does not need to worry about the
+ * size of the data and where they'll be fitted. The position or page the data are written to is configurable
+ * by the user.*/
     template<unsigned int size, Structure *pos, AddressConfig op>
     uint8_t abstactReadNAND(etl::array<uint8_t, size> data) {          // TODO: use etl::expected
         static_assert(!isValidStructure(pos, op), "The Structure provided by the user is not valid");
