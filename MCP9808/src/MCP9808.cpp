@@ -1,20 +1,10 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(uint8_t address, uint8_t* data, uint8_t numOfBytes) {
+void MCP9808::writeRegister(uint8_t* data, uint8_t numOfBytes) {
 
-    if (numOfBytes == 1) {
-        uint8_t txData[] = {address, data[0]};
-        if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, txData, numOfBytes + 1)) {
-            waitForResponse();
-            error = MCP9808_TWIHS_ErrorGet();
-        }
-    }
-    else if (numOfBytes == 2) {
-        uint8_t txData[] = {address, data[0], data[1]};
-        if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, txData, numOfBytes + 1)) {
-            waitForResponse();
-            error = MCP9808_TWIHS_ErrorGet();
-        }
+    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data, numOfBytes)) {
+        waitForResponse();
+        error = MCP9808_TWIHS_ErrorGet();
     }
 }
 
@@ -40,14 +30,16 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
 
     uint16_t newSetting = (mask & previous) | setting;
 
-    if (address == REG_CONFIG) {
-        uint8_t data[] = {static_cast<uint8_t>(newSetting >> 8),
+    if (address == REG_CONFIG) {  // 2 bytes register
+        uint8_t data[] = {address,
+                          static_cast<uint8_t>(newSetting >> 8),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(address, data, 2);
+        writeRegister(data, 3);
     }
-    else {
-        uint8_t data[] = {static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(address, data, 1);
+    else {  // 1 byte register
+        uint8_t data[] = {address,
+                          static_cast<uint8_t>(newSetting & 0x00FF)};
+        writeRegister(data, 2);
     }
 }
 

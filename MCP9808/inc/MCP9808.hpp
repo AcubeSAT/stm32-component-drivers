@@ -142,11 +142,10 @@ private:
     * Write a value to a register. Microchip-specific functions are used.
     * NOTE: this writes data as they are, so be careful!
     *
-    * @param address the address of the desired register
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(uint8_t address, uint8_t* data, uint8_t numOfBytes);
+    void writeRegister(uint8_t* data, uint8_t numOfBytes);
 
     /**
     * Read a value from a register. About register reading operations
