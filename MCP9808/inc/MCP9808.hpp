@@ -69,7 +69,7 @@ private:
     /**
     * MCP9808 temperature sensor register addresses.
     */
-    enum Register {
+    enum Register : uint8_t {
         REG_RFU = 0x00u,
         REG_CONFIG = 0x01u,
         REG_TUPPER = 0x02u,
