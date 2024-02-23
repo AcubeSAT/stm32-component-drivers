@@ -12,8 +12,6 @@ bool MT29F::readNANDID(etl::array<uint8_t, 8> &id) {
     PLATFORM_SendCmd(CMD_READID);
     PLATFORM_SendAddr(ADDR_READ_ID);
 
-
-
     for (uint8_t i = 0; i < 8; i++) {
         id[i] = PLATFORM_ReadData();
     }
@@ -100,7 +98,7 @@ uint8_t MT29F::errorHandler() {
 
 
 
-bool MT29F::writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 30> &data){
+bool MT29F::writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 20> &data){
     nand_addr_t addr;
     addr.lun = LUN;
     addr.page = page;
@@ -109,7 +107,7 @@ bool MT29F::writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<ui
     NAND_Page_Program(addr, data.data(), data.size());
 }
 
-bool MT29F::readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 30> &data) {
+bool MT29F::readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 20> &data) {
     nand_addr_t addr;
     addr.lun = LUN;
     addr.page = page;

@@ -100,8 +100,8 @@ public:
 
     uint8_t errorHandler(); // TODO: use etl::expected
 
-    bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 30> &data);
+    bool writeNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 20> &data);
 
-    bool readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 30> &data);
+    bool readNAND(uint8_t LUN, uint32_t page, uint32_t column, etl::array<uint8_t, 20> &data);
 
 };
