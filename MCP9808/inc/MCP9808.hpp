@@ -55,134 +55,6 @@
  * https://gitlab.com/acubesat/obc/atsam-component-drivers/-/tree/old-stm32
  */
 class MCP9808 {
-private:
-
-    /**
-     * Wait period before a sensor read is skipped
-     */
-    const uint8_t TimeoutTicks = 100;
-
-    /**
-    * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
-    */
-
-    /**
-    * MCP9808 temperature sensor register addresses.
-    */
-    enum Register : uint8_t {
-        REG_RFU = 0x00u,
-        REG_CONFIG = 0x01u,
-        REG_TUPPER = 0x02u,
-        REG_TLOWER = 0x03u,
-        REG_TCRIT = 0x04u,
-        REG_TEMP = 0x05u,
-        REG_MFGID = 0x06u,
-        REG_DEVID = 0x07u,
-        REG_RESOLUTION = 0x08u
-    };
-
-    /**
-    * The required value in order to set interrupts to be cleared on next read of CONFIG register.
-    */
-    const uint8_t IRQ_CLEAR = 0x20;
-
-    /**
-    * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
-    */
-    const uint8_t I2C_USER_ADDRESS = 0x00;
-
-    /**
-    * System constants - INTERNAL USE ONLY!
-    */
-
-    /**
-    * Configuration masks
-    */
-    enum Mask {
-        TCRIT_LOCK_MASK = 0xFF7Fu,
-        WINLOCK_MASK = 0xFFBFu,
-        IRQ_CLEAR_MASK = 0xFFDFu,
-        ALERT_STATUS_MASK = 0xFFEFu,
-        ALERT_CONTROL_MASK = 0xFFF7u,
-        ALERT_SELECT_MASK = 0xFFFBu,
-        ALERT_POLARITY_MASK = 0xFFFDu,
-        ALERT_MODE_MASK = 0xFFFEu,
-        RES_MASK = 0x00FC,
-        THYST_MASK = 0xF9FFu,
-        SHDN_MASK = 0xFEFFu
-    };
-
-    /**
-    * Base slave bus address manufacturer-defined, used on the I2C bus.
-    */
-    const uint8_t I2C_BASE_ADDRESS = 0x18u;
-
-    /**
-    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
-    */
-    const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
-
-    /**
-    * Custom bus address for usage in read-write requests.
-    */
-    const uint8_t I2C_BUS_ADDRESS = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
-                                                          I2C_USER_ADDRESS);
-
-    /**
-    * Manufacturer's ID.
-    */
-    const uint8_t MANUFACTURER_ID = 0x0054u;
-
-    /**
-     * High Speed Two-Wired Interface transaction error
-     */
-    TWIHS_ERROR error;
-
-    /**
-    * Write a value to a register. Microchip-specific functions are used.
-    * NOTE: this writes data as they are, so be careful!
-    *
-    * @param data the data octets to be written
-    * @param numOfBytes the number of bytes to be written
-    */
-    void writeRegister(uint8_t* data, uint8_t numOfBytes);
-
-    /**
-    * Read a value from a register. About register reading operations
-    * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
-    * @param address the address of the desired register
-    * @param data a variable to save the data from the desired register
-    */
-    uint16_t readRegister(uint8_t address);
-
-    /**
-    * Safely change a setting on the register
-    * This is the recommended function to use when changing settings,
-    * and is used in all public functions that change settings.
-    *
-    * @param address the address of the desired register
-    * @param mask the appropriate bitmask to access the particular
-    * setting bit or group of bits
-    * @param setting the new value of the setting to be changed
-    * (also found in mcp9808-constants.hpp)
-    */
-    void setRegister(uint8_t address, Mask mask, uint16_t setting);
-
-    /**
-     * Function that prevents hanging when a I2C device is not responding.
-     */
-    inline void waitForResponse() {
-        auto start = xTaskGetTickCount();
-        while (MCP9808_TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - start > TimeoutTicks) {
-                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
-                          << " has timed out";
-                MCP9808_TWIHS_Initialize();
-            }
-            taskYIELD();
-        }
-    };
-
 public:
     /**
      * Set the I2C address depending on the pin configuration of the physical device
@@ -370,4 +242,132 @@ public:
     inline uint8_t getI2CUserAddress() const {
         return I2C_USER_ADDRESS;
     }
+
+private:
+
+    /**
+     * Wait period before a sensor read is skipped
+     */
+    const uint8_t TimeoutTicks = 100;
+
+    /**
+    * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
+    */
+
+    /**
+    * MCP9808 temperature sensor register addresses.
+    */
+    enum Register : uint8_t {
+        REG_RFU = 0x00u,
+        REG_CONFIG = 0x01u,
+        REG_TUPPER = 0x02u,
+        REG_TLOWER = 0x03u,
+        REG_TCRIT = 0x04u,
+        REG_TEMP = 0x05u,
+        REG_MFGID = 0x06u,
+        REG_DEVID = 0x07u,
+        REG_RESOLUTION = 0x08u
+    };
+
+    /**
+    * The required value in order to set interrupts to be cleared on next read of CONFIG register.
+    */
+    const uint8_t IRQ_CLEAR = 0x20;
+
+    /**
+    * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
+    */
+    const uint8_t I2C_USER_ADDRESS = 0x00;
+
+    /**
+    * System constants - INTERNAL USE ONLY!
+    */
+
+    /**
+    * Configuration masks
+    */
+    enum Mask {
+        TCRIT_LOCK_MASK = 0xFF7Fu,
+        WINLOCK_MASK = 0xFFBFu,
+        IRQ_CLEAR_MASK = 0xFFDFu,
+        ALERT_STATUS_MASK = 0xFFEFu,
+        ALERT_CONTROL_MASK = 0xFFF7u,
+        ALERT_SELECT_MASK = 0xFFFBu,
+        ALERT_POLARITY_MASK = 0xFFFDu,
+        ALERT_MODE_MASK = 0xFFFEu,
+        RES_MASK = 0x00FC,
+        THYST_MASK = 0xF9FFu,
+        SHDN_MASK = 0xFEFFu
+    };
+
+    /**
+    * Base slave bus address manufacturer-defined, used on the I2C bus.
+    */
+    const uint8_t I2C_BASE_ADDRESS = 0x18u;
+
+    /**
+    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
+    */
+    const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
+
+    /**
+    * Custom bus address for usage in read-write requests.
+    */
+    const uint8_t I2C_BUS_ADDRESS = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
+                                                          I2C_USER_ADDRESS);
+
+    /**
+    * Manufacturer's ID.
+    */
+    const uint8_t MANUFACTURER_ID = 0x0054u;
+
+    /**
+     * High Speed Two-Wired Interface transaction error
+     */
+    TWIHS_ERROR error;
+
+    /**
+    * Write a value to a register. Microchip-specific functions are used.
+    * NOTE: this writes data as they are, so be careful!
+    *
+    * @param data the data octets to be written
+    * @param numOfBytes the number of bytes to be written
+    */
+    void writeRegister(etl::array<uint8_t, 3>& data, uint8_t numOfBytes);
+
+    /**
+    * Read a value from a register. About register reading operations
+    * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
+    * @param address the address of the desired register
+    * @param data a variable to save the data from the desired register
+    */
+    uint16_t readRegister(uint8_t address);
+
+    /**
+    * Safely change a setting on the register
+    * This is the recommended function to use when changing settings,
+    * and is used in all public functions that change settings.
+    *
+    * @param address the address of the desired register
+    * @param mask the appropriate bitmask to access the particular
+    * setting bit or group of bits
+    * @param setting the new value of the setting to be changed
+    * (also found in mcp9808-constants.hpp)
+    */
+    void setRegister(uint8_t address, Mask mask, uint16_t setting);
+
+    /**
+     * Function that prevents hanging when a I2C device is not responding.
+     */
+    inline void waitForResponse() {
+        auto start = xTaskGetTickCount();
+        while (MCP9808_TWIHS_IsBusy()) {
+            if (xTaskGetTickCount() - start > TimeoutTicks) {
+                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
+                          << " has timed out";
+                MCP9808_TWIHS_Initialize();
+            }
+            taskYIELD();
+        }
+    };
 };
