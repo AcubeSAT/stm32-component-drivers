@@ -37,7 +37,7 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
     }
     else {  // 2 bytes register
         etl::array<uint8_t, 3> data = {address,
-                          static_cast<uint8_t>(newSetting >> 8),
+                          static_cast<uint8_t>(newSetting >> 8) & 0x00FF,
                           static_cast<uint8_t>(newSetting & 0x00FF)};
         writeRegister(data, 3);
     }
