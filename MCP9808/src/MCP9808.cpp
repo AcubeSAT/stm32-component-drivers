@@ -109,3 +109,15 @@ float MCP9808::getTemperature() {
 bool MCP9808::isDeviceConnected() {
     return readRegister(REG_MFGID) == MANUFACTURER_ID;
 }
+
+void MCP9808::setUpperTemperatureLimit(uint16_t data) {
+    setRegister(REG_TUPPER, TUPPER_TLOWER_TCRIT_MASK, data);
+}
+
+void MCP9808::setLowerTemperatureLimit(uint16_t data) {
+    setRegister(REG_TLOWER, TUPPER_TLOWER_TCRIT_MASK, data);
+}
+
+void MCP9808::setCriticalTemperatureLimit(uint16_t data) {
+    setRegister(REG_TCRIT, TUPPER_TLOWER_TCRIT_MASK, data);
+}

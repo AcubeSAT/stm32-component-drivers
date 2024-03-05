@@ -223,6 +223,25 @@ public:
      */
     void setResolution(MeasurementResolution setting);
 
+
+    /**
+     * Set upper temperature limit
+     * @param data the desired upper temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setUpperTemperatureLimit(uint16_t data);
+
+    /**
+     * Set lower temperature limit
+     * @param data the desired lower temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setLowerTemperatureLimit(uint16_t data);
+
+    /**
+     * Set critical temperature limit
+     * @param data the desired critical temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setCriticalTemperatureLimit(uint16_t data);
+
     /**
      * Get the current temperature reading (in Celsius)
      * @returns the current temperature
@@ -297,7 +316,8 @@ private:
         ALERT_MODE_MASK = 0xFFFEu,
         RES_MASK = 0x00FC,
         THYST_MASK = 0xF9FFu,
-        SHDN_MASK = 0xFEFFu
+        SHDN_MASK = 0xFEFFu,
+        TUPPER_TLOWER_TCRIT_MASK = 0x1FFCu
     };
 
     /**
