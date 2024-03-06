@@ -1,6 +1,6 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(etl::array<uint8_t, 3>& data, uint8_t numOfBytes) {
+void MCP9808::writeRegister(etl::array<uint8_t, MAX_BUFF_SIZE>& data, uint8_t numOfBytes) {
 
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), numOfBytes)) {
         waitForResponse();
@@ -31,13 +31,13 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
     uint16_t newSetting = (mask & previous) | setting;
 
     if (address == REG_RESOLUTION) {  // 1 byte register
-        etl::array<uint8_t, 3> data = {address,
+        etl::array<uint8_t, MAX_BUFF_SIZE> data = {address,
                           static_cast<uint8_t>(newSetting & 0x00FF)};
         writeRegister(data, 2);
     }
     else {  // 2 bytes register
-        etl::array<uint8_t, 3> data = {address,
-                          static_cast<uint8_t>(newSetting >> 8) & 0x00FF,
+        etl::array<uint8_t, MAX_BUFF_SIZE> data = {address,
+                          static_cast<uint8_t>((newSetting >> 8) & 0x00FF),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
         writeRegister(data, 3);
     }
@@ -110,14 +110,110 @@ bool MCP9808::isDeviceConnected() {
     return readRegister(REG_MFGID) == MANUFACTURER_ID;
 }
 
-void MCP9808::setUpperTemperatureLimit(uint16_t data) {
+void MCP9808::setUpperTemperatureLimit(float temp) {
+    uint16_t data = getData(temp);
     setRegister(REG_TUPPER, TUPPER_TLOWER_TCRIT_MASK, data);
 }
 
-void MCP9808::setLowerTemperatureLimit(uint16_t data) {
+void MCP9808::setLowerTemperatureLimit(float temp) {
+    uint16_t data = getData(temp);
     setRegister(REG_TLOWER, TUPPER_TLOWER_TCRIT_MASK, data);
 }
 
-void MCP9808::setCriticalTemperatureLimit(uint16_t data) {
+void MCP9808::setCriticalTemperatureLimit(float temp) {
+    uint16_t data = getData(temp);
     setRegister(REG_TCRIT, TUPPER_TLOWER_TCRIT_MASK, data);
+}
+
+void MCP9808::enableLowPowerMode() {
+    setLowPowerMode(LowPowerMode::LOWPWR_ENABLE);
+}
+
+void MCP9808::disableLowPowerMode() {
+    setLowPowerMode(LowPowerMode::LOWPWR_DISABLE);
+}
+
+void MCP9808::enableCriticalTemperatureLock() {
+    setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_ENABLE);
+}
+
+void MCP9808::disableCriticalTemperatureLock() {
+    setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_DISABLE);
+}
+
+void MCP9808::enableTemperatureWindowLock() {
+    setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_ENABLE);
+}
+
+void MCP9808::disableTemperatureWindowLock() {
+    setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_DISABLE);
+}
+
+void MCP9808::enableAlertStatus() {
+    setAlertStatus(AlertStatus::ALERT_ENABLE);
+}
+
+void MCP9808::disableAlertStatus() {
+    setAlertStatus(AlertStatus::ALERT_DISABLE);
+}
+
+void MCP9808::enableAlertControl() {
+    setAlertControl(AlertControl::ALERT_CONTROL_ENABLE);
+}
+
+void MCP9808::disableAlertControl() {
+    setAlertControl(AlertControl::ALERT_CONTROL_DISABLE);
+}
+
+void MCP9808::setAlertSelectionOnCriticalTemperature() {
+    setAlertSelection(AlertSelection::ALERT_SELECT_CRITONLY);
+}
+
+void MCP9808::setAlertSelectionOnAll() {
+    setAlertSelection(AlertSelection::ALERT_SELECT_ALL);
+}
+
+void MCP9808::setAlertPolarityActiveHigh() {
+    setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_HIGH);
+}
+
+void MCP9808::setAlertPolarityActiveLow() {
+    setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_LOW);
+}
+
+void MCP9808::setAlertModeComparator() {
+    setAlertMode(AlertMode::ALERT_MODE_COMPARATOR);
+}
+
+void MCP9808::setAlertModeInterrupt() {
+    setAlertMode(AlertMode::ALERT_MODE_IRQ);
+}
+
+uint16_t MCP9808::getData(float f) {
+    float intPart, fractPart;
+    uint16_t data, fract;
+
+    if (f > 0.0)
+    {
+        fractPart = std::modf(f, &intPart);
+        data = intPart;
+        data = (data << 4) & 0x0FFCu;
+        fract = fractPart * 100.0f;
+        data = data | ((fract / 50) << 3) & 0x0008u;
+        fract %= 50;
+        data = data | ((fract / 25) << 2) & 0x0006u;
+    }
+    else
+    {
+        fractPart = std::modf(f, &intPart);
+        data = -intPart;
+        data = (data << 4) & 0x0FFCu;
+        data = data | 0x1000u;
+        fract = fractPart * -100.0f;
+        data = data | ((fract / 50) << 3) & 0x0008u;
+        fract %= 50;
+        data = data | ((fract / 25) << 2) & 0x0006u;
+    }
+
+    return data;
 }
