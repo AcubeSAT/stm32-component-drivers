@@ -78,8 +78,160 @@ public:
     };
 
     /**
-    * Low-power mode (SHDN) options.
+    * Every measurement resolution option.
     */
+    enum MeasurementResolution {
+        RES_0_50C = 0x00,
+        RES_0_25C = 0x01,
+        RES_0_125C = 0x02,
+        RES_0_0625C = 0x03
+    };
+
+    /**
+     * Enter low power mode (SHDN - shutdown mode)
+     */
+    void enableLowPowerMode();
+
+    /**
+     * Exit low power mode (SHDN - shutdown mode)
+     */
+    void disableLowPowerMode();
+
+    /**
+     * Enable locking of the critical temperature (TCRIT) register
+     */
+    void enableCriticalTemperatureLock();
+
+    /**
+     * Disable locking of the critical temperature (TCRIT) register
+     */
+    void disableCriticalTemperatureLock();
+
+    /**
+     * Enable locking of the temperature window (T_UPPER, T_LOWER) registers
+     */
+    void enableTemperatureWindowLock();
+
+    /**
+     * Disable locking of the temperature window (T_UPPER, T_LOWER) registers
+     */
+    void disableTemperatureWindowLock();
+
+    /**
+     * Enable temperature alerts.
+     * Alert output is asserted as a comparator/interrupt or critical temperature
+     */
+    void enableAlertStatus();
+
+    /**
+     * Disable temperature alerts.
+     * Alert output is not asserted by the device (power-up default)
+     */
+    void disableAlertStatus();
+
+    /**
+     * Enable alert control mode.
+     */
+    void enableAlertControl();
+
+    /**
+     * Disable alert control mode.
+     */
+    void disableAlertControl();
+
+    /**
+     * An alert is emitted only when T_ambient > T_crit (T_UPPER and T_LOWER temperature boundaries are disabled)
+     */
+    void setAlertSelectionOnCriticalTemperature();
+
+    /**
+     * Alert output for T_UPPER, T_LOWER and T_CRIT (power-up default)
+     */
+    void setAlertSelectionOnAll();
+
+    /**
+     * Set the polarity of the emitted alert active-high
+     */
+    void setAlertPolarityActiveHigh();
+
+    /**
+     * Set the polarity of the emitted alert active-low
+     */
+    void setAlertPolarityActiveLow();
+
+    /**
+     * Set the alert mode to comparator output
+     */
+    void setAlertModeComparator();
+
+    /**
+     * Set the alert mode to interrupt output
+     */
+    void setAlertModeInterrupt();
+
+    /**
+     * Set the hysteresis temperature (THYST)
+     * Available options are: 0, 1.5, 3, 6 degrees Celsius
+     * @param option desired hysteresis temperature option
+     */
+    void setHysteresisTemperature(HysteresisTemperatureOptions option);
+
+    /**
+    * Set the interrupts to be cleared on the next read attempt (namely, a temperature
+    * reading or a command in general)
+    */
+    void clearInterrupts();
+
+    /**
+     * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
+     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits, t
+     * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
+     * @param setting the desired measurement resolution option
+     */
+    void setResolution(MeasurementResolution setting);
+
+    /**
+     * Set upper temperature limit
+     * @param data the desired upper temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setUpperTemperatureLimit(float temp);
+
+    /**
+     * Set lower temperature limit
+     * @param data the desired lower temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setLowerTemperatureLimit(float temp);
+
+    /**
+     * Set critical temperature limit
+     * @param data the desired critical temperature limit with format as specified at page 21 of the datasheet
+     */
+    void setCriticalTemperatureLimit(float temp);
+
+    /**
+     * Get the current temperature reading (in Celsius)
+     * @returns the current temperature
+     */
+    float getTemperature();
+
+    /**
+     * Check the Manufacturer ID register against the expected value.
+     * @return Returns true if the device is connected and responds correctly.
+     */
+    bool isDeviceConnected();
+
+    /**
+     * Getter function
+     * @return the I2C_USER_ADDRESS private variable
+     */
+    inline uint8_t getI2CUserAddress() const {
+        return I2C_USER_ADDRESS;
+    }
+
+private:
+    /**
+* Low-power mode (SHDN) options.
+*/
     enum LowPowerMode {
         LOWPWR_ENABLE = 0x100,
         LOWPWR_DISABLE = 0x000
@@ -142,127 +294,9 @@ public:
     };
 
     /**
-    * Every measurement resolution option.
-    */
-    enum MeasurementResolution {
-        RES_0_50C = 0x00,
-        RES_0_25C = 0x01,
-        RES_0_125C = 0x02,
-        RES_0_0625C = 0x03
-    };
-
-    /**
-     * Set the hysteresis temperature (THYST)
-     * Available options are: 0, 1.5, 3, 6 degrees Celsius
-     * @param option desired hysteresis temperature option
+     * The maximum buffer size to write via High Speed Two-Wired Interface
      */
-    void setHysteresisTemperature(HysteresisTemperatureOptions option);
-
-    /**
-    * Enter/exit low power mode (SHDN - shutdown mode)
-    * @param setting the desired low power mode option
-    */
-    void setLowPowerMode(LowPowerMode setting);
-
-    /**
-    * Set locking status of the critical temperature (TCRIT) register
-    * @param setting the desired critical temperature locking option
-    */
-    void setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
-
-    /**
-    * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
-    * @param setting the desired locking status option
-    */
-    void setTemperatureWindowLock(TemperatureWindowLock setting);
-
-    /**
-     * Enable or disable temperature alerts.
-     * If enabled, alert output is asserted as a comparator/interrupt or critical temperature
-     * @param setting the desired alert status option
-     */
-    void setAlertStatus(AlertStatus setting);
-
-    /**
-     * Enable or disable alert control mode.
-     * @param setting the desired alert control option
-     */
-    void setAlertControl(AlertControl setting);
-
-    /**
-     * Select the event for which an alert will be emitted, if triggered.
-     * If set to CONFIG_ALERT_SELECT_CRITONLY, then an alert is emitted only when
-     * T_ambient > T_crit.
-     * @param setting the desired alert selection option
-     */
-    void setAlertSelection(AlertSelection setting);
-
-    /**
-     * Set the polarity of the emitted alert (active-low or active-high)
-     * @param setting desired alert polarity option
-     */
-    void setAlertPolarity(AlertPolarity setting);
-
-    /**
-     * Set the alert mode (comparator or interrupt output)
-     * @param setting the desired alert mode option
-     */
-    void setAlertMode(AlertMode setting);
-
-    /**
-    * Set the interrupts to be cleared on the next read attempt (namely, a temperature
-    * reading or a command in general)
-    */
-    void clearInterrupts();
-
-    /**
-     * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
-     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits, t
-     * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
-     * @param setting the desired measurement resolution option
-     */
-    void setResolution(MeasurementResolution setting);
-
-
-    /**
-     * Set upper temperature limit
-     * @param data the desired upper temperature limit with format as specified at page 21 of the datasheet
-     */
-    void setUpperTemperatureLimit(uint16_t data);
-
-    /**
-     * Set lower temperature limit
-     * @param data the desired lower temperature limit with format as specified at page 21 of the datasheet
-     */
-    void setLowerTemperatureLimit(uint16_t data);
-
-    /**
-     * Set critical temperature limit
-     * @param data the desired critical temperature limit with format as specified at page 21 of the datasheet
-     */
-    void setCriticalTemperatureLimit(uint16_t data);
-
-    /**
-     * Get the current temperature reading (in Celsius)
-     * @returns the current temperature
-     */
-    float getTemperature();
-
-    /**
-     * Check the Manufacturer ID register against the expected value.
-     * @return Returns true if the device is connected and responds correctly.
-     */
-    bool isDeviceConnected();
-
-    /**
-     * Getter function
-     * @return the I2C_USER_ADDRESS private variable
-     */
-    inline uint8_t getI2CUserAddress() const {
-        return I2C_USER_ADDRESS;
-    }
-
-private:
+    static const uint8_t MAX_BUFF_SIZE = 3;
 
     /**
      * Wait period before a sensor read is skipped
@@ -347,13 +381,64 @@ private:
     TWIHS_ERROR error;
 
     /**
+    * Enter/exit low power mode (SHDN - shutdown mode)
+    * @param setting the desired low power mode option
+    */
+    void setLowPowerMode(LowPowerMode setting);
+
+    /**
+    * Set locking status of the critical temperature (TCRIT) register
+    * @param setting the desired critical temperature locking option
+    */
+    void setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
+
+    /**
+    * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
+    * @param setting the desired locking status option
+    */
+    void setTemperatureWindowLock(TemperatureWindowLock setting);
+
+    /**
+     * Enable or disable temperature alerts.
+     * If enabled, alert output is asserted as a comparator/interrupt or critical temperature
+     * @param setting the desired alert status option
+     */
+    void setAlertStatus(AlertStatus setting);
+
+    /**
+     * Enable or disable alert control mode.
+     * @param setting the desired alert control option
+     */
+    void setAlertControl(AlertControl setting);
+
+    /**
+     * Select the event for which an alert will be emitted, if triggered.
+     * If set to CONFIG_ALERT_SELECT_CRITONLY, then an alert is emitted only when
+     * T_ambient > T_crit.
+     * @param setting the desired alert selection option
+     */
+    void setAlertSelection(AlertSelection setting);
+
+    /**
+     * Set the polarity of the emitted alert (active-low or active-high)
+     * @param setting desired alert polarity option
+     */
+    void setAlertPolarity(AlertPolarity setting);
+
+    /**
+     * Set the alert mode (comparator or interrupt output)
+     * @param setting the desired alert mode option
+     */
+    void setAlertMode(AlertMode setting);
+
+    /**
     * Write a value to a register. Microchip-specific functions are used.
     * NOTE: this writes data as they are, so be careful!
     *
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(etl::array<uint8_t, 3>& data, uint8_t numOfBytes);
+    void writeRegister(etl::array<uint8_t, MAX_BUFF_SIZE>& data, uint8_t numOfBytes);
 
     /**
     * Read a value from a register. About register reading operations
@@ -390,4 +475,13 @@ private:
             taskYIELD();
         }
     };
+
+    /**
+     * Converts floating point number to the binary representation
+     * specified at page 22 of the datasheet.
+     *
+     * @param f the floating point number to be converted
+     * @return the binary representation
+     */
+    uint16_t getData(float f);
 };
