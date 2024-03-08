@@ -1,8 +1,8 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(etl::array<uint8_t, MAX_BUFF_SIZE>& data, uint8_t numOfBytes) {
+void MCP9808::writeRegister(uint8_t* data, uint8_t numOfBytes) {
 
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), numOfBytes)) {
+    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data, numOfBytes)) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
     }
@@ -31,15 +31,15 @@ void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
     uint16_t newSetting = (mask & previous) | setting;
 
     if (address == REG_RESOLUTION) {  // 1 byte register
-        etl::array<uint8_t, MAX_BUFF_SIZE> data = {address,
+        etl::array<uint8_t, MAX_BYTE_NUM> data = {address,
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(data, 2);
+        writeRegister(data.data(), 2);
     }
     else {  // 2 bytes register
-        etl::array<uint8_t, MAX_BUFF_SIZE> data = {address,
+        etl::array<uint8_t, MAX_BYTE_NUM> data = {address,
                           static_cast<uint8_t>((newSetting >> 8) & 0x00FF),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(data, 3);
+        writeRegister(data.data(), 3);
     }
 }
 

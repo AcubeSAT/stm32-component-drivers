@@ -294,9 +294,9 @@ private:
     };
 
     /**
-     * The maximum buffer size to write via High Speed Two-Wired Interface
+     * The maximum number of bytes to write via High Speed Two-Wired Interface
      */
-    static const uint8_t MAX_BUFF_SIZE = 3;
+    static const uint8_t MAX_BYTE_NUM = 3;
 
     /**
      * Wait period before a sensor read is skipped
@@ -438,7 +438,7 @@ private:
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(etl::array<uint8_t, MAX_BUFF_SIZE>& data, uint8_t numOfBytes);
+    void writeRegister(uint8_t* data, uint8_t numOfBytes);
 
     /**
     * Read a value from a register. About register reading operations
