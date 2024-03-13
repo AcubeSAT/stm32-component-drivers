@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <etl/span.h>
 #include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
@@ -296,7 +297,10 @@ private:
     /**
      * The maximum number of bytes to write via High Speed Two-Wired Interface
      */
-    static const uint8_t MAX_BYTE_NUM = 3;
+    enum NUM_OF_BYTES_TO_TRANSFER : uint8_t {
+        TRANSFER_2BYTES = 2,
+        TRANSFER_3BYTES = 3
+    };
 
     /**
      * Wait period before a sensor read is skipped
@@ -310,7 +314,7 @@ private:
     /**
     * MCP9808 temperature sensor register addresses.
     */
-    enum Register : uint8_t {
+    enum class Register : uint8_t {
         REG_RFU = 0x00u,
         REG_CONFIG = 0x01u,
         REG_TUPPER = 0x02u,
@@ -325,7 +329,7 @@ private:
     /**
     * The required value in order to set interrupts to be cleared on next read of CONFIG register.
     */
-    const uint8_t IRQ_CLEAR = 0x20;
+    static constexpr uint8_t IRQ_CLEAR = 0x20;
 
     /**
     * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
@@ -339,7 +343,7 @@ private:
     /**
     * Configuration masks
     */
-    enum Mask {
+    enum class Mask : uint16_t {
         TCRIT_LOCK_MASK = 0xFF7Fu,
         WINLOCK_MASK = 0xFFBFu,
         IRQ_CLEAR_MASK = 0xFFDFu,
@@ -373,7 +377,7 @@ private:
     /**
     * Manufacturer's ID.
     */
-    const uint8_t MANUFACTURER_ID = 0x0054u;
+    static constexpr uint8_t MANUFACTURER_ID = 0x0054u;
 
     /**
      * High Speed Two-Wired Interface transaction error
@@ -438,7 +442,7 @@ private:
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(uint8_t* data, uint8_t numOfBytes);
+    void writeRegister(etl::span<uint8_t>& data);
 
     /**
     * Read a value from a register. About register reading operations
@@ -446,7 +450,7 @@ private:
     * @param address the address of the desired register
     * @param data a variable to save the data from the desired register
     */
-    uint16_t readRegister(uint8_t address);
+    uint16_t readRegister(Register address);
 
     /**
     * Safely change a setting on the register
@@ -459,12 +463,12 @@ private:
     * @param setting the new value of the setting to be changed
     * (also found in mcp9808-constants.hpp)
     */
-    void setRegister(uint8_t address, Mask mask, uint16_t setting);
+    void setRegister(Register address, Mask mask, uint16_t setting);
 
     /**
      * Function that prevents hanging when a I2C device is not responding.
      */
-    inline void waitForResponse() {
+    inline void waitForResponse() const {
         auto start = xTaskGetTickCount();
         while (MCP9808_TWIHS_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
@@ -472,7 +476,7 @@ private:
                           << " has timed out";
                 MCP9808_TWIHS_Initialize();
             }
-            taskYIELD();
+            taskYIELD()
         }
     };
 
@@ -483,5 +487,5 @@ private:
      * @param f the floating point number to be converted
      * @return the binary representation
      */
-    uint16_t getData(float f);
+    static uint16_t getData(float floatToConvert);
 };

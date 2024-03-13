@@ -1,22 +1,24 @@
 #include "MCP9808.hpp"
+#include<type_traits>
 
-void MCP9808::writeRegister(uint8_t* data, uint8_t numOfBytes) {
+void MCP9808::writeRegister(etl::span<uint8_t>& data) {
 
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data, numOfBytes)) {
+    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), data.size())) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
     }
 }
 
-uint16_t MCP9808::readRegister(uint8_t address) {
-    uint8_t buffer[2];
+uint16_t MCP9808::readRegister(Register address) {
+    etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_2BYTES> buffer = {};
 
-    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &address, 1)) {
+    auto addr = static_cast<std::underlying_type_t<Register>>(address);
+    if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &addr, 1)) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
     }
 
-    if (MCP9808_TWIHS_Read(I2C_BUS_ADDRESS, buffer, 2)) {
+    if (MCP9808_TWIHS_Read(I2C_BUS_ADDRESS, buffer.data(), buffer.size())) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
         return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
@@ -25,104 +27,105 @@ uint16_t MCP9808::readRegister(uint8_t address) {
     }
 }
 
-void MCP9808::setRegister(uint8_t address, Mask mask, uint16_t setting) {
+void MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
     uint16_t previous = readRegister(address);
 
-    uint16_t newSetting = (mask & previous) | setting;
+    uint16_t newSetting = (static_cast<uint16_t>(mask) & previous) | setting;
 
-    if (address == REG_RESOLUTION) {  // 1 byte register
-        etl::array<uint8_t, MAX_BYTE_NUM> data = {address,
+    if (address == Register::REG_RESOLUTION) {  // 1 byte register
+        etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_2BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(data.data(), 2);
+        etl::span<uint8_t> dataToTransfer{data};
+        writeRegister(dataToTransfer);
     }
     else {  // 2 bytes register
-        etl::array<uint8_t, MAX_BYTE_NUM> data = {address,
+        etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_3BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>((newSetting >> 8) & 0x00FF),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        writeRegister(data.data(), 3);
+        etl::span<uint8_t> dataToTransfer{data};
+        writeRegister(dataToTransfer);
     }
 }
 
 void MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
-    setRegister(REG_CONFIG, THYST_MASK, option);
+    setRegister(Register::REG_CONFIG, Mask::THYST_MASK, option);
 }
 
 void MCP9808::setLowPowerMode(MCP9808::LowPowerMode setting) {
-    setRegister(REG_CONFIG, SHDN_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, setting);
 }
 
 void MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
-    setRegister(REG_CONFIG, TCRIT_LOCK_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, setting);
 }
 
 void MCP9808::setTemperatureWindowLock(MCP9808::TemperatureWindowLock setting) {
-    setRegister(REG_CONFIG, WINLOCK_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::WINLOCK_MASK, setting);
 }
 
 void MCP9808::clearInterrupts() {
-    setRegister(REG_CONFIG, IRQ_CLEAR_MASK, IRQ_CLEAR);
+    setRegister(Register::REG_CONFIG, Mask::IRQ_CLEAR_MASK, IRQ_CLEAR);
 }
 
 void MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
-    setRegister(REG_CONFIG, ALERT_STATUS_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, setting);
 }
 
 void MCP9808::setAlertControl(MCP9808::AlertControl setting) {
-    setRegister(REG_CONFIG, ALERT_CONTROL_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::ALERT_CONTROL_MASK, setting);
 }
 
 void MCP9808::setAlertSelection(MCP9808::AlertSelection setting) {
-    setRegister(REG_CONFIG, ALERT_SELECT_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::ALERT_SELECT_MASK, setting);
 }
 
 void MCP9808::setAlertPolarity(MCP9808::AlertPolarity setting) {
-    setRegister(REG_CONFIG, ALERT_POLARITY_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::ALERT_POLARITY_MASK, setting);
 }
 
 void MCP9808::setAlertMode(MCP9808::AlertMode setting) {
-    setRegister(REG_CONFIG, ALERT_MODE_MASK, setting);
+    setRegister(Register::REG_CONFIG, Mask::ALERT_MODE_MASK, setting);
 }
 
 void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
-    setRegister(REG_RESOLUTION, RES_MASK, setting << 8);
+    setRegister(Register::REG_RESOLUTION, Mask::RES_MASK, setting << 8);
 }
 
 float MCP9808::getTemperature() {
-    uint16_t data;
     float result = 0;
 
-    data = readRegister(REG_TEMP);
+    uint16_t data = readRegister(Register::REG_TEMP);
 
     uint8_t upperByte = (data >> 8) & 0x1F;
-    uint8_t lowerByte = data & 0xFF;
+    const uint8_t LowerByte = data & 0xFF;
 
     if ((upperByte & 0x10) != 0) {
         upperByte &= 0x0F;
-        result = -(256 - (upperByte * 16.0f + lowerByte / 16.0f));
+        result = -(256 - (upperByte * 16.0f + LowerByte / 16.0f));
     } else {
-        result = upperByte * 16.0f + lowerByte / 16.0f;
+        result = upperByte * 16.0f + LowerByte / 16.0f;
     }
 
     return result;
 }
 
 bool MCP9808::isDeviceConnected() {
-    return readRegister(REG_MFGID) == MANUFACTURER_ID;
+    return readRegister(Register::REG_MFGID) == MANUFACTURER_ID;
 }
 
 void MCP9808::setUpperTemperatureLimit(float temp) {
-    uint16_t data = getData(temp);
-    setRegister(REG_TUPPER, TUPPER_TLOWER_TCRIT_MASK, data);
+    auto data = getData(temp);
+    setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, data);
 }
 
 void MCP9808::setLowerTemperatureLimit(float temp) {
-    uint16_t data = getData(temp);
-    setRegister(REG_TLOWER, TUPPER_TLOWER_TCRIT_MASK, data);
+    auto data = getData(temp);
+    setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, data);
 }
 
 void MCP9808::setCriticalTemperatureLimit(float temp) {
-    uint16_t data = getData(temp);
-    setRegister(REG_TCRIT, TUPPER_TLOWER_TCRIT_MASK, data);
+    auto data = getData(temp);
+    setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, data);
 }
 
 void MCP9808::enableLowPowerMode() {
@@ -189,31 +192,17 @@ void MCP9808::setAlertModeInterrupt() {
     setAlertMode(AlertMode::ALERT_MODE_IRQ);
 }
 
-uint16_t MCP9808::getData(float f) {
-    float intPart, fractPart;
-    uint16_t data, fract;
+uint16_t MCP9808::getData(float floatToConvert) {
+    float intPart;
 
-    if (f > 0.0)
-    {
-        fractPart = std::modf(f, &intPart);
-        data = intPart;
-        data = (data << 4) & 0x0FFCu;
-        fract = fractPart * 100.0f;
-        data = data | ((fract / 50) << 3) & 0x0008u;
-        fract %= 50;
-        data = data | ((fract / 25) << 2) & 0x0006u;
-    }
-    else
-    {
-        fractPart = std::modf(f, &intPart);
-        data = -intPart;
-        data = (data << 4) & 0x0FFCu;
-        data = data | 0x1000u;
-        fract = fractPart * -100.0f;
-        data = data | ((fract / 50) << 3) & 0x0008u;
-        fract %= 50;
-        data = data | ((fract / 25) << 2) & 0x0006u;
-    }
+    float fractPart = std::modf(floatToConvert, &intPart);
+    uint16_t data = static_cast<uint16_t>(std::abs(intPart));
+    data = (data << 4) & 0x0FFC;
+    data =  floatToConvert < 0.f ? data | 0x1000u : data;  // set the sign bit
+    uint16_t fract = static_cast<uint16_t>(std::abs(-fractPart * 100.0f));
+    data = (data | ((fract / 50) << 3)) & 0x0008u;
+    fract %= 50;
+    data = (data | ((fract / 25) << 2)) & 0x0006u;
 
     return data;
 }
