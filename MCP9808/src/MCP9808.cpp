@@ -1,7 +1,6 @@
 #include "MCP9808.hpp"
-#include<type_traits>
 
-void MCP9808::writeRegister(etl::span<uint8_t>& data) {
+void MCP9808::writeRegister(const etl::span<uint8_t>& data) {
 
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), data.size())) {
         waitForResponse();
@@ -28,22 +27,20 @@ uint16_t MCP9808::readRegister(Register address) {
 }
 
 void MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
-    uint16_t previous = readRegister(address);
+    auto previous = readRegister(address);
 
     uint16_t newSetting = (static_cast<uint16_t>(mask) & previous) | setting;
 
     if (address == Register::REG_RESOLUTION) {  // 1 byte register
         etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_2BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        etl::span<uint8_t> dataToTransfer{data};
-        writeRegister(dataToTransfer);
+        writeRegister(etl::span<uint8_t>(data));
     }
     else {  // 2 bytes register
         etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_3BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>((newSetting >> 8) & 0x00FF),
                           static_cast<uint8_t>(newSetting & 0x00FF)};
-        etl::span<uint8_t> dataToTransfer{data};
-        writeRegister(dataToTransfer);
+        writeRegister(etl::span<uint8_t>(data));
     }
 }
 
@@ -92,21 +89,18 @@ void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
 }
 
 float MCP9808::getTemperature() {
-    float result = 0;
 
-    uint16_t data = readRegister(Register::REG_TEMP);
+    auto data = readRegister(Register::REG_TEMP);
 
     uint8_t upperByte = (data >> 8) & 0x1F;
     const uint8_t LowerByte = data & 0xFF;
 
     if ((upperByte & 0x10) != 0) {
         upperByte &= 0x0F;
-        result = -(256 - (upperByte * 16.0f + LowerByte / 16.0f));
+        return -(256 - (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f));
     } else {
-        result = upperByte * 16.0f + LowerByte / 16.0f;
+        return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
     }
-
-    return result;
 }
 
 bool MCP9808::isDeviceConnected() {
@@ -196,10 +190,10 @@ uint16_t MCP9808::getData(float floatToConvert) {
     float intPart;
 
     float fractPart = std::modf(floatToConvert, &intPart);
-    uint16_t data = static_cast<uint16_t>(std::abs(intPart));
+    auto data = static_cast<uint16_t>(std::abs(intPart));
     data = (data << 4) & 0x0FFC;
     data =  floatToConvert < 0.f ? data | 0x1000u : data;  // set the sign bit
-    uint16_t fract = static_cast<uint16_t>(std::abs(-fractPart * 100.0f));
+    auto fract = static_cast<uint16_t>(std::abs(fractPart * 100.0f));
     data = (data | ((fract / 50) << 3)) & 0x0008u;
     fract %= 50;
     data = (data | ((fract / 25) << 2)) & 0x0006u;

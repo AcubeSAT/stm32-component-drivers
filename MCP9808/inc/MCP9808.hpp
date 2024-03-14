@@ -62,7 +62,7 @@ public:
      * @see I2C_USER_ADDRESS
      * @param i2cUserAddress user selectable address
      */
-    MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+    explicit MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
 
     /**
    * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
@@ -442,7 +442,7 @@ private:
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(etl::span<uint8_t>& data);
+    void writeRegister(const etl::span<uint8_t>& data);
 
     /**
     * Read a value from a register. About register reading operations
