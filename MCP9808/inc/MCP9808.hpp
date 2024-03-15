@@ -442,7 +442,7 @@ private:
     * @param data the data octets to be written
     * @param numOfBytes the number of bytes to be written
     */
-    void writeRegister(const etl::span<uint8_t>& data);
+    void writeRegister(etl::span<uint8_t> data);
 
     /**
     * Read a value from a register. About register reading operations
