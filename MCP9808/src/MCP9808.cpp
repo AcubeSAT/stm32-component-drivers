@@ -1,6 +1,6 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(const etl::span<uint8_t>& data) {
+void MCP9808::writeRegister(etl::span<uint8_t> data) {
 
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), data.size())) {
         waitForResponse();
