@@ -306,7 +306,7 @@ private:
     /**
      * Wait period before a sensor read is skipped
      */
-    const uint8_t TimeoutTicks = 100;
+    const uint8_t TIMEOUT_TICKS = 100;
 
     /**
      * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
@@ -470,9 +470,9 @@ private:
      * Function that prevents hanging when a I2C device is not responding.
      */
     inline void waitForResponse() const {
-        auto start = xTaskGetTickCount();
+        const auto Start = xTaskGetTickCount();
         while (MCP9808_TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - start > TimeoutTicks) {
+            if (xTaskGetTickCount() - Start > TIMEOUT_TICKS) {
                 LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
                           << " has timed out";
                 MCP9808_TWIHS_Initialize();
