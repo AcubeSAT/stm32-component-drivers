@@ -9,7 +9,7 @@ void MCP9808::writeRegister(etl::span<uint8_t> data) {
 }
 
 uint16_t MCP9808::readRegister(Register address) {
-    etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_2BYTES> buffer = {};
+    etl::array<uint8_t, NUM_OF_BYTES_TO_TRANSFER::TRANSFER_2BYTES> buffer {0};
 
     auto addr = static_cast<std::underlying_type_t<Register>>(address);
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, &addr, 1)) {
