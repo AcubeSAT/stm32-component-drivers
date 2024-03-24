@@ -65,8 +65,8 @@ public:
     explicit MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
 
     /**
-   * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
-   */
+     * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
+     */
 
     /**
      * Hysteresis temperature options.
@@ -79,8 +79,8 @@ public:
     };
 
     /**
-    * Every measurement resolution option.
-    */
+     * Every measurement resolution option.
+     */
     enum MeasurementResolution {
         RES_0_50C = 0x00,
         RES_0_25C = 0x01,
@@ -178,9 +178,9 @@ public:
     void setHysteresisTemperature(HysteresisTemperatureOptions option);
 
     /**
-    * Set the interrupts to be cleared on the next read attempt (namely, a temperature
-    * reading or a command in general)
-    */
+     * Set the interrupts to be cleared on the next read attempt (namely, a temperature
+     * reading or a command in general)
+     */
     void clearInterrupts();
 
     /**
@@ -231,64 +231,64 @@ public:
 
 private:
     /**
-* Low-power mode (SHDN) options.
-*/
+     * Low-power mode (SHDN) options.
+     */
     enum LowPowerMode {
         LOWPWR_ENABLE = 0x100,
         LOWPWR_DISABLE = 0x000
     };
 
     /**
-    * Critical temperature register locking options.
-    */
+     * Critical temperature register locking options.
+     */
     enum CriticalTemperatureRegisterLock {
         TCRIT_LOCK_ENABLE = 0x80,
         TCRIT_LOCK_DISABLE = 0x00
     };
 
     /**
-    * WINLOCK T_upper and T_lower temperature window locking options.
-    */
+     * WINLOCK T_upper and T_lower temperature window locking options.
+     */
     enum TemperatureWindowLock {
         WINLOCK_ENABLE = 0x40,
         WINLOCK_DISABLE = 0x00
     };
 
     /**
-    *  Output status options, see datasheet p. 19.
-    */
+     * Output status options, see datasheet p. 19.
+     */
     enum AlertStatus {
         ALERT_ENABLE = 0x10,
         ALERT_DISABLE = 0x00
     };
 
     /**
-    * Every output control option.
-    */
+     * Every output control option.
+     */
     enum AlertControl {
         ALERT_CONTROL_DISABLE = 0x08,
         ALERT_CONTROL_ENABLE = 0x00
     };
 
     /**
-    * Every alert output selection option.
-    */
+     * Every alert output selection option.
+     */
     enum AlertSelection {
         ALERT_SELECT_CRITONLY = 0x04,
         ALERT_SELECT_ALL = 0x00
     };
 
     /**
-    * Every alert output modes.
-    */
+     * Every alert output modes.
+     */
     enum AlertMode {
         ALERT_MODE_IRQ = 0x01,
         ALERT_MODE_COMPARATOR = 0x00
     };
 
     /**
-    * Every polarity of alerts option.
-    */
+     * Every polarity of alerts option.
+     */
     enum AlertPolarity {
         ALERT_POLARITY_ACTIVE_HIGH = 0x02,
         ALERT_POLARITY_ACTIVE_LOW = 0x00
@@ -297,7 +297,8 @@ private:
     /**
      * The maximum number of bytes to write via High Speed Two-Wired Interface
      */
-    enum NUM_OF_BYTES_TO_TRANSFER : uint8_t {
+    enum NumOfBytesToTransfer : uint8_t {
+        TRANSFER_1BYTE = 1,
         TRANSFER_2BYTES = 2,
         TRANSFER_3BYTES = 3
     };
@@ -308,12 +309,12 @@ private:
     const uint8_t TimeoutTicks = 100;
 
     /**
-    * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
-    */
+     * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
+     */
 
     /**
-    * MCP9808 temperature sensor register addresses.
-    */
+     * MCP9808 temperature sensor register addresses.
+     */
     enum class Register : uint8_t {
         REG_RFU = 0x00u,
         REG_CONFIG = 0x01u,
@@ -327,22 +328,22 @@ private:
     };
 
     /**
-    * The required value in order to set interrupts to be cleared on next read of CONFIG register.
-    */
+     * The required value in order to set interrupts to be cleared on next read of CONFIG register.
+     */
     static constexpr uint8_t IRQ_CLEAR = 0x20;
 
     /**
-    * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
-    */
+     * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
+     */
     const uint8_t I2C_USER_ADDRESS = 0x00;
 
     /**
-    * System constants - INTERNAL USE ONLY!
-    */
+     * System constants - INTERNAL USE ONLY!
+     */
 
     /**
-    * Configuration masks
-    */
+     * Configuration masks
+     */
     enum class Mask : uint16_t {
         TCRIT_LOCK_MASK = 0xFF7Fu,
         WINLOCK_MASK = 0xFFBFu,
@@ -359,24 +360,24 @@ private:
     };
 
     /**
-    * Base slave bus address manufacturer-defined, used on the I2C bus.
-    */
+     * Base slave bus address manufacturer-defined, used on the I2C bus.
+     */
     const uint8_t I2C_BASE_ADDRESS = 0x18u;
 
     /**
-    * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
-    */
+     * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
+     */
     const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
 
     /**
-    * Custom bus address for usage in read-write requests.
-    */
+     * Custom bus address for usage in read-write requests.
+     */
     const uint8_t I2C_BUS_ADDRESS = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
                                                           I2C_USER_ADDRESS);
 
     /**
-    * Manufacturer's ID.
-    */
+     * Manufacturer's ID.
+     */
     static constexpr uint8_t MANUFACTURER_ID = 0x0054u;
 
     /**
@@ -385,21 +386,21 @@ private:
     TWIHS_ERROR error;
 
     /**
-    * Enter/exit low power mode (SHDN - shutdown mode)
-    * @param setting the desired low power mode option
-    */
+     * Enter/exit low power mode (SHDN - shutdown mode)
+     * @param setting the desired low power mode option
+     */
     void setLowPowerMode(LowPowerMode setting);
 
     /**
-    * Set locking status of the critical temperature (TCRIT) register
-    * @param setting the desired critical temperature locking option
-    */
+     * Set locking status of the critical temperature (TCRIT) register
+     * @param setting the desired critical temperature locking option
+     */
     void setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
 
     /**
-    * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
-    * @param setting the desired locking status option
-    */
+     * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
+     * @param setting the desired locking status option
+     */
     void setTemperatureWindowLock(TemperatureWindowLock setting);
 
     /**
@@ -436,33 +437,33 @@ private:
     void setAlertMode(AlertMode setting);
 
     /**
-    * Write a value to a register. Microchip-specific functions are used.
-    * NOTE: this writes data as they are, so be careful!
-    *
-    * @param data the data octets to be written
-    * @param numOfBytes the number of bytes to be written
-    */
+     * Write a value to a register. Microchip-specific functions are used.
+     * NOTE: this writes data as they are, so be careful!
+     *
+     * @param data the data octets to be written
+     * @param numOfBytes the number of bytes to be written
+     */
     void writeRegister(etl::span<uint8_t> data);
 
     /**
-    * Read a value from a register. About register reading operations
-    * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
-    * @param address the address of the desired register
-    * @param data a variable to save the data from the desired register
-    */
+     * Read a value from a register. About register reading operations
+     * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
+     * @param address the address of the desired register
+     * @param data a variable to save the data from the desired register
+     */
     uint16_t readRegister(Register address);
 
     /**
-    * Safely change a setting on the register
-    * This is the recommended function to use when changing settings,
-    * and is used in all public functions that change settings.
-    *
-    * @param address the address of the desired register
-    * @param mask the appropriate bitmask to access the particular
-    * setting bit or group of bits
-    * @param setting the new value of the setting to be changed
-    * (also found in mcp9808-constants.hpp)
-    */
+     * Safely change a setting on the register
+     * This is the recommended function to use when changing settings,
+     * and is used in all public functions that change settings.
+     *
+     * @param address the address of the desired register
+     * @param mask the appropriate bitmask to access the particular
+     * setting bit or group of bits
+     * @param setting the new value of the setting to be changed
+     * (also found in mcp9808-constants.hpp)
+     */
     void setRegister(Register address, Mask mask, uint16_t setting);
 
     /**
