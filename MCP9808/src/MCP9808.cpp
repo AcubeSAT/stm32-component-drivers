@@ -89,7 +89,6 @@ void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
 }
 
 float MCP9808::getTemperature() {
-
     auto data = readRegister(Register::REG_TEMP);
 
     uint8_t upperByte = (data >> 8) & 0x1F;
