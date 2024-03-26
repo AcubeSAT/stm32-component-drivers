@@ -89,6 +89,9 @@ public:
         RES_0_0625C = 0x03
     };
 
+    /**
+     * Specifies the type of error occured in reading and writing operations
+     */
     enum class Error : uint8_t {
         ERROR_NONE = TWIHS_ERROR_NONE,
         ERROR_NACK = TWIHS_ERROR_NACK,
