@@ -1,92 +1,113 @@
 #include "MCP9808.hpp"
 
-void MCP9808::writeRegister(etl::span<uint8_t> data) {
+etl::expected<void, MCP9808::Error> MCP9808::writeRegister(etl::span<uint8_t> data) {
 
     if (MCP9808_TWIHS_Write(I2C_BUS_ADDRESS, data.data(), data.size())) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
+        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
+            return etl::unexpected(static_cast<Error>(error));
+
+        return etl::unexpected(Error::ERROR_NONE);
     }
+
+    return etl::unexpected(Error::WRITE_REQUEST_FAILED);
 }
 
-uint16_t MCP9808::readRegister(Register address) {
+etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) {
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> buffer {0};
 
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr {static_cast<std::underlying_type_t<Register>>(address)};
-    writeRegister(addr);
+    const auto WriteError = writeRegister(addr);
+    if (WriteError.error() != Error::ERROR_NONE)
+        return etl::unexpected(WriteError.error());
 
     if (MCP9808_TWIHS_Read(I2C_BUS_ADDRESS, buffer.data(), buffer.size())) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
+        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
+            return etl::unexpected(static_cast<Error>(error));
+
         return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
     }
 
-    return 0;
+    return etl::unexpected(Error::READ_REQUEST_FAILED);
 }
 
-void MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
+etl::expected<void, MCP9808::Error> MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
     const auto Previous = readRegister(address);
+    if (!Previous.has_value())
+        return etl::unexpected(Previous.error());
 
     const uint16_t NewSetting = (static_cast<uint16_t>(mask) & Previous) | setting;
 
     if (address == Register::REG_RESOLUTION) {  // 1 byte register
         etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>(NewSetting & 0x00FF)};
-        writeRegister(etl::span<uint8_t>(data));
+        const auto WriteError = writeRegister(etl::span<uint8_t>(data));
+        if (WriteError.error() != Error::ERROR_NONE)
+            return etl::unexpected(WriteError.error());
     }
     else {  // 2 bytes register
         etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_3BYTES> data = {static_cast<uint8_t>(address),
                           static_cast<uint8_t>((NewSetting >> 8) & 0x00FF),
                           static_cast<uint8_t>(NewSetting & 0x00FF)};
-        writeRegister(etl::span<uint8_t>(data));
+        const auto WriteError = writeRegister(etl::span<uint8_t>(data));
+        if (WriteError.error() != Error::ERROR_NONE)
+            return etl::unexpected(WriteError.error());
     }
+
+    return {};
 }
 
-void MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
-    setRegister(Register::REG_CONFIG, Mask::THYST_MASK, option);
+etl::expected<void, MCP9808::Error> MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
+    return setRegister(Register::REG_CONFIG, Mask::THYST_MASK, option);
 }
 
-void MCP9808::setLowPowerMode(MCP9808::LowPowerMode setting) {
-    setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setLowPowerMode(MCP9808::LowPowerMode setting) {
+    return setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, setting);
 }
 
-void MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
-    setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
+    return setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, setting);
 }
 
-void MCP9808::setTemperatureWindowLock(MCP9808::TemperatureWindowLock setting) {
-    setRegister(Register::REG_CONFIG, Mask::WINLOCK_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setTemperatureWindowLock(MCP9808::TemperatureWindowLock setting) {
+    return setRegister(Register::REG_CONFIG, Mask::WINLOCK_MASK, setting);
 }
 
-void MCP9808::clearInterrupts() {
-    setRegister(Register::REG_CONFIG, Mask::IRQ_CLEAR_MASK, IRQ_CLEAR);
+etl::expected<void, MCP9808::Error> MCP9808::clearInterrupts() {
+    return setRegister(Register::REG_CONFIG, Mask::IRQ_CLEAR_MASK, IRQ_CLEAR);
 }
 
-void MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, setting);
 }
 
-void MCP9808::setAlertControl(MCP9808::AlertControl setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_CONTROL_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertControl(MCP9808::AlertControl setting) {
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_CONTROL_MASK, setting);
 }
 
-void MCP9808::setAlertSelection(MCP9808::AlertSelection setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_SELECT_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertSelection(MCP9808::AlertSelection setting) {
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_SELECT_MASK, setting);
 }
 
-void MCP9808::setAlertPolarity(MCP9808::AlertPolarity setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_POLARITY_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertPolarity(MCP9808::AlertPolarity setting) {
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_POLARITY_MASK, setting);
 }
 
-void MCP9808::setAlertMode(MCP9808::AlertMode setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_MODE_MASK, setting);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertMode(MCP9808::AlertMode setting) {
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_MODE_MASK, setting);
 }
 
-void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
-    setRegister(Register::REG_RESOLUTION, Mask::RES_MASK, setting << 8);
+etl::expected<void, MCP9808::Error> MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
+    return setRegister(Register::REG_RESOLUTION, Mask::RES_MASK, setting << 8);
 }
 
-float MCP9808::getTemperature() {
+etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
     const auto Data = readRegister(Register::REG_TEMP);
+    if (!Data.has_value())
+        return etl::unexpected(Data.error());
 
     uint8_t upperByte = (Data >> 8) & 0x1F;
     const uint8_t LowerByte = Data & 0xFF;
@@ -99,87 +120,90 @@ float MCP9808::getTemperature() {
     return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
 }
 
-bool MCP9808::isDeviceConnected() {
-    return readRegister(Register::REG_MFGID) == MANUFACTURER_ID;
+etl::expected<bool, MCP9808::Error> MCP9808::isDeviceConnected() {
+    const auto ReadValue = readRegister(Register::REG_MFGID);
+    if (ReadValue.has_value())
+        return ReadValue.value();
+    return etl::unexpected(ReadValue.error());
 }
 
-void MCP9808::setUpperTemperatureLimit(float temp) {
-    setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+etl::expected<void, MCP9808::Error> MCP9808::setUpperTemperatureLimit(float temp) {
+    return setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
 }
 
-void MCP9808::setLowerTemperatureLimit(float temp) {
-    setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+etl::expected<void, MCP9808::Error> MCP9808::setLowerTemperatureLimit(float temp) {
+    return setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
 }
 
-void MCP9808::setCriticalTemperatureLimit(float temp) {
-    setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+etl::expected<void, MCP9808::Error> MCP9808::setCriticalTemperatureLimit(float temp) {
+    return setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
 }
 
-void MCP9808::enableLowPowerMode() {
-    setLowPowerMode(LowPowerMode::LOWPWR_ENABLE);
+etl::expected<void, MCP9808::Error> MCP9808::enableLowPowerMode() {
+    return setLowPowerMode(LowPowerMode::LOWPWR_ENABLE);
 }
 
-void MCP9808::disableLowPowerMode() {
-    setLowPowerMode(LowPowerMode::LOWPWR_DISABLE);
+etl::expected<void, MCP9808::Error> MCP9808::disableLowPowerMode() {
+    return setLowPowerMode(LowPowerMode::LOWPWR_DISABLE);
 }
 
-void MCP9808::enableCriticalTemperatureLock() {
-    setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_ENABLE);
+etl::expected<void, MCP9808::Error> MCP9808::enableCriticalTemperatureLock() {
+    return setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_ENABLE);
 }
 
-void MCP9808::disableCriticalTemperatureLock() {
-    setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_DISABLE);
+etl::expected<void, MCP9808::Error> MCP9808::disableCriticalTemperatureLock() {
+    return setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_DISABLE);
 }
 
-void MCP9808::enableTemperatureWindowLock() {
-    setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_ENABLE);
+etl::expected<void, MCP9808::Error> MCP9808::enableTemperatureWindowLock() {
+    return setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_ENABLE);
 }
 
-void MCP9808::disableTemperatureWindowLock() {
-    setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_DISABLE);
+etl::expected<void, MCP9808::Error> MCP9808::disableTemperatureWindowLock() {
+    return setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_DISABLE);
 }
 
-void MCP9808::enableAlertStatus() {
-    setAlertStatus(AlertStatus::ALERT_ENABLE);
+etl::expected<void, MCP9808::Error> MCP9808::enableAlertStatus() {
+    return setAlertStatus(AlertStatus::ALERT_ENABLE);
 }
 
-void MCP9808::disableAlertStatus() {
-    setAlertStatus(AlertStatus::ALERT_DISABLE);
+etl::expected<void, MCP9808::Error> MCP9808::disableAlertStatus() {
+    return setAlertStatus(AlertStatus::ALERT_DISABLE);
 }
 
-void MCP9808::enableAlertControl() {
-    setAlertControl(AlertControl::ALERT_CONTROL_ENABLE);
+etl::expected<void, MCP9808::Error> MCP9808::enableAlertControl() {
+    return setAlertControl(AlertControl::ALERT_CONTROL_ENABLE);
 }
 
-void MCP9808::disableAlertControl() {
-    setAlertControl(AlertControl::ALERT_CONTROL_DISABLE);
+etl::expected<void, MCP9808::Error> MCP9808::disableAlertControl() {
+    return setAlertControl(AlertControl::ALERT_CONTROL_DISABLE);
 }
 
-void MCP9808::setAlertSelectionOnCriticalTemperature() {
-    setAlertSelection(AlertSelection::ALERT_SELECT_CRITONLY);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertSelectionOnCriticalTemperature() {
+    return setAlertSelection(AlertSelection::ALERT_SELECT_CRITONLY);
 }
 
-void MCP9808::setAlertSelectionOnAll() {
-    setAlertSelection(AlertSelection::ALERT_SELECT_ALL);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertSelectionOnAll() {
+    return setAlertSelection(AlertSelection::ALERT_SELECT_ALL);
 }
 
-void MCP9808::setAlertPolarityActiveHigh() {
-    setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_HIGH);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertPolarityActiveHigh() {
+    return setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_HIGH);
 }
 
-void MCP9808::setAlertPolarityActiveLow() {
-    setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_LOW);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertPolarityActiveLow() {
+    return setAlertPolarity(AlertPolarity::ALERT_POLARITY_ACTIVE_LOW);
 }
 
-void MCP9808::setAlertModeComparator() {
-    setAlertMode(AlertMode::ALERT_MODE_COMPARATOR);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertModeComparator() {
+    return setAlertMode(AlertMode::ALERT_MODE_COMPARATOR);
 }
 
-void MCP9808::setAlertModeInterrupt() {
-    setAlertMode(AlertMode::ALERT_MODE_IRQ);
+etl::expected<void, MCP9808::Error> MCP9808::setAlertModeInterrupt() {
+    return setAlertMode(AlertMode::ALERT_MODE_IRQ);
 }
 
-uint16_t MCP9808::getData(float floatToConvert) {
+uint16_t MCP9808::floatConversion(float floatToConvert) {
     float intPart;
 
     const float FractPart = std::modf(floatToConvert, &intPart);
