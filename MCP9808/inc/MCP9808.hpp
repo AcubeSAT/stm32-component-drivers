@@ -71,7 +71,7 @@ public:
     /**
      * Hysteresis temperature options.
      */
-    enum HysteresisTemperatureOptions {
+    enum class HysteresisTemperatureOptions : uint16_t {
         THYST_0C = 0x000u,
         THYST_1_5C = 0x200u,
         THYST_3C = 0x400u,
@@ -81,7 +81,7 @@ public:
     /**
      * Every measurement resolution option.
      */
-    enum MeasurementResolution {
+    enum class MeasurementResolution : uint16_t {
         RES_0_50C = 0x00,
         RES_0_25C = 0x01,
         RES_0_125C = 0x02,
@@ -233,7 +233,7 @@ private:
     /**
      * Low-power mode (SHDN) options.
      */
-    enum LowPowerMode {
+    enum class LowPowerMode : uint16_t {
         LOWPWR_ENABLE = 0x100,
         LOWPWR_DISABLE = 0x000
     };
@@ -241,7 +241,7 @@ private:
     /**
      * Critical temperature register locking options.
      */
-    enum CriticalTemperatureRegisterLock {
+    enum class CriticalTemperatureRegisterLock : uint16_t {
         TCRIT_LOCK_ENABLE = 0x80,
         TCRIT_LOCK_DISABLE = 0x00
     };
@@ -249,7 +249,7 @@ private:
     /**
      * WINLOCK T_upper and T_lower temperature window locking options.
      */
-    enum TemperatureWindowLock {
+    enum class TemperatureWindowLock : uint16_t {
         WINLOCK_ENABLE = 0x40,
         WINLOCK_DISABLE = 0x00
     };
@@ -257,7 +257,7 @@ private:
     /**
      * Output status options, see datasheet p. 19.
      */
-    enum AlertStatus {
+    enum class AlertStatus : uint16_t {
         ALERT_ENABLE = 0x10,
         ALERT_DISABLE = 0x00
     };
@@ -273,7 +273,7 @@ private:
     /**
      * Every alert output selection option.
      */
-    enum AlertSelection {
+    enum class AlertSelection : uint16_t {
         ALERT_SELECT_CRITONLY = 0x04,
         ALERT_SELECT_ALL = 0x00
     };
@@ -281,7 +281,7 @@ private:
     /**
      * Every alert output modes.
      */
-    enum AlertMode {
+    enum class AlertMode : uint16_t {
         ALERT_MODE_IRQ = 0x01,
         ALERT_MODE_COMPARATOR = 0x00
     };
@@ -289,7 +289,7 @@ private:
     /**
      * Every polarity of alerts option.
      */
-    enum AlertPolarity {
+    enum class AlertPolarity : uint16_t {
         ALERT_POLARITY_ACTIVE_HIGH = 0x02,
         ALERT_POLARITY_ACTIVE_LOW = 0x00
     };

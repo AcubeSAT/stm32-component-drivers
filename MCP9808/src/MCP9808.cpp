@@ -41,48 +41,48 @@ void MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
     }
 }
 
-void MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
-    setRegister(Register::REG_CONFIG, Mask::THYST_MASK, option);
+void MCP9808::setHysteresisTemperature(HysteresisTemperatureOptions option) {
+    setRegister(Register::REG_CONFIG, Mask::THYST_MASK, static_cast<std::underlying_type_t<HysteresisTemperatureOptions>>(option));
 }
 
-void MCP9808::setLowPowerMode(MCP9808::LowPowerMode setting) {
-    setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, setting);
+void MCP9808::setLowPowerMode(LowPowerMode setting) {
+    setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, static_cast<std::underlying_type_t<LowPowerMode>>(setting));
 }
 
-void MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
-    setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, setting);
+void MCP9808::setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting) {
+    setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, static_cast<std::underlying_type_t<CriticalTemperatureRegisterLock>>(setting));
 }
 
-void MCP9808::setTemperatureWindowLock(MCP9808::TemperatureWindowLock setting) {
-    setRegister(Register::REG_CONFIG, Mask::WINLOCK_MASK, setting);
+void MCP9808::setTemperatureWindowLock(TemperatureWindowLock setting) {
+    setRegister(Register::REG_CONFIG, Mask::WINLOCK_MASK, static_cast<std::underlying_type_t<TemperatureWindowLock>>(setting));
 }
 
 void MCP9808::clearInterrupts() {
     setRegister(Register::REG_CONFIG, Mask::IRQ_CLEAR_MASK, IRQ_CLEAR);
 }
 
-void MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, setting);
+void MCP9808::setAlertStatus(AlertStatus setting) {
+    setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, static_cast<std::underlying_type_t<AlertStatus>>(setting));
 }
 
-void MCP9808::setAlertControl(MCP9808::AlertControl setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_CONTROL_MASK, setting);
+void MCP9808::setAlertControl(AlertControl setting) {
+    setRegister(Register::REG_CONFIG, Mask::ALERT_CONTROL_MASK, static_cast<std::underlying_type_t<AlertControl>>(setting));
 }
 
-void MCP9808::setAlertSelection(MCP9808::AlertSelection setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_SELECT_MASK, setting);
+void MCP9808::setAlertSelection(AlertSelection setting) {
+    setRegister(Register::REG_CONFIG, Mask::ALERT_SELECT_MASK, static_cast<std::underlying_type_t<AlertSelection>>(setting));
 }
 
-void MCP9808::setAlertPolarity(MCP9808::AlertPolarity setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_POLARITY_MASK, setting);
+void MCP9808::setAlertPolarity(AlertPolarity setting) {
+    setRegister(Register::REG_CONFIG, Mask::ALERT_POLARITY_MASK, static_cast<std::underlying_type_t<AlertPolarity>>(setting));
 }
 
-void MCP9808::setAlertMode(MCP9808::AlertMode setting) {
-    setRegister(Register::REG_CONFIG, Mask::ALERT_MODE_MASK, setting);
+void MCP9808::setAlertMode(AlertMode setting) {
+    setRegister(Register::REG_CONFIG, Mask::ALERT_MODE_MASK, static_cast<std::underlying_type_t<AlertMode>>(setting));
 }
 
-void MCP9808::setResolution(MCP9808::MeasurementResolution setting) {
-    setRegister(Register::REG_RESOLUTION, Mask::RES_MASK, setting << 8);
+void MCP9808::setResolution(MeasurementResolution setting) {
+    setRegister(Register::REG_RESOLUTION, Mask::RES_MASK, static_cast<std::underlying_type_t<MeasurementResolution>>(setting) /*<< 8*/);
 }
 
 float MCP9808::getTemperature() {
