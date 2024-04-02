@@ -265,9 +265,9 @@ private:
     /**
      * Every output control option.
      */
-    enum AlertControl {
-        ALERT_CONTROL_DISABLE = 0x08,
-        ALERT_CONTROL_ENABLE = 0x00
+    enum class AlertControl : uint16_t {
+        ALERT_CONTROL_ENABLE = 0x08,
+        ALERT_CONTROL_DISABLE = 0x00
     };
 
     /**
