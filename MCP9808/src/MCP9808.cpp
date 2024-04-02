@@ -17,7 +17,7 @@ uint16_t MCP9808::readRegister(Register address) {
     if (MCP9808_TWIHS_Read(I2C_BUS_ADDRESS, buffer.data(), buffer.size())) {
         waitForResponse();
         error = MCP9808_TWIHS_ErrorGet();
-        return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
+        return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(buffer[0]) & 0x00FF : ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
     }
 
     return 0;
