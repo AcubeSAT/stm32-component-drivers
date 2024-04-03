@@ -104,15 +104,15 @@ bool MCP9808::isDeviceConnected() {
 }
 
 void MCP9808::setUpperTemperatureLimit(float temp) {
-    setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+    setRegister(Register::REG_TUPPER, Mask::CLEAR_MASK, getData(temp));
 }
 
 void MCP9808::setLowerTemperatureLimit(float temp) {
-    setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+    setRegister(Register::REG_TLOWER, Mask::CLEAR_MASK, getData(temp));
 }
 
 void MCP9808::setCriticalTemperatureLimit(float temp) {
-    setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, getData(temp));
+    setRegister(Register::REG_TCRIT, Mask::CLEAR_MASK, getData(temp));
 }
 
 void MCP9808::enableLowPowerMode() {
@@ -187,9 +187,9 @@ uint16_t MCP9808::getData(float floatToConvert) {
     data = (data << 4) & 0x0FFC;
     data =  floatToConvert < 0.f ? data | 0x1000u : data;  // set the sign bit
     auto fract = static_cast<uint16_t>(std::abs(FractPart * 100.0f));
-    data = (data | ((fract / 50) << 3)) & 0x0008u;
+    data = (data | ((fract / 50) << 3)) & static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // adjust bit 3
     fract %= 50;
-    data = (data | ((fract / 25) << 2)) & 0x0006u;
+    data = (data | ((fract / 25) << 2)) & static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // adjust bit 2
 
     return data;
 }
