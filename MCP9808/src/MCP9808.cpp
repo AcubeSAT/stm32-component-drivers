@@ -127,16 +127,8 @@ void MCP9808::enableCriticalTemperatureLock() {
     setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_ENABLE);
 }
 
-void MCP9808::disableCriticalTemperatureLock() {
-    setCriticalTemperatureLock(CriticalTemperatureRegisterLock::TCRIT_LOCK_DISABLE);
-}
-
 void MCP9808::enableTemperatureWindowLock() {
     setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_ENABLE);
-}
-
-void MCP9808::disableTemperatureWindowLock() {
-    setTemperatureWindowLock(TemperatureWindowLock::WINLOCK_DISABLE);
 }
 
 void MCP9808::enableAlertStatus() {

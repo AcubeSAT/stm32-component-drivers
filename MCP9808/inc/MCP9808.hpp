@@ -104,19 +104,9 @@ public:
     void enableCriticalTemperatureLock();
 
     /**
-     * Disable locking of the critical temperature (TCRIT) register
-     */
-    void disableCriticalTemperatureLock();
-
-    /**
      * Enable locking of the temperature window (T_UPPER, T_LOWER) registers
      */
     void enableTemperatureWindowLock();
-
-    /**
-     * Disable locking of the temperature window (T_UPPER, T_LOWER) registers
-     */
-    void disableTemperatureWindowLock();
 
     /**
      * Enable temperature alerts.
