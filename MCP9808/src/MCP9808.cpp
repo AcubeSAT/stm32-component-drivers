@@ -86,17 +86,19 @@ void MCP9808::setResolution(MeasurementResolution setting) {
 }
 
 float MCP9808::getTemperature() {
-    const auto Data = readRegister(Register::REG_TEMP);
+    return getTemperature(Register::REG_TEMP);
+}
 
-    uint8_t upperByte = (Data >> 8) & 0x1F;
-    const uint8_t LowerByte = Data & 0xFF;
+float MCP9808::getCriticalTemperatureLimit() {
+    return getTemperature(Register::REG_TCRIT);
+}
 
-    if ((upperByte & 0x10) != 0) {
-        upperByte &= 0x0F;
-        return -(256 - (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f));
-    }
+float MCP9808::getUpperTemperatureLimit() {
+    return getTemperature(Register::REG_TUPPER);
+}
 
-    return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
+float MCP9808::getLowerTemperatureLimit() {
+    return getTemperature(Register::REG_TLOWER);
 }
 
 bool MCP9808::isDeviceConnected() {
@@ -184,4 +186,19 @@ uint16_t MCP9808::getData(float floatToConvert) {
     data = (data | ((fract / 25) << 2)) & static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // adjust bit 2
 
     return data;
+}
+
+float MCP9808::getTemperature(Register reg)
+{
+    const auto Data = readRegister(reg);
+
+    uint8_t upperByte = (Data >> 8) & 0x1F;
+    const uint8_t LowerByte = Data & (reg == Register::REG_TEMP ? 0xFF : 0xFC);
+
+    if ((upperByte & 0x10) != 0) {  // negative temperature
+        upperByte &= 0x0F;
+        return -(256 - (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f));
+    }
+
+    return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
 }

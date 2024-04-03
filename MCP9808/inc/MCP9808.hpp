@@ -183,27 +183,45 @@ public:
 
     /**
      * Set upper temperature limit
-     * @param data the desired upper temperature limit with format as specified at page 21 of the datasheet
+     * @param temp the desired upper temperature limit
      */
     void setUpperTemperatureLimit(float temp);
 
     /**
      * Set lower temperature limit
-     * @param data the desired lower temperature limit with format as specified at page 21 of the datasheet
+     * @param temp the desired lower temperature limit
      */
     void setLowerTemperatureLimit(float temp);
 
     /**
      * Set critical temperature limit
-     * @param data the desired critical temperature limit with format as specified at page 21 of the datasheet
+     * @param temp the desired critical temperature limit
      */
     void setCriticalTemperatureLimit(float temp);
 
     /**
-     * Get the current temperature reading (in Celsius)
-     * @returns the current temperature
+     * Get the current ambient temperature (in Celsius)
+     * @returns the current ambient temperature
      */
     float getTemperature();
+
+    /**
+     * Returns the Critical Temperature (in Celsius)
+     * @return the Critical Temperature
+     */
+    float getCriticalTemperatureLimit();
+
+    /**
+     * Returns the Upper Temperature Limit (in Celsius)
+     * @return the Upper Temperature Limit
+     */
+    float getUpperTemperatureLimit();
+
+    /**
+     * Returns the Lower Temperature Limit (in Celsius)
+     * @return the Lower Temperature Limit
+     */
+    float getLowerTemperatureLimit();
 
     /**
      * Check the Manufacturer ID register against the expected value.
@@ -480,4 +498,11 @@ private:
      * @return the binary representation
      */
     static uint16_t getData(float floatToConvert);
+
+    /**
+     * Reads the temperature from TEMP, TUPPER, TLOWER and TCRIT registers.
+     * @param reg the register to read
+     * @return the temperature stored in the register
+     */
+    float getTemperature(Register reg);
 };
