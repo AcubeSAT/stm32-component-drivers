@@ -45,4 +45,22 @@ public:
      */
     template<uint8_t peripheralNumber>
     static void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle);
+
+    /**
+     * @brief Gets period from a specific channel of a peripheral.
+     *
+     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @param pwmChannel The PWM channel number.
+     */
+    template<uint8_t peripheralNumber>
+    static void PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel);
+
+    /**
+   * @brief Sets period from a specific channel of a peripheral.
+   *
+   * @tparam peripheralNumber The peripheral number (0 or 1).
+   * @param pwmChannel The PWM channel number.
+   */
+    template<uint8_t peripheralNumber>
+    static void PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period);
 };

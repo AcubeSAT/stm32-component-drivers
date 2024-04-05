@@ -44,3 +44,32 @@ template<>
 void HAL_PWM::PWM_ChannelDutySet<1>(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
     PWM1_ChannelDutySet(pwmChannel, dutyCycle);
 }
+
+template<uint8_t peripheralNumber>
+void HAL_PWM::PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
+    static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+}
+
+template<>
+void HAL_PWM::PWM_ChannelPeriodGet<0>(PWM_CHANNEL_NUM pwmChannel) {
+    PWM0_ChannelPeriodGet(pwmChannel);
+}
+
+template<>
+void HAL_PWM::PWM_ChannelPeriodGet<1>(PWM_CHANNEL_NUM pwmChannel) {
+    PWM1_ChannelPeriodGet(pwmChannel);
+}
+
+template<uint8_t peripheralNumber>
+void HAL_PWM::PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
+    static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+}
+
+template<>
+void HAL_PWM::PWM_ChannelPeriodSet<0>(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
+    PWM0_ChannelPeriodSet(pwmChannel, period);
+}
+
+template<>
+void HAL_PWM::PWM_ChannelPeriodSet<1>(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
+    PWM1_ChannelPeriodSet(pwmChannel, period);
