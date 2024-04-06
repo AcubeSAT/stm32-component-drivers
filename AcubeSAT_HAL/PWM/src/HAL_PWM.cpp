@@ -52,12 +52,12 @@ uint16_t HAL_PWM::PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
 
 template<>
 uint16_t HAL_PWM::PWM_ChannelPeriodGet<0>(PWM_CHANNEL_NUM pwmChannel) {
-    PWM0_ChannelPeriodGet(pwmChannel);
+    return PWM0_ChannelPeriodGet(pwmChannel);
 }
 
 template<>
 uint16_t HAL_PWM::PWM_ChannelPeriodGet<1>(PWM_CHANNEL_NUM pwmChannel) {
-    PWM1_ChannelPeriodGet(pwmChannel);
+    return PWM1_ChannelPeriodGet(pwmChannel);
 }
 
 template<uint8_t peripheralNumber>
