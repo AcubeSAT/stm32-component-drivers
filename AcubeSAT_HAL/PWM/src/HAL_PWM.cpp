@@ -73,3 +73,4 @@ void HAL_PWM::PWM_ChannelPeriodSet<0>(PWM_CHANNEL_NUM pwmChannel, uint16_t perio
 template<>
 void HAL_PWM::PWM_ChannelPeriodSet<1>(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
     PWM1_ChannelPeriodSet(pwmChannel, period);
+}
