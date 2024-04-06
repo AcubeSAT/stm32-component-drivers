@@ -53,7 +53,7 @@ public:
      * @param pwmChannel The PWM channel number.
      */
     template<uint8_t peripheralNumber>
-    static void PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel);
+    static uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel);
 
     /**
    * @brief Sets period from a specific channel of a peripheral.

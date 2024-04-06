@@ -46,17 +46,17 @@ void HAL_PWM::PWM_ChannelDutySet<1>(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCyc
 }
 
 template<uint8_t peripheralNumber>
-void HAL_PWM::PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
+uint16_t HAL_PWM::PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
     static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
 }
 
 template<>
-void HAL_PWM::PWM_ChannelPeriodGet<0>(PWM_CHANNEL_NUM pwmChannel) {
+uint16_t HAL_PWM::PWM_ChannelPeriodGet<0>(PWM_CHANNEL_NUM pwmChannel) {
     PWM0_ChannelPeriodGet(pwmChannel);
 }
 
 template<>
-void HAL_PWM::PWM_ChannelPeriodGet<1>(PWM_CHANNEL_NUM pwmChannel) {
+uint16_t HAL_PWM::PWM_ChannelPeriodGet<1>(PWM_CHANNEL_NUM pwmChannel) {
     PWM1_ChannelPeriodGet(pwmChannel);
 }
 
