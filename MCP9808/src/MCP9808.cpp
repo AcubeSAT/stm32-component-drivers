@@ -197,7 +197,7 @@ float MCP9808::getTemperature(Register reg)
 
     if ((upperByte & 0x10) != 0) {  // negative temperature
         upperByte &= 0x0F;
-        return -(static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
+        return -(256 - (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f));
     }
 
     return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
