@@ -494,10 +494,10 @@ private:
      * Converts floating point number to the binary representation
      * specified at page 22 of the datasheet.
      *
-     * @param f the floating point number to be converted
+     * @param value the floating point number to be converted
      * @return the binary representation
      */
-    static uint16_t getData(float floatToConvert);
+    static uint16_t floatToCustomFormat(float value);
 
     /**
      * Reads the temperature from TEMP, TUPPER, TLOWER and TCRIT registers.
