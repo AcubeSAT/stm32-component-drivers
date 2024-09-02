@@ -33,6 +33,7 @@ protected:
      */
     LCL(PIO_PIN resetPin, PIO_PIN setPin) : resetPin(resetPin), setPin(setPin) {}
 
+public:
     /**
      * Enable the LCL
      */
