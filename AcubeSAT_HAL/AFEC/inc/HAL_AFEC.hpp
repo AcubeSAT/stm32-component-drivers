@@ -9,7 +9,7 @@
  * @brief HAL_AFEC namespace for controlling PWM peripherals.
  *
  * This namespace provides a high-level interface for controlling AFEC peripherals.
- * It includes functions for starting and stopping channels and setting duty cycles.
+ * It includes functions for starting the AFEC conversion and initializing the AFEC peripherals.
  */
 namespace HAL_AFEC {
     /**
