@@ -6,7 +6,7 @@
 #include "peripheral/afec/plib_afec1.h"
 
 /**
- * @brief HAL_AFEC namespace for controlling PWM peripherals.
+ * @brief HAL_AFEC namespace for controlling AFEC peripherals.
  *
  * This namespace provides a high-level interface for controlling AFEC peripherals.
  * It includes functions for starting the AFEC conversion and initializing the AFEC peripherals.
