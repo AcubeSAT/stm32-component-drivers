@@ -82,7 +82,7 @@ void __build_cycle_addr(nand_addr_t addr, MT_uint8 *addr_cycle_stream);
  */
 
 MT_uint8 Init_Driver(void) {
-    flash_width onfi_signature[ONFI_SIGNATURE_LENGHT];
+    flash_width onfi_signature[ONFI_SIGNATURE_LENGTH];
 
     /* check if the driver is previously initialized */
     if(DRIVER_STATUS_INITIALIZED == driver_status)
@@ -660,7 +660,7 @@ MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
     (LUN) when it is ready (RDY = 1, ARDY = 1).
 
     @param[in] nand_addr_t addr: address where to start reading
-    @param[in] MT_uint32 lenght: number of byte (or word if x16 device) to read
+    @param[in] MT_uint32 length: number of byte (or word if x16 device) to read
     @param[out] flash_width *buffer: the buffer contains the data read from the flash
 
     @return Return code
@@ -680,7 +680,7 @@ MT_uint8 NAND_Block_Erase(nand_addr_t addr) {
   	@EndSteps
  */
 
-MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 row_address[5];
     MT_uint8 status_reg;
     MT_uint8 ret;
@@ -696,13 +696,13 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
 
     /* x16 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-        if(lenght > (device_info.data_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.data_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     __build_cycle_addr(addr, row_address);
 
@@ -727,7 +727,7 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
         return ret;
 
     /* read data */
-    for(i=0; i<lenght; i++)
+    for(i=0; i<length; i++)
         buffer[i] = PLATFORM_ReadData();
 
     /* read status register on exit */
@@ -749,7 +749,7 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
 
     @param[in] nand_addr_t addr: address where start reading
     @param[in] flash_width *buffer: the buffer contains the data to program into the flash
-    @parma[in] MT_uint32 lenght: number of byte (or word) to program
+    @parma[in] MT_uint32 length: number of byte (or word) to program
 
     @return Return code
     @retval DRIVER_STATUS_NOT_INITIALIZED
@@ -770,7 +770,7 @@ MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght)
   	@EndSteps
  */
 
-MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 address[5];
     MT_uint8 status_reg;
     MT_uint32 k;
@@ -786,13 +786,13 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
 
     /* x16 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-        if(lenght > (device_info.data_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.data_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     __build_cycle_addr(addr, address);
 
@@ -807,7 +807,7 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
         PLATFORM_SendAddr(address[i]);
 
     /* send data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         PLATFORM_SendData(buffer[k]);
 
     /* send command */
@@ -833,7 +833,7 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
     Please read the datasheet for more info about ECC-on-die feature.
 
     @param[in] nand_addr_t addr: address where to start reading (column is ignored)
-    @param[in] MT_uint32 lenght: number of byte (or word) to read
+    @param[in] MT_uint32 length: number of byte (or word) to read
     @parma[out] flash_width *buffer: the buffer contains the data read from the spare area
 
     @return Return code
@@ -855,7 +855,7 @@ MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 leng
   	@EndSteps
  */
 
-MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 row_address[5];
     MT_uint8 status_reg;
     MT_uint8 ret;
@@ -872,13 +872,13 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
 
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
         /* x16 */
-        if(lenght > (device_info.spare_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.spare_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     /* spare area starts after last main area byte */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
@@ -911,7 +911,7 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
         return ret;
 
     /* read data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         buffer[k] = PLATFORM_ReadData();
 
     /* read status register on exit */
@@ -932,7 +932,7 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
 
     @param[in] nand_addr_t addr: address where to start reading
     @param[in] flash_width *buffer: the buffer contains the data to program into the flash
-    @param[in] MT_uint32 lenght: number of byte (or word) to program
+    @param[in] MT_uint32 length: number of byte (or word) to program
 
     @return Return code
     @retval DRIVER_STATUS_NOT_INITIALIZED
@@ -953,7 +953,7 @@ MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght
   	@EndSteps
  */
 
-MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 address[5];
     MT_uint8 status_reg;
     MT_uint32 k;
@@ -969,13 +969,13 @@ MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 len
 
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
         /* x16 */
-        if(lenght > (device_info.spare_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.spare_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     /* spare area starts after last main area byte */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
@@ -998,7 +998,7 @@ MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 len
         PLATFORM_SendAddr(address[i]);
 
     /* send data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         PLATFORM_SendData(buffer[k]);
 
     /* send command */
@@ -1633,7 +1633,7 @@ MT_uint8 NAND_OTP_Mode_Protect(nand_addr_t addr) {
 
     @param[in] nand_addr_t addr: address where start reading
     @param[in] flash_width *buffer: the buffer contains the data to program into the flash
-    @parma[in] MT_uint32 lenght: number of byte (or word) to program
+    @parma[in] MT_uint32 length: number of byte (or word) to program
 
     @return Return code
     @retval DRIVER_STATUS_NOT_INITIALIZED
@@ -1654,7 +1654,7 @@ MT_uint8 NAND_OTP_Mode_Protect(nand_addr_t addr) {
   	@EndSteps
  */
 
-MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 address[5];
     MT_uint8 status_reg;
     MT_uint32 k;
@@ -1670,13 +1670,13 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
 
     /* x16 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-        if(lenght > (device_info.data_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.data_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     __build_cycle_addr(addr, address);
 
@@ -1691,7 +1691,7 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
         PLATFORM_SendAddr(address[i]);
 
     /* send data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         PLATFORM_SendData(buffer[k]);
 
     /* send command */
@@ -1712,7 +1712,7 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
 
     @param[in] nand_addr_t addr: address where to start reading
     @param[in] flash_width *buffer: the buffer contains the data to program into the flash
-    @param[in] MT_uint32 lenght: number of byte (or word) to program
+    @param[in] MT_uint32 length: number of byte (or word) to program
 
     @return Return code
     @retval DRIVER_STATUS_NOT_INITIALIZED
@@ -1733,7 +1733,7 @@ MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 
   	@EndSteps
  */
 
-MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 address[5];
     MT_uint8 status_reg;
     MT_uint32 k;
@@ -1749,13 +1749,13 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
 
     /* x16 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-        if(lenght > (device_info.spare_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.spare_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     /* spare area starts after last main area byte */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
@@ -1778,7 +1778,7 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
         PLATFORM_SendAddr(address[i]);
 
     /* send data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         PLATFORM_SendData(buffer[k]);
 
     /* send command */
@@ -1803,7 +1803,7 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
     Use this function only to read OTP area!
 
     @param[in] nand_addr_t addr: address where to start reading
-    @param[in] MT_uint32 lenght: number of byte (or word if x16 device) to read
+    @param[in] MT_uint32 length: number of byte (or word if x16 device) to read
     @param[out] flash_width *buffer: the buffer contains the data read from the flash
 
     @return Return code
@@ -1823,7 +1823,7 @@ MT_uint8 NAND_OTP_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32
   	@EndSteps
  */
 
-MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 row_address[5];
     MT_uint8 status_reg;
     MT_uint8 ret;
@@ -1839,13 +1839,13 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
 
     /* x16 */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
-        if(lenght > (device_info.data_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.data_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.data_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.data_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     __build_cycle_addr(addr, row_address);
 
@@ -1870,7 +1870,7 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
         return ret;
 
     /* read data */
-    for(i=0; i<lenght; i++)
+    for(i=0; i<length; i++)
         buffer[i] = PLATFORM_ReadData();
 
     /* read status register on exit */
@@ -1891,7 +1891,7 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
     Use this function only to read OTP area!
 
     @param[in] nand_addr_t addr: address where to start reading (column is ignored)
-    @param[in] MT_uint32 lenght: number of byte (or word) to read
+    @param[in] MT_uint32 length: number of byte (or word) to read
     @parma[out] flash_width *buffer: the buffer contains the data read from the spare area
 
     @return Return code
@@ -1913,7 +1913,7 @@ MT_uint8 NAND_OTP_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 len
   	@EndSteps
  */
 
-MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght) {
+MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length) {
     MT_uint8 row_address[5];
     MT_uint8 status_reg;
     MT_uint8 ret;
@@ -1930,13 +1930,13 @@ MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 le
 
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) != 0) {
         /* x16 */
-        if(lenght > (device_info.spare_bytes_per_page >> 1) )
-            return NAND_INVALID_LENGHT;
+        if(length > (device_info.spare_bytes_per_page >> 1) )
+            return NAND_INVALID_LENGTH;
     }
 
     /* x8 */
-    if(lenght > device_info.spare_bytes_per_page)
-        return NAND_INVALID_LENGHT;
+    if(length > device_info.spare_bytes_per_page)
+        return NAND_INVALID_LENGTH;
 
     /* spare area starts after last main area byte */
     if((device_info.feature & SUPPORTED_16_BIT_DATA_BUS_WIDTH) == 0)
@@ -1969,7 +1969,7 @@ MT_uint8 NAND_OTP_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 le
         return ret;
 
     /* read data */
-    for(k=0; k<lenght; k++)
+    for(k=0; k<length; k++)
         buffer[k] = PLATFORM_ReadData();
 
     /* read status register on exit */

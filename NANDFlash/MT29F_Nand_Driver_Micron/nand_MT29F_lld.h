@@ -264,7 +264,7 @@ typedef struct parameter_page_t {
 #define NUM_OF_READUNIQUEID_BYTES			16
 #define NUM_OF_PPAGE_BYTES					129
 #define NUM_OF_ADDR_CYCLE					5
-#define ONFI_SIGNATURE_LENGHT				4
+#define ONFI_SIGNATURE_LENGTH				4
 #define NUM_OF_UNIQUEID_BYTES				32
 #endif
 
@@ -344,7 +344,7 @@ typedef struct parameter_page_t {
 #define	NAND_GENERIC_FAIL						0x10
 #define NAND_BAD_PARAMETER_PAGE					0x20
 #define	NAND_INVALID_NAND_ADDRESS				0x30
-#define NAND_INVALID_LENGHT						0x31
+#define NAND_INVALID_LENGTH						0x31
 #define NAND_ERASE_FAILED						0x40
 #define NAND_ERASE_FAILED_WRITE_PROTECT			0x41
 #define NAND_PROGRAM_FAILED						0x50
@@ -380,15 +380,16 @@ flash_width NAND_Read_Status();
 flash_width NAND_Read_Status_Enhanced(nand_addr_t addr);
 
 /* read operations */
-MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght);
-MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght);
+MT_uint8 NAND_Page_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length);
+MT_uint8 NAND_Spare_Read(nand_addr_t addr, flash_width *buffer, MT_uint32 length);
 
 /* erase operations */
 MT_uint8 NAND_Block_Erase(nand_addr_t addr);
 
 /* program operations */
-MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght);
-MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 lenght);
+MT_uint8 NAND_Page_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length);
+MT_uint8 NAND_Spare_Program(nand_addr_t addr, flash_width *buffer, MT_uint32 length);
+MT_uint8 NAND_OTP_Page_Program(nand_addr_t addr,flash_width *buffer ,MT_uint32 length);
 
 /* internal data move operations */
 MT_uint8 NAND_Copy_Back(nand_addr_t src_addr, nand_addr_t dest_addr);
