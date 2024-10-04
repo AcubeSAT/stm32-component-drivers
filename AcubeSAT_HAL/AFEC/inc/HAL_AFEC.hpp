@@ -9,7 +9,7 @@
  * @brief HAL_AFEC namespace for controlling AFEC peripherals.
  *
  * This namespace provides a high-level interface for controlling AFEC peripherals.
- * It includes functions for starting the AFEC conversion and initializing the AFEC peripherals.
+ * It includes the functions: AFEC_ConversionStart, AFEC_Initialize, AFEC_CallbackRegister.
  */
 namespace HAL_AFEC {
     /**
@@ -27,4 +27,12 @@ namespace HAL_AFEC {
      */
     template<AFECPeripheral AfecPeripheral>
     void AFEC_Initialize();
+
+    /**
+     * @brief Registers the function to be called from interrupt for a specific peripheral.
+     *
+     * This function registers the function to be called from interrupt for a specific peripheral.
+     */
+    template<AFECPeripheral AfecPeripheral>
+    void AFEC_CallbackRegister(AFEC_CALLBACK callback, uintptr_t context);
 }
