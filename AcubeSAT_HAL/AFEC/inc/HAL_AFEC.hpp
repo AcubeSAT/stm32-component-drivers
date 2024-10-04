@@ -1,15 +1,22 @@
 #pragma once
 
 #include <cstdint>
-#include "Peripheral_Definitions.hpp"
 #include "peripheral/afec/plib_afec0.h"
 #include "peripheral/afec/plib_afec1.h"
 
 /**
- * @brief HAL_AFEC namespace for controlling AFEC peripherals.
+ * Enum to differentiate between AFEC peripherals (AFEC0 and AFEC1).
+ */
+enum class AFECPeripheral {
+    AFEC0,
+    AFEC1
+};
+
+/**
+ * @brief HAL_AFEC namespace for controlling PWM peripherals.
  *
  * This namespace provides a high-level interface for controlling AFEC peripherals.
- * It includes the functions: AFEC_ConversionStart, AFEC_Initialize, AFEC_CallbackRegister.
+ * It includes functions for starting and stopping channels and setting duty cycles.
  */
 namespace HAL_AFEC {
     /**
