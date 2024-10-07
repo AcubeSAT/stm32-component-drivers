@@ -1,7 +1,19 @@
 #pragma once
 
 #include "peripheral/afec/plib_afec_common.h"
-#include "HAL_AFEC.hpp"
+#include "peripheral/afec/plib_afec0.h"
+#include "peripheral/afec/plib_afec1.h"
+
+#define plib_afec0
+#define plib_afec1
+
+/**
+ * Enum to differentiate between AFEC peripherals (AFEC0 and AFEC1).
+ */
+enum class AFECPeripheral {
+    AFEC0,
+    AFEC1
+};
 
 /**
  * AFECGeneral driver

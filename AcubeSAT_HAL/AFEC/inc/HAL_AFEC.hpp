@@ -1,16 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "peripheral/afec/plib_afec0.h"
-#include "peripheral/afec/plib_afec1.h"
-
-/**
- * Enum to differentiate between AFEC peripherals (AFEC0 and AFEC1).
- */
-enum class AFECPeripheral {
-    AFEC0,
-    AFEC1
-};
+#include "AFECGeneral.hpp"
 
 /**
  * @brief HAL_AFEC namespace for controlling PWM peripherals.
