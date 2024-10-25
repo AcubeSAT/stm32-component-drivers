@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "Peripheral_Definitions.hpp"
+#include "definitions.h"
 
 /**
  * Enum to differentiate between AFEC peripherals (AFEC0 and AFEC1).
