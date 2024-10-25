@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include "peripheral/afec/plib_afec0.h"
+#include "peripheral/afec/plib_afec1.h"
 #include "Peripheral_Definitions.hpp"
 
 /**
