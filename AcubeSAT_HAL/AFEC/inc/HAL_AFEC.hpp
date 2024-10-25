@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include "peripheral/afec/plib_afec0.h"
+#include "peripheral/afec/plib_afec1.h"
 #include "Peripheral_Definitions.hpp"
-#include "definitions.h"
 
 /**
  * Enum to differentiate between AFEC peripherals (AFEC0 and AFEC1).
