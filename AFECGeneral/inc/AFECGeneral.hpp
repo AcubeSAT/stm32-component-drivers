@@ -26,6 +26,11 @@ public:
     void setAdcResult(uint16_t adcResult);
 
     /**
+     * @return the ADC Result of the Afec channel of the Thermistor instance
+     */
+    uint16_t getAdcResult();
+
+    /**
      * @return The channel Number of the Themistor instance
      */
     AFEC_CHANNEL_NUM getADCChannelNum();
