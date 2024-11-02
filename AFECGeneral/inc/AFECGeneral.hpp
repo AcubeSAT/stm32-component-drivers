@@ -21,18 +21,23 @@ public:
     explicit AFECGeneral(AFEC_CHANNEL_NUM afecChannelNum) : afecChannelNum(afecChannelNum) {}
 
     /**
-     *  Sets the ADC Result of the Afec channel of the Thermistor instance
+     *  Sets the ADC Result of the Afec channel of the AFECGerneral instance
      */
     void setAdcResult(uint16_t adcResult);
 
     /**
-     * @return The channel Number of the Themistor instance
+     * @return the ADC Result of the Afec channel of the AFECGerneral instance
+     */
+    uint16_t getAdcResult();
+
+    /**
+     * @return The channel Number of the AFECGerneral instance
      */
     AFEC_CHANNEL_NUM getADCChannelNum();
 
 protected:
     /**
-     *  The result of the ADC conversion of the Thermistor instance
+     *  The result of the ADC conversion of the AFECGerneral instance
      */
     uint16_t adcResult;
 
