@@ -6,6 +6,11 @@ void AFECGeneral<AfecPeripheral>::setAdcResult(uint16_t adcResult) {
 }
 
 template<AFECPeripheral AfecPeripheral>
+uint16_t AFECGeneral<AfecPeripheral>::getAdcResult() {
+    return adcResult;
+}
+
+template<AFECPeripheral AfecPeripheral>
 AFEC_CHANNEL_NUM AFECGeneral<AfecPeripheral>::getADCChannelNum() {
     return afecChannelNum;
 }
