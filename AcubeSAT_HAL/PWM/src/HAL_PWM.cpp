@@ -1,9 +1,14 @@
 #include "HAL_PWM.hpp"
 
+typedef enum : uint8_t {
+    peripheral_0 = 0,
+    peripheral_1 = 1
+  }peripheralNumber;
+
 namespace HAL_PWM {
-    template<uint8_t peripheralNumber>
+    template<peripheralNumber peripheral>
     void PWM_ChannelsStart(PWM_CHANNEL_MASK channelMask) {
-        static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+        static_assert(peripheral == peripheral_0 || peripheral == peripheral_1 , "Template parameter must be 0 or 1");
     }
 
     template<>
@@ -16,9 +21,9 @@ namespace HAL_PWM {
         PWM1_ChannelsStart(channelMask);
     }
 
-    template<uint8_t peripheralNumber>
+    template<peripheralNumber peripheral>
     void PWM_ChannelsStop(PWM_CHANNEL_MASK channelMask) {
-        static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+        static_assert(peripheral == peripheral_0 || peripheral == peripheral_1, "Template parameter must be 0 or 1");
     }
 
     template<>
@@ -31,9 +36,9 @@ namespace HAL_PWM {
         PWM1_ChannelsStop(channelMask);
     }
 
-    template<uint8_t peripheralNumber>
+    template<peripheralNumber peripheral>
     void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
-        static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+        static_assert(peripheral == peripheral_0 || peripheral == peripheral_1, "Template parameter must be 0 or 1");
     }
 
     template<>
@@ -46,9 +51,9 @@ namespace HAL_PWM {
         PWM1_ChannelDutySet(pwmChannel, dutyCycle);
     }
 
-    template<uint8_t peripheralNumber>
+    template<peripheralNumber peripheral>
     uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
-        static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+        static_assert(peripheral == peripheral_0 || peripheral == peripheral_1, "Template parameter must be 0 or 1");
     }
 
     template<>
@@ -61,9 +66,9 @@ namespace HAL_PWM {
         return PWM1_ChannelPeriodGet(pwmChannel);
     }
 
-    template<uint8_t peripheralNumber>
+    template<peripheralNumber peripheral>
     void PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
-        static_assert(peripheralNumber == 0 || peripheralNumber == 1, "Template parameter must be 0 or 1");
+        static_assert(peripheral == peripheral_0 || peripheral == peripheral_1    , "Template parameter must be 0 or 1");
     }
 
     template<>
