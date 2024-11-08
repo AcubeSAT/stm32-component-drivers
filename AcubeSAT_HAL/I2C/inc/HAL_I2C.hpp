@@ -44,7 +44,7 @@ public:
     * for the bus to become available. In case of a failure during the write, it retrieves and logs
     * the error code and returns I2CError::WriteError.
     */
-    inline static I2CError writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
+    static I2CError writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
         waitForResponse(); // Ensure bus is not busy
         if (!TWIHS_Write(deviceAddress, i2cData.data(), i2cData.size())) {
             auto error = TWIHS_ErrorGet();
@@ -68,7 +68,7 @@ public:
      * the error code and returns I2CError::ReadError.
      */
     template<uint8_t BUFFER_SIZE>
-    inline static I2CError readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
+    static I2CError readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
         if (!TWIHS_Read(deviceAddress, data.data(), data.size())) {
             waitForResponse(); // Wait for completion
             auto error = TWIHS_ErrorGet();
