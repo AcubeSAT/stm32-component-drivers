@@ -22,12 +22,11 @@ public:
     * @brief Enumeration to represent various I2C error states.
     */
     enum class I2CError {
-        None,           // No error
+        None,
         WriteError,
         ReadError,
-        HALError,       // HAL error occurred
-        InvalidParams,  // Invalid input parameters
-        Timeout         // Operation timed out
+        InvalidParams,
+        Timeout
     };
 
     explicit HAL_I2C(uint16_t i2cAddress) : I2C_USER_ADDRESS(
@@ -44,15 +43,20 @@ public:
     * for the bus to become available. In case of a failure during the write, it retrieves and logs
     * the error code and returns I2CError::WriteError.
     */
-    static I2CError writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
-        waitForResponse(); // Ensure bus is not busy
+    static etl::expected<void, I2CError> writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
+        if (i2cData.empty()) {
+            LOG_ERROR << "I2C data cannot be empty";
+            return etl::unexpected(I2CError::InvalidParams);
+        }
+        if (waitForResponse() == I2CError::Timeout) {
+            return etl::unexpected(I2CError::Timeout);
+        }
         if (!TWIHS_Write(deviceAddress, i2cData.data(), i2cData.size())) {
             auto error = TWIHS_ErrorGet();
-            LOG_INFO << "I2C was not able to perform WRITE transaction, error: " << error;
-            return I2CError::WriteError;
+            LOG_INFO << "I2C write transaction failed with error code: : " << error;
+            return etl::unexpected(I2CError::WriteError);
         }
-
-        return I2CError::None;
+        return {};
     }
 
     /**
@@ -68,15 +72,18 @@ public:
      * the error code and returns I2CError::ReadError.
      */
     template<uint8_t BUFFER_SIZE>
-    static I2CError readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
-        if (!TWIHS_Read(deviceAddress, data.data(), data.size())) {
-            waitForResponse(); // Wait for completion
-            auto error = TWIHS_ErrorGet();
-            LOG_INFO << "I2C was not able to perform READ transaction, error: " << error;
-            return I2CError::ReadError;
+    static etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
+        static_assert(BUFFER_SIZE > 0, "Buffer size must be greater than zero");
+        if (waitForResponse() == I2CError::Timeout) {
+            return etl::unexpected(I2CError::Timeout);
         }
-        return I2CError::None;
-    };
+        if (!TWIHS_Read(deviceAddress, data.data(), data.size())) {
+            auto error = TWIHS_ErrorGet();
+            LOG_ERROR << "I2C read transaction failed with error code: " << error;
+            return etl::unexpected(I2CError::ReadError);
+        }
+        return {};
+    }
 
 private:
     const uint8_t I2C_USER_ADDRESS = 0x00;
