@@ -7,13 +7,10 @@
 #include "Logger.hpp"
 #include "task.h"
 
-#include "plib_twihs2_master.h"  //add ifdefs
+#include "plib_twihs1_master.h"
+#include "plib_twihs0_master.h"
+#include "plib_twihs2_master.h"
 
-#define TWIHS_Write TWIHS2_Write
-#define TWIHS_ErrorGet TWIHS2_ErrorGet
-#define TWIHS_Read TWIHS2_Read
-#define TWIHS_Initialize TWIHS2_Initialize
-#define TWIHS_IsBusy TWIHS2_IsBusy
 
 namespace HAL_I2C {
     /**
@@ -42,18 +39,8 @@ namespace HAL_I2C {
      * is unresponsive. If the bus remains busy past the TIMEOUT_TICKS threshold, it resets
      * the I2C hardware and returns a timeout error.
      */
-    inline static I2CError waitForResponse() {
-        auto start = xTaskGetTickCount();
-        while (TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - start > TIMEOUT_TICKS) {
-                LOG_ERROR << "I2C timed out ";
-                TWIHS_Initialize();
-                return I2CError::Timeout;
-            }
-            taskYIELD();
-        }
-        return I2CError::None;
-    };
+    template<uint8_t peripheralNumber>
+    inline static I2CError waitForResponse();
 
     /**
     * @brief Writes data to a specific I2C device register.
@@ -66,21 +53,8 @@ namespace HAL_I2C {
     * for the bus to become available. In case of a failure during the write, it retrieves and logs
     * the error code and returns I2CError::WriteError.
     */
-    static etl::expected<void, I2CError> writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
-        if (i2cData.empty()) {
-            LOG_ERROR << "I2C data cannot be empty";
-            return etl::unexpected(I2CError::InvalidParams);
-        }
-        if (waitForResponse() == I2CError::Timeout) {
-            return etl::unexpected(I2CError::Timeout);
-        }
-        if (!TWIHS_Write(deviceAddress, i2cData.data(), i2cData.size())) {
-            auto error = TWIHS_ErrorGet();
-            LOG_INFO << "I2C write transaction failed with error code: : " << error;
-            return etl::unexpected(I2CError::WriteError);
-        }
-        return {};
-    }
+    template<uint8_t peripheralNumber>
+    static etl::expected<void, I2CError> writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData);
 
     /**
      * @brief Reads data from a specific I2C device register.
@@ -94,17 +68,7 @@ namespace HAL_I2C {
      * for the read operation to complete. In case of a failure during the read, it retrieves and logs
      * the error code and returns I2CError::ReadError.
      */
-    template<uint8_t BUFFER_SIZE>
-    static etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
-        static_assert(BUFFER_SIZE > 0, "Buffer size must be greater than zero");
-        if (waitForResponse() == I2CError::Timeout) {
-            return etl::unexpected(I2CError::Timeout);
-        }
-        if (!TWIHS_Read(deviceAddress, data.data(), data.size())) {
-            auto error = TWIHS_ErrorGet();
-            LOG_ERROR << "I2C read transaction failed with error code: " << error;
-            return etl::unexpected(I2CError::ReadError);
-        }
-        return {};
-    }
-};
+    template<uint8_t peripheralNumber, uint8_t BUFFER_SIZE>
+    static etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data);
+
+}
