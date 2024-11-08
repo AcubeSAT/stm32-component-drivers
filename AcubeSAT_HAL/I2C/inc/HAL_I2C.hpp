@@ -15,8 +15,7 @@
 #define TWIHS_Initialize TWIHS2_Initialize
 #define TWIHS_IsBusy TWIHS2_IsBusy
 
-class HAL_I2C {
-public:
+namespace HAL_I2C {
     /**
     * @enum I2CError
     * @brief Enumeration to represent various I2C error states.
@@ -29,8 +28,32 @@ public:
         Timeout
     };
 
-    explicit HAL_I2C(uint16_t i2cAddress) : I2C_USER_ADDRESS(
-            i2cAddress) {}; //TODO: decide if we are going to use I2C objects
+    /**
+     * Timeout duration in ticks for I2C operations.
+     * */
+    static constexpr uint8_t TIMEOUT_TICKS = 100;
+
+    /**
+     * @brief Waits for the I2C bus to become available, with a timeout mechanism.
+     *
+     * @return I2CError Returns I2CError::Timeout if the bus is busy beyond the allowed timeout.
+     *
+     * This function checks the bus status to prevent the program from hanging if the I2C device
+     * is unresponsive. If the bus remains busy past the TIMEOUT_TICKS threshold, it resets
+     * the I2C hardware and returns a timeout error.
+     */
+    inline static I2CError waitForResponse() {
+        auto start = xTaskGetTickCount();
+        while (TWIHS_IsBusy()) {
+            if (xTaskGetTickCount() - start > TIMEOUT_TICKS) {
+                LOG_ERROR << "I2C timed out ";
+                TWIHS_Initialize();
+                return I2CError::Timeout;
+            }
+            taskYIELD();
+        }
+        return I2CError::None;
+    };
 
     /**
     * @brief Writes data to a specific I2C device register.
@@ -84,34 +107,4 @@ public:
         }
         return {};
     }
-
-private:
-    const uint8_t I2C_USER_ADDRESS = 0x00;
-
-    /**
-     * Timeout duration in ticks for I2C operations.
-     * */
-    static constexpr uint8_t TIMEOUT_TICKS = 100;
-
-    /**
-     * @brief Waits for the I2C bus to become available, with a timeout mechanism.
-     *
-     * @return I2CError Returns I2CError::Timeout if the bus is busy beyond the allowed timeout.
-     *
-     * This function checks the bus status to prevent the program from hanging if the I2C device
-     * is unresponsive. If the bus remains busy past the TIMEOUT_TICKS threshold, it resets
-     * the I2C hardware and returns a timeout error.
-     */
-    inline static I2CError waitForResponse() {
-        auto start = xTaskGetTickCount();
-        while (TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - start > TIMEOUT_TICKS) {
-                LOG_ERROR << "I2C timed out ";
-                TWIHS_Initialize();
-                return I2CError::Timeout;
-            }
-            taskYIELD();
-        }
-        return I2CError::None;
-    };
 };
