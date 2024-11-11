@@ -205,8 +205,4 @@ namespace HAL_I2C {
         return {};
     }
 
-//    template<uint8_t peripheralNumber, uint8_t BUFFER_SIZE>
-//    inline etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
-//        return readRegisterImpl<BUFFER_SIZE, peripheralNumber>(deviceAddress, data);
-//    }
 }
