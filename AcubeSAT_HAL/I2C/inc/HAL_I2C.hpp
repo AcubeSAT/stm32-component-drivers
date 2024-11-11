@@ -153,7 +153,7 @@ namespace HAL_I2C {
         }
         if (!TWIHS2_Write(deviceAddress, i2cData.data(), i2cData.size())) {
             auto error = TWIHS2_ErrorGet();
-            LOG_INFO << "I2C write transaction failed with error code: : " << error;
+            LOG_INFO << "I2C write transaction failed with error code: " << error;
             return etl::unexpected(I2CError::WriteError);
         }
         return {};
@@ -174,7 +174,7 @@ namespace HAL_I2C {
 
     template<uint8_t peripheralNumber, uint8_t BUFFER_SIZE>
     inline etl::expected<void, I2CError>
-    readRegisterImpl(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
+    readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
         static_assert(BUFFER_SIZE > 0, "Buffer size must be greater than zero");
         // Call appropriate TWIHS read function based on peripheralNumber
         if constexpr (peripheralNumber == 0) {
@@ -205,8 +205,8 @@ namespace HAL_I2C {
         return {};
     }
 
-    template<uint8_t peripheralNumber, uint8_t BUFFER_SIZE>
-    inline etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
-        return readRegisterImpl<BUFFER_SIZE, peripheralNumber>(deviceAddress, data);
-    }
+//    template<uint8_t peripheralNumber, uint8_t BUFFER_SIZE>
+//    inline etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
+//        return readRegisterImpl<BUFFER_SIZE, peripheralNumber>(deviceAddress, data);
+//    }
 }
