@@ -112,7 +112,6 @@ etl::expected<void, MCP9808::Error> MCP9808::setResolution(MCP9808::MeasurementR
 }
 
 etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
-    const auto Data = readRegister(Register::REG_TEMP);
     return getTemperature(Register::REG_TEMP);
 }
 
