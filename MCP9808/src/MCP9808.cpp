@@ -15,9 +15,10 @@ etl::expected<void, MCP9808::Error> MCP9808::writeRegister(etl::span<uint8_t> da
 }
 
 etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) {
-    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> buffer {0};
+    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> buffer{0};
 
-    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr {static_cast<std::underlying_type_t<Register>>(address)};
+    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
+            static_cast<std::underlying_type_t<Register>>(address)};
     const auto WriteError = writeRegister(addr);
     if (WriteError.error() != Error::ERROR_NONE)
         return etl::unexpected(WriteError.error());
@@ -28,7 +29,8 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
         if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
             return etl::unexpected(static_cast<Error>(error));
 
-        return ((static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));
+        return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(buffer[0]) & 0x00FF : (
+                (static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));;
     }
 
     return etl::unexpected(Error::READ_REQUEST_FAILED);
@@ -43,15 +45,15 @@ etl::expected<void, MCP9808::Error> MCP9808::setRegister(Register address, Mask 
 
     if (address == Register::REG_RESOLUTION) {  // 1 byte register
         etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> data = {static_cast<uint8_t>(address),
-                          static_cast<uint8_t>(NewSetting & 0x00FF)};
+                                                                           static_cast<uint8_t>(NewSetting & 0x00FF)};
         const auto WriteError = writeRegister(etl::span<uint8_t>(data));
         if (WriteError.error() != Error::ERROR_NONE)
             return etl::unexpected(WriteError.error());
-    }
-    else {  // 2 bytes register
+    } else {  // 2 bytes register
         etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_3BYTES> data = {static_cast<uint8_t>(address),
-                          static_cast<uint8_t>((NewSetting >> 8) & 0x00FF),
-                          static_cast<uint8_t>(NewSetting & 0x00FF)};
+                                                                           static_cast<uint8_t>((NewSetting >> 8) &
+                                                                                                0x00FF),
+                                                                           static_cast<uint8_t>(NewSetting & 0x00FF)};
         const auto WriteError = writeRegister(etl::span<uint8_t>(data));
         if (WriteError.error() != Error::ERROR_NONE)
             return etl::unexpected(WriteError.error());
@@ -68,7 +70,8 @@ etl::expected<void, MCP9808::Error> MCP9808::setLowPowerMode(MCP9808::LowPowerMo
     return setRegister(Register::REG_CONFIG, Mask::SHDN_MASK, setting);
 }
 
-etl::expected<void, MCP9808::Error> MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
+etl::expected<void, MCP9808::Error>
+MCP9808::setCriticalTemperatureLock(MCP9808::CriticalTemperatureRegisterLock setting) {
     return setRegister(Register::REG_CONFIG, Mask::TCRIT_LOCK_MASK, setting);
 }
 
@@ -128,15 +131,15 @@ etl::expected<bool, MCP9808::Error> MCP9808::isDeviceConnected() {
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setUpperTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
+    return setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setLowerTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
+    return setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setCriticalTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, floatConversion(temp));
+    return setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::enableLowPowerMode() {
@@ -203,17 +206,20 @@ etl::expected<void, MCP9808::Error> MCP9808::setAlertModeInterrupt() {
     return setAlertMode(AlertMode::ALERT_MODE_IRQ);
 }
 
-uint16_t MCP9808::floatConversion(float floatToConvert) {
-    float intPart;
+uint16_t MCP9808::floatToCustomFormat(float value) {
+    float intPart = 0.0;
 
-    const float FractPart = std::modf(floatToConvert, &intPart);
+    const float FractPart = std::modf(value, &intPart);
     auto data = static_cast<uint16_t>(std::abs(intPart));
     data = (data << 4) & 0x0FFC;
-    data =  floatToConvert < 0.f ? data | 0x1000u : data;  // set the sign bit
     auto fract = static_cast<uint16_t>(std::abs(FractPart * 100.0f));
-    data = (data | ((fract / 50) << 3)) & 0x0008u;
+    data = (data | ((fract / 50) << 3)) &
+           static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // adjust bit 3
     fract %= 50;
-    data = (data | ((fract / 25) << 2)) & 0x0006u;
+    data = (data | ((fract / 25) << 2)) &
+           static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // adjust bit 2
 
-    return data;
+    return (value > 0.f ? data : ~data + 1) &
+           static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);  // 2's complement representation
 }
+
