@@ -135,15 +135,15 @@ etl::expected<bool, MCP9808::Error> MCP9808::isDeviceConnected() {
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setUpperTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TUPPER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
+    return setRegister(Register::REG_TUPPER, Mask::CLEAR_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setLowerTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TLOWER, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
+    return setRegister(Register::REG_TLOWER, Mask::CLEAR_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setCriticalTemperatureLimit(float temp) {
-    return setRegister(Register::REG_TCRIT, Mask::TUPPER_TLOWER_TCRIT_MASK, floatToCustomFormat(temp));
+    return setRegister(Register::REG_TCRIT, Mask::CLEAR_MASK, floatToCustomFormat(temp));
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::enableLowPowerMode() {

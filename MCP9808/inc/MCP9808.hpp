@@ -364,10 +364,11 @@ private:
         ALERT_SELECT_MASK = 0xFFFBu,
         ALERT_POLARITY_MASK = 0xFFFDu,
         ALERT_MODE_MASK = 0xFFFEu,
-        RES_MASK = 0x00FC,
+        RES_MASK = 0x00FCu,
         THYST_MASK = 0xF9FFu,
         SHDN_MASK = 0xFEFFu,
-        TUPPER_TLOWER_TCRIT_MASK = 0x1FFCu
+        TUPPER_TLOWER_TCRIT_MASK = 0x1FFCu,
+        CLEAR_MASK = 0x0000u
     };
 
     /**
