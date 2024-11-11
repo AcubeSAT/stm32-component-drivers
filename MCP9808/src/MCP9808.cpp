@@ -113,6 +113,11 @@ etl::expected<void, MCP9808::Error> MCP9808::setResolution(MCP9808::MeasurementR
 
 etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
     const auto Data = readRegister(Register::REG_TEMP);
+    return getTemperature(Register::REG_TEMP);
+}
+
+etl::expected<float, MCP9808::Error> MCP9808::getTemperature(Register reg) {
+    const auto Data = readRegister(reg);
     if (!Data.has_value())
         return etl::unexpected(Data.error());
 
@@ -126,7 +131,17 @@ etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
 
     return (static_cast<float>(upperByte) * 16.0f + static_cast<float>(LowerByte) / 16.0f);
 }
+etl::expected<float, MCP9808::Error> MCP9808::getCriticalTemperatureLimit() {
+    return getTemperature(Register::REG_TCRIT);
+}
 
+etl::expected<float, MCP9808::Error> MCP9808::getUpperTemperatureLimit() {
+    return getTemperature(Register::REG_TUPPER);
+}
+
+etl::expected<float, MCP9808::Error> MCP9808::getLowerTemperatureLimit() {
+    return getTemperature(Register::REG_TLOWER);
+}
 etl::expected<bool, MCP9808::Error> MCP9808::isDeviceConnected() {
     const auto ReadValue = readRegister(Register::REG_MFGID);
     if (ReadValue.has_value())
