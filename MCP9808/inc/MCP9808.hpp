@@ -499,5 +499,5 @@ private:
      * @param f the floating point number to be converted
      * @return the binary representation
      */
-    static uint16_t floatConversion(float floatToConvert);
+    static uint16_t floatToCustomFormat(float value);
 };
