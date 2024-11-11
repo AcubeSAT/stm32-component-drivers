@@ -2,9 +2,7 @@
 
 namespace HAL_PWM {
     template<PeripheralNumber peripheral>
-    void PWM_ChannelsStart(PWM_CHANNEL_MASK channelMask) {
-        static_assert(peripheral == PeripheralNumber::Peripheral_0 || peripheral == PeripheralNumber::Peripheral_1, "Template parameter must be 0 or 1");
-    }
+    void PWM_ChannelsStart(PWM_CHANNEL_MASK channelMask) {}
 
     template<>
     void PWM_ChannelsStart<0>(PWM_CHANNEL_MASK channelMask) {
@@ -17,9 +15,7 @@ namespace HAL_PWM {
     }
 
     template<PeripheralNumber peripheral>
-    void PWM_ChannelsStop(PWM_CHANNEL_MASK channelMask) {
-        static_assert(peripheral == PeripheralNumber::Peripheral_0 || peripheral == PeripheralNumber::Peripheral_1, "Template parameter must be 0 or 1");
-    }
+    void PWM_ChannelsStop(PWM_CHANNEL_MASK channelMask) {}
 
     template<>
     void PWM_ChannelsStop<0>(PWM_CHANNEL_MASK channelMask) {
@@ -32,9 +28,7 @@ namespace HAL_PWM {
     }
 
     template<PeripheralNumber peripheral>
-    void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
-        static_assert(peripheral == PeripheralNumber::Peripheral_0 || peripheral == PeripheralNumber::Peripheral_1, "Template parameter must be 0 or 1");
-    }
+    void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {}
 
     template<>
     void PWM_ChannelDutySet<0>(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle) {
@@ -47,9 +41,7 @@ namespace HAL_PWM {
     }
 
     template<PeripheralNumber peripheral>
-    uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
-        static_assert(peripheral == PeripheralNumber::Peripheral_0 || peripheral == PeripheralNumber::Peripheral_1, "Template parameter must be 0 or 1");
-    }
+    uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {}
 
     template<>
     uint16_t PWM_ChannelPeriodGet<0>(PWM_CHANNEL_NUM pwmChannel) {
@@ -62,9 +54,7 @@ namespace HAL_PWM {
     }
 
     template<PeripheralNumber peripheral>
-    void PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
-        static_assert(peripheral == PeripheralNumber::Peripheral_0 || peripheral == PeripheralNumber::Peripheral_1, "Template parameter must be 0 or 1");
-    }
+    void PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {}
 
     template<>
     void PWM_ChannelPeriodSet<0>(PWM_CHANNEL_NUM pwmChannel, uint16_t period) {
