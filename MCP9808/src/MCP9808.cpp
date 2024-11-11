@@ -109,8 +109,8 @@ etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
     if (!Data.has_value())
         return etl::unexpected(Data.error());
 
-    uint8_t upperByte = (Data >> 8) & 0x1F;
-    const uint8_t LowerByte = Data & 0xFF;
+    uint8_t upperByte = (Data.value() >> 8) & 0x1F;
+    const uint8_t LowerByte = Data.value() & 0xFF;
 
     if ((upperByte & 0x10) != 0) {
         upperByte &= 0x0F;
