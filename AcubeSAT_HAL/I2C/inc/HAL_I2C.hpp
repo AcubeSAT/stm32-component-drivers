@@ -6,11 +6,20 @@
 #include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
-
 #include "plib_systick.h"
-#include "plib_twihs1_master.h"
+#include "Peripheral_Definitions.hpp"
+
+#ifdef TWIHS0_ENABLED
 #include "plib_twihs0_master.h"
+#endif
+#ifdef TWIHS1_ENABLED
+#include "plib_twihs1_master.h"
+#endif
+#ifdef TWIHS2_ENABLED
+
 #include "plib_twihs2_master.h"
+
+#endif
 
 
 namespace HAL_I2C {
@@ -41,41 +50,130 @@ namespace HAL_I2C {
      * */
     static constexpr uint8_t TIMEOUT_TICKS = 100;
 
-    // Helper functions to map Peripheral enum to specific functions
+    /**
+     * @brief Helper functions to map PeripheralNumber enum to specific TWIHS functions
+     * @tparam peripheralNumber The I2C peripheral to check, specified by the PeripheralNumber enum.
+     * @return true if the operation was sucessful; false otherwise.
+     * */
     template<PeripheralNumber peripheralNumber>
     inline bool isBusy() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) return TWIHS0_IsBusy();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) return TWIHS1_IsBusy();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) return TWIHS2_IsBusy();
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            return TWIHS0_IsBusy();
+#else
+            return false; // or handle as appropriate
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            return TWIHS1_IsBusy();
+#else
+            return false; // or handle as appropriate
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            return TWIHS2_IsBusy();
+#else
+            return false;
+#endif
+        }
     }
 
     template<PeripheralNumber peripheralNumber>
     inline void initialize() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) TWIHS0_Initialize();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) TWIHS1_Initialize();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) TWIHS2_Initialize();
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            TWIHS0_Initialize();
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            TWIHS1_Initialize();
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            TWIHS2_Initialize();
+#endif
+        }
     }
 
     template<PeripheralNumber peripheralNumber>
-    inline bool writeRegister(uint16_t deviceAddress, uint8_t* data, size_t size) {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) return TWIHS0_Write(deviceAddress, data, size);
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) return TWIHS1_Write(deviceAddress, data, size);
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) return TWIHS2_Write(deviceAddress, data, size);
+    inline bool writeRegister(uint16_t deviceAddress, uint8_t *data, size_t size) {
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            return TWIHS0_Write(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            return TWIHS1_Write(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            return TWIHS2_Write(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
     }
 
     template<PeripheralNumber peripheralNumber>
-    inline bool readRegister(uint8_t deviceAddress, uint8_t* data, size_t size) {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) return TWIHS0_Read(deviceAddress, data, size);
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) return TWIHS1_Read(deviceAddress, data, size);
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) return TWIHS2_Read(deviceAddress, data, size);
+    inline bool readRegister(uint8_t deviceAddress, uint8_t *data, size_t size) {
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            return TWIHS0_Read(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            return TWIHS1_Read(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            return TWIHS2_Read(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
     }
 
     template<PeripheralNumber peripheralNumber>
     inline uint32_t errorGet() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) return TWIHS0_ErrorGet();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) return TWIHS1_ErrorGet();
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) return TWIHS2_ErrorGet();
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            return TWIHS0_ErrorGet();
+#else
+            return 0; // or handle as appropriate
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            return TWIHS1_ErrorGet();
+#else
+            return 0; // or handle as appropriate
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            return TWIHS2_ErrorGet();
+#else
+            return 0; // or handle as appropriate
+#endif
+        }
     }
+
 
     /**
      * @brief Waits for the I2C bus to become available, with a timeout mechanism.
@@ -98,6 +196,7 @@ namespace HAL_I2C {
         }
         return I2CError::None;
     }
+
     /**
     * @brief Writes data to a specific I2C device register.
     *
