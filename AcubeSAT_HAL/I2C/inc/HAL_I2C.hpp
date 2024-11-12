@@ -7,6 +7,7 @@
 #include "Logger.hpp"
 #include "task.h"
 
+#include "plib_systick.h"
 #include "plib_twihs1_master.h"
 #include "plib_twihs0_master.h"
 #include "plib_twihs2_master.h"
@@ -87,14 +88,13 @@ namespace HAL_I2C {
      */
     template<PeripheralNumber peripheralNumber>
     inline I2CError waitForResponse() {
-        auto start = xTaskGetTickCount();
+        auto start = SYSTICK_TimerCounterGet();
         while (isBusy<peripheralNumber>()) {
-            if (xTaskGetTickCount() - start > TIMEOUT_TICKS) {
+            if (SYSTICK_TimerCounterGet() - start > TIMEOUT_TICKS) {
                 LOG_ERROR << "I2C timed out";
                 initialize<peripheralNumber>();
                 return I2CError::Timeout;
             }
-            taskYIELD();
         }
         return I2CError::None;
     }
