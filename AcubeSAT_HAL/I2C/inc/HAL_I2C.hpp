@@ -16,9 +16,7 @@
 #include "plib_twihs1_master.h"
 #endif
 #ifdef TWIHS2_ENABLED
-
 #include "plib_twihs2_master.h"
-
 #endif
 
 namespace HAL_I2C {
