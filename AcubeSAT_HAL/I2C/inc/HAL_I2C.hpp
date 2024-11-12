@@ -21,7 +21,6 @@
 
 #endif
 
-
 namespace HAL_I2C {
     /**
     * @enum I2CError
@@ -61,14 +60,14 @@ namespace HAL_I2C {
 #ifdef TWIHS0_ENABLED
             return TWIHS0_IsBusy();
 #else
-            return false; // or handle as appropriate
+            return false;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
 #ifdef TWIHS1_ENABLED
             return TWIHS1_IsBusy();
 #else
-            return false; // or handle as appropriate
+            return false;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
@@ -155,25 +154,24 @@ namespace HAL_I2C {
 #ifdef TWIHS0_ENABLED
             return TWIHS0_ErrorGet();
 #else
-            return 0; // or handle as appropriate
+            return 0;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
 #ifdef TWIHS1_ENABLED
             return TWIHS1_ErrorGet();
 #else
-            return 0; // or handle as appropriate
+            return 0;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
 #ifdef TWIHS2_ENABLED
             return TWIHS2_ErrorGet();
 #else
-            return 0; // or handle as appropriate
+            return 0;
 #endif
         }
     }
-
 
     /**
      * @brief Waits for the I2C bus to become available, with a timeout mechanism.
@@ -248,5 +246,4 @@ namespace HAL_I2C {
         }
         return {};
     }
-
 }
