@@ -4,8 +4,8 @@
 #include "peripheral/pwm/plib_pwm0.h"
 #include "peripheral/pwm/plib_pwm1.h"
 
-enum class PeripheralNumber : uint8_t {
- Peripheral_0 ,
+    enum class PeripheralNumber : uint8_t {
+ Peripheral_0,
  Peripheral_1
 };
 
