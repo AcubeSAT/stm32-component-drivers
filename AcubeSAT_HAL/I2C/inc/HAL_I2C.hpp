@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <etl/expected.h>
 #include "etl/span.h"
-#include "FreeRTOS.h"
 #include "Logger.hpp"
 #include "task.h"
 #include "plib_systick.h"
@@ -122,6 +121,32 @@ namespace HAL_I2C {
     }
 
     template<PeripheralNumber peripheralNumber>
+    inline bool writeReadRegister(uint16_t deviceAddress, uint8_t *data, size_t size) {
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+            return TWIHS0_WriteRead(deviceAddress, data, size);
+
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+            return TWIHS1_WriteRead(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+            return TWIHS2_WriteRead(deviceAddress, data, size);
+#else
+            return false;
+#endif
+        }
+    }
+
+    template<PeripheralNumber peripheralNumber>
     inline bool readRegister(uint8_t deviceAddress, uint8_t *data, size_t size) {
         if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
 #ifdef TWIHS0_ENABLED
@@ -205,17 +230,17 @@ namespace HAL_I2C {
     * the error code and returns I2CError::WriteError.
     */
     template<PeripheralNumber peripheralNumber>
-    inline etl::expected<void, I2CError> writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
+    inline I2CError writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
         if (i2cData.empty()) {
             LOG_ERROR << "I2C data cannot be empty";
-            return etl::unexpected(I2CError::InvalidParams);
+            return I2CError::InvalidParams;
         }
         if (!writeRegister<peripheralNumber>(deviceAddress, i2cData.data(), i2cData.size())) {
             auto error = errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
-            return etl::unexpected(I2CError::WriteError);
+            return I2CError::WriteError;
         }
-        return {};
+        return I2CError::None;
     }
 
     /**
@@ -230,18 +255,62 @@ namespace HAL_I2C {
      * for the read operation to complete. In case of a failure during the read, it retrieves and logs
      * the error code and returns I2CError::ReadError.
      */
-
     template<PeripheralNumber peripheralNumber, uint8_t BUFFER_SIZE>
-    inline etl::expected<void, I2CError> readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
+    inline I2CError readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
         static_assert(BUFFER_SIZE > 0, "Buffer size must be greater than zero");
         if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
-            return etl::unexpected(I2CError::Timeout);
+            return I2CError::Timeout;
         }
         if (!readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
             auto error = errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
-            return etl::unexpected(I2CError::ReadError);
+            return I2CError::ReadError;
         }
-        return {};
+        return I2CError::None;
+    }
+
+    /**
+     * @brief Performs a combined I2C write followed by a read operation.
+     *
+     * @tparam peripheralNumber The I2C peripheral to use.
+     * @tparam WRITE_BUFFER_SIZE The size of the write buffer.
+     * @tparam READ_BUFFER_SIZE The size of the read buffer.
+     * @param deviceAddress The I2C address of the target device.
+     * @param writeData A reference to an array containing the data to write.
+     * @param readData A reference to an array to hold the read data.
+     * @return I2CError Returns an I2CError indicating success or failure of the operation.
+     *
+     * This function performs a write operation followed immediately by a read operation
+     * on the I2C bus. It waits for the bus to be ready before initiating each transaction
+     * and handles timeouts and errors appropriately.
+     */
+    template<PeripheralNumber peripheralNumber, uint8_t WRITE_BUFFER_SIZE, uint8_t READ_BUFFER_SIZE>
+    inline I2CError writeRead(uint8_t deviceAddress,
+                              const etl::array<uint8_t, WRITE_BUFFER_SIZE>& writeData,
+                              etl::array<uint8_t, READ_BUFFER_SIZE>& readData) {
+        static_assert(WRITE_BUFFER_SIZE > 0, "Write buffer size must be greater than zero");
+        static_assert(READ_BUFFER_SIZE > 0, "Read buffer size must be greater than zero");
+
+        if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
+            return I2CError::Timeout;
+        }
+        if (!writeRegister<peripheralNumber>(deviceAddress, writeData.data(), writeData.size())) {
+            auto error = errorGet<peripheralNumber>();
+            LOG_INFO << "I2C write transaction failed with error code: " << error;
+            return I2CError::WriteError;
+        }
+
+        if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
+            return I2CError::Timeout;
+        }
+
+        if (!readRegister<peripheralNumber>(deviceAddress, readData.data(), readData.size())) {
+            auto error = errorGet<peripheralNumber>();
+            LOG_INFO << "I2C read transaction failed with error code: " << error;
+            return I2CError::ReadError;
+        }
+
+        return I2CError::None;
     }
 }
+
