@@ -5,8 +5,8 @@
 #include "peripheral/pwm/plib_pwm1.h"
 
     enum class PeripheralNumber : uint8_t {
- Peripheral_0,
- Peripheral_1
+ Peripheral_0 = 0,
+ Peripheral_1 = 1
 };
 
 /**
@@ -24,7 +24,7 @@ namespace HAL_PWM {
      *
      * This function starts PWM channels for the specified peripheral.
      */
-    template<PeripheralNumber peripheral>
+    template<uint8_t PeripheralNumber>
     void PWM_ChannelsStart(PWM_CHANNEL_MASK channelMask);
 
     /**
@@ -35,7 +35,7 @@ namespace HAL_PWM {
      *
      * This function stops PWM channels for the specified peripheral.
      */
-    template<PeripheralNumber peripheral>
+    template<uint8_t PeripheralNumber>
     void PWM_ChannelsStop(PWM_CHANNEL_MASK channelMask);
 
     /**
@@ -47,7 +47,7 @@ namespace HAL_PWM {
      *
      * This function sets the duty cycle for a specific channel of the specified peripheral.
      */
-    template<PeripheralNumber peripheral>
+    template<uint8_t PeripheralNumber>
     void PWM_ChannelDutySet(PWM_CHANNEL_NUM pwmChannel, uint16_t dutyCycle);
 
     /**
@@ -56,7 +56,7 @@ namespace HAL_PWM {
      * @tparam peripheralNumber The peripheral number (0 or 1).
      * @param pwmChannel The PWM channel number.
      */
-    template<PeripheralNumber peripheral>
+    template<uint8_t PeripheralNumber>
     uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel);
 
     /**
@@ -66,6 +66,6 @@ namespace HAL_PWM {
      * @param pwmChannel The PWM channel number.
      * @param period The period value (0 to 65535).
      */
-    template<PeripheralNumber peripheral>
+    template<uint8_t PeripheralNumber>
     void PWM_ChannelPeriodSet(PWM_CHANNEL_NUM pwmChannel, uint16_t period);
 }
