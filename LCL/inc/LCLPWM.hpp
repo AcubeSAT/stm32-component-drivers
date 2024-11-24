@@ -3,7 +3,7 @@
 #include "LCL.hpp"
 #include "HAL_PWM.hpp"
 
-template<uint8_t PWMPeripheral>
+template<PeripheralNumber PWMPeripheral>
 class LCLPWM : public LCL {
 public:
     /**
