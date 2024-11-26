@@ -14,16 +14,35 @@
  */
 class FlashDriver {
 public:
+    using FlashAddress = uint32_t;
+    using FlashData = uint32_t;
+    using FlashEraseLength = uint32_t;
 
     /**
      * Wait period before an EFC transaction is skipped.
      */
     static constexpr uint16_t TimeoutTicks = 1000;
 
+    /**
+     * Size of a flash page in Bytes.
+     */
+    static constexpr uint32_t FLASH_PAGE_SIZE = 512;
 
-    using FlashAddress = uint32_t;
-    using FlashData = uint32_t;
-    using FlashEraseLength = uint32_t;
+    /**
+     * Size of 4 words (128 bits) in Bytes.
+     */
+    static constexpr uint32_t QUAD_WORD_SIZE = 16;
+
+    /**
+     * Starting adress of available Flash memory.
+     */
+    static constexpr uint32_t startAddress = 0x5F0000;
+
+    /**
+     * End limit of available Flash memory.
+     */
+    static constexpr uint32_t endAddress = 0x600000;
+
     /**
      * Constructor to create an instance of the class and initialize the EFC peripheral.
      */
@@ -65,6 +84,25 @@ public:
     static EFC_ERROR SectorErase(FlashAddress address);
 
 private:
+    /**
+     * Ensure Flash address used is correctly alligned.
+     * @param address at which a function will be called
+     * @param alignment TBD
+     * @return
+     */
+    static bool isAligned(FlashAddress address, uint32_t alignment) {
+        return (address % alignment) == 0;
+    };
+
+    /**
+     * Ensure Flash addressed used is within defined limits.
+     * @param address at which a function will be called
+     * @return true is the address is valid, false if not
+     */
+    static bool isAddressSafe(FlashAddress address) {
+        return (address >= startAddress && address < endAddress);
+    };
+
     static void waitForResponse() {
         auto start = xTaskGetTickCount();
         while (EFC_IsBusy()) {
