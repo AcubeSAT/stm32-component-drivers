@@ -14,9 +14,9 @@
  */
 class FlashDriver {
 public:
-    using FlashAddress = uint32_t;
-    using FlashData = uint32_t;
-    using FlashReadLength = uint32_t;
+    using FlashAddress_t = uint32_t;
+    using FlashData_t = uint32_t;
+    using FlashReadLength_t = uint32_t;
 
     /**
      * @enum EFCError
@@ -42,25 +42,25 @@ public:
     /**
      * Size of a flash page in Bytes.
      */
-    static constexpr uint32_t FLASH_PAGE_SIZE = 512;
+    static constexpr uint32_t FlashPageSize = 512;
 
     /**
      * Size of 4 words (128 bits) in Bytes.
      */
-    static constexpr uint32_t QUAD_WORD_SIZE = 16;
+    static constexpr uint32_t QuadWordSize = 16;
 
     /**
      * Starting adress of available Flash memory.
      */
-    static constexpr uint32_t startAddress = 0x5F0000;
+    static constexpr uint32_t StartAddress = 0x5F0000;
 
     /**
      * End limit of available Flash memory.
      */
-    static constexpr uint32_t endAddress = 0x600000;
+    static constexpr uint32_t EndAddress = 0x600000;
 
     /**
-     * Constructor to create an instance of the class and initialize the EFC peripheral.
+     * Constructor to create an instance of the class.
      */
     FlashDriver() = default;
 
@@ -71,7 +71,7 @@ public:
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError QuadWordWrite(FlashData* data, FlashAddress address);
+    static EFCError QuadWordWrite(FlashData_t* data, FlashAddress_t address);
 
     /**
      * Write function that writes an entire page of 512 bytes. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
@@ -80,7 +80,7 @@ public:
      * @param address  	FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError PageWrite(FlashData* data, FlashAddress address);
+    static EFCError PageWrite(FlashData_t* data, FlashAddress_t address);
 
     /**
      * Reads length number of bytes from a given address in FLASH memory into
@@ -90,14 +90,7 @@ public:
      * @param address FLASH address to be read from.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError Read(FlashData* data, FlashReadLength length, FlashAddress address);
-
-    /**
-     * This function is used to erase a sector.
-     * @param address FLASH address to be Erased.
-     * @return member of the EFC_ERROR enum.
-     */
-    static EFCError SectorErase(FlashAddress address);
+    static EFCError Read(FlashData_t* data, FlashReadLength_t length, FlashAddress_t address);
 
 private:
     /**
@@ -106,7 +99,7 @@ private:
      * @param alignment
      * @return
      */
-    static bool isAligned(FlashAddress address, uint32_t alignment) {
+    static bool isAligned(FlashAddress_t address, uint32_t alignment) {
         return (address % alignment) == 0;
     }
 
@@ -115,8 +108,8 @@ private:
      * @param address
      * @return
      */
-    static bool isAddressSafe(FlashAddress address) {
-        return address >= startAddress && address < endAddress;
+    static bool isAddressSafe(FlashAddress_t address) {
+        return address >= StartAddress && address < EndAddress;
     }
 
     static EFCError getEFCError() {
@@ -133,6 +126,25 @@ private:
                 return EFCError::ECCError;
         }
         return EFCError::Undefined;
+    }
+
+    /**
+     * This function is used to erase a sector.
+     * @param address FLASH address to be Erased.
+     * @return member of the EFC_ERROR enum.
+     */
+    [[nodiscard]] static EFCError SectorErase(FlashAddress_t address) {
+        if(not isAddressSafe(address)) {
+            return EFCError::AddressUnsafe;
+        }
+
+        EFC_SectorErase(address);
+
+        if(waitForResponse() == EFCError::Timeout) {
+            return EFCError::Timeout;
+        }
+
+        return getEFCError();
     }
 
     static EFCError waitForResponse() {
