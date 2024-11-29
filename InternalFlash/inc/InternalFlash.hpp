@@ -16,7 +16,23 @@ class FlashDriver {
 public:
     using FlashAddress = uint32_t;
     using FlashData = uint32_t;
-    using FlashEraseLength = uint32_t;
+    using FlashReadLength = uint32_t;
+
+    /**
+     * @enum EFCError
+     * @brief enum to represent various EFC errors
+     */
+    enum class EFCError : uint8_t {
+        None,
+        Timeout,
+        AddressUnsafe,
+        AdressNotAlligned,
+        InvalidCommand,
+        RegionLocked,
+        FlashError,
+        ECCError,
+        Undefined
+    };
 
     /**
      * Wait period before an EFC transaction is skipped.
@@ -46,7 +62,7 @@ public:
     /**
      * Constructor to create an instance of the class and initialize the EFC peripheral.
      */
-    FlashDriver();
+    FlashDriver() = default;
 
     /**
      * Write function that writes 128 bits. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
@@ -55,7 +71,7 @@ public:
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFC_ERROR QuadWordWrite(FlashData* data, FlashAddress address);
+    static EFCError QuadWordWrite(FlashData* data, FlashAddress address);
 
     /**
      * Write function that writes an entire page of 512 bytes. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
@@ -64,7 +80,7 @@ public:
      * @param address  	FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFC_ERROR PageWrite(FlashData* data, FlashAddress address);
+    static EFCError PageWrite(FlashData* data, FlashAddress address);
 
     /**
      * Reads length number of bytes from a given address in FLASH memory into
@@ -74,44 +90,61 @@ public:
      * @param address FLASH address to be read from.
      * @return member of the EFC_ERROR enum.
      */
-    static EFC_ERROR Read(FlashData* data, FlashEraseLength length, FlashAddress address);
+    static EFCError Read(FlashData* data, FlashReadLength length, FlashAddress address);
 
     /**
      * This function is used to erase a sector.
      * @param address FLASH address to be Erased.
      * @return member of the EFC_ERROR enum.
      */
-    static EFC_ERROR SectorErase(FlashAddress address);
+    static EFCError SectorErase(FlashAddress address);
 
 private:
     /**
      * Ensure Flash address used is correctly alligned.
-     * @param address at which a function will be called
-     * @param alignment TBD
+     * @param address
+     * @param alignment
      * @return
      */
     static bool isAligned(FlashAddress address, uint32_t alignment) {
         return (address % alignment) == 0;
-    };
+    }
 
     /**
      * Ensure Flash addressed used is within defined limits.
-     * @param address at which a function will be called
-     * @return true is the address is valid, false if not
+     * @param address
+     * @return
      */
     static bool isAddressSafe(FlashAddress address) {
-        return (address >= startAddress && address < endAddress);
-    };
+        return address >= startAddress && address < endAddress;
+    }
 
-    static void waitForResponse() {
+    static EFCError getEFCError() {
+        switch (EFC_ErrorGet()) {
+            case EFC_ERROR_NONE:
+                return EFCError::None;
+            case EFC_CMD_ERROR:
+                return EFCError::InvalidCommand;
+            case EFC_LOCK_ERROR:
+                return EFCError::RegionLocked;
+            case EFC_FLERR_ERROR:
+                return EFCError::FlashError;
+            case EFC_ECC_ERROR:
+                return EFCError::ECCError;
+        }
+        return EFCError::Undefined;
+    }
+
+    static EFCError waitForResponse() {
         auto start = xTaskGetTickCount();
         while (EFC_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
                 LOG_ERROR << "EFC transaction failed";
                 EFC_Initialize();
+             return EFCError::Timeout;
             }
             taskYIELD();
         }
-    };
-
+        return EFCError::None;
+    }
 };

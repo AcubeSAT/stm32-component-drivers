@@ -1,37 +1,57 @@
 #include "InternalFlash.hpp"
 
-FlashDriver::FlashDriver() {
-    ;
-}
+[[nodiscard]] FlashDriver::EFCError FlashDriver::QuadWordWrite(FlashData* data, FlashAddress address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::AddressUnsafe;
+    }
 
-EFC_ERROR FlashDriver::QuadWordWrite(FlashData* data, FlashAddress address) {
     EFC_QuadWordWrite(data, address);
 
-    waitForResponse();
+    if(waitForResponse() == EFCError::Timeout) {
+        return EFCError::Timeout;
+    }
 
-    return EFC_ErrorGet();
+    return getEFCError();
 }
 
-EFC_ERROR FlashDriver::PageWrite(FlashData* data, FlashAddress address) {
+[[nodiscard]] FlashDriver::EFCError FlashDriver::PageWrite(FlashData* data, FlashAddress address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::AddressUnsafe;
+    }
+
     EFC_PageWrite(data, address);
 
-    waitForResponse();
+    if(waitForResponse() == EFCError::Timeout) {
+        return EFCError::Timeout;
+    }
 
-    return EFC_ErrorGet();
+    return getEFCError();
 }
 
-EFC_ERROR FlashDriver::Read(FlashData* data, FlashEraseLength length, FlashAddress address) {
+[[nodiscard]] FlashDriver::EFCError FlashDriver::Read(FlashData* data, FlashReadLength length, FlashAddress address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::AddressUnsafe;
+    }
+
     EFC_Read(data, length, address);
 
-    waitForResponse();
+    if(waitForResponse() == EFCError::Timeout) {
+        return EFCError::Timeout;
+    }
 
-    return EFC_ErrorGet();
+    return getEFCError();
 }
 
-EFC_ERROR FlashDriver::SectorErase(FlashAddress address) {
+[[nodiscard]] FlashDriver::EFCError FlashDriver::SectorErase(FlashAddress address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::AddressUnsafe;
+    }
+
     EFC_SectorErase(address);
 
-    waitForResponse();
+    if(waitForResponse() == EFCError::Timeout) {
+        return EFCError::Timeout;
+    }
 
-    return EFC_ErrorGet();
+    return getEFCError();
 }
