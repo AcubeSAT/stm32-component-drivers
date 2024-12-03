@@ -71,16 +71,16 @@ public:
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError QuadWordWrite(FlashData_t* data, FlashAddress_t address);
+    static EFCError writeQuadWord(FlashData_t* data, FlashAddress_t address);
 
     /**
      * Write function that writes an entire page of 512 bytes. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
      * program words in a page, the page must first be erased.
      * @param data pointer to data buffer of size equivalent to page size.
-     * @param address  	FLASH address to be modified.
+     * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError PageWrite(FlashData_t* data, FlashAddress_t address);
+    static EFCError writePage(FlashData_t* data, FlashAddress_t address);
 
     /**
      * Reads length number of bytes from a given address in FLASH memory into
@@ -90,29 +90,33 @@ public:
      * @param address FLASH address to be read from.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError Read(FlashData_t* data, FlashReadLength_t length, FlashAddress_t address);
+    static EFCError readFromMemory(FlashData_t* data, FlashReadLength_t length, FlashAddress_t address);
 
 private:
     /**
      * Ensure Flash address used is correctly alligned.
-     * @param address
-     * @param alignment
-     * @return
+     * @param address FLASH address to be modified.
+     * @param alignment the allignment that should be kept.
+     * @return True if the address is correctly aligned.
      */
-    static bool isAligned(FlashAddress_t address, uint32_t alignment) {
+    static inline bool isAligned(FlashAddress_t address, uint32_t alignment) {
         return (address % alignment) == 0;
     }
 
     /**
      * Ensure Flash addressed used is within defined limits.
-     * @param address
-     * @return
+     * @param address FLASH address to be modified.
+     * @return True if the address is within the limits defined.
      */
-    static bool isAddressSafe(FlashAddress_t address) {
+    static inline bool isAddressSafe(FlashAddress_t address) {
         return address >= StartAddress && address < EndAddress;
     }
 
-    static EFCError getEFCError() {
+    /**
+     * Function to get match internal EFC errors to the EFCError enum.
+     * @return the error returned from EFC_ErrorGet as a EFCError.
+     */
+    static inline EFCError getEFCError() {
         switch (EFC_ErrorGet()) {
             case EFC_ERROR_NONE:
                 return EFCError::None;
@@ -133,7 +137,7 @@ private:
      * @param address FLASH address to be Erased.
      * @return member of the EFC_ERROR enum.
      */
-    [[nodiscard]] static EFCError SectorErase(FlashAddress_t address) {
+    [[nodiscard]] static inline EFCError eraseSector(FlashAddress_t address) {
         if(not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
         }
@@ -147,7 +151,11 @@ private:
         return getEFCError();
     }
 
-    static EFCError waitForResponse() {
+    /**
+     * Function to ensure that no calls to EFC are made while a transaction is happening and to ensure the transaction doesn't get stuck.
+     * @return Timeout is the transaction got stuck, None otherwise.
+     */
+    static inline EFCError waitForResponse() {
         auto start = xTaskGetTickCount();
         while (EFC_IsBusy()) {
             if (xTaskGetTickCount() - start > TimeoutTicks) {
