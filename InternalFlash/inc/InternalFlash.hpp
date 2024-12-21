@@ -7,6 +7,8 @@
 #include "Logger.hpp"
 #include "task.h"
 
+// todo (#31): Find out if isAlligned function is needed.
+
 /**
  * Class to interact with the Internal FLASH Memory of the MCU.
  *
@@ -71,7 +73,7 @@ public:
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError writeQuadWord(FlashData_t* data, FlashAddress_t address);
+    static EFCError writeQuadWord(FlashData_t data, FlashAddress_t address);
 
     /**
      * Write function that writes an entire page of 512 bytes. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
@@ -80,7 +82,7 @@ public:
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError writePage(FlashData_t* data, FlashAddress_t address);
+    static EFCError writePage(FlashData_t data, FlashAddress_t address);
 
     /**
      * Reads length number of bytes from a given address in FLASH memory into
@@ -90,7 +92,7 @@ public:
      * @param address FLASH address to be read from.
      * @return member of the EFC_ERROR enum.
      */
-    static EFCError readFromMemory(FlashData_t* data, FlashReadLength_t length, FlashAddress_t address);
+    static EFCError readFromMemory(FlashData_t& data, FlashReadLength_t length, FlashAddress_t address);
 
 private:
     /**
@@ -99,7 +101,7 @@ private:
      * @param alignment the allignment that should be kept.
      * @return True if the address is correctly aligned.
      */
-    static inline bool isAligned(FlashAddress_t address, uint32_t alignment) {
+    static inline bool isAligned(const FlashAddress_t address, uint32_t alignment) {
         return (address % alignment) == 0;
     }
 
@@ -108,7 +110,7 @@ private:
      * @param address FLASH address to be modified.
      * @return True if the address is within the limits defined.
      */
-    static inline bool isAddressSafe(FlashAddress_t address) {
+    static inline bool isAddressSafe(const FlashAddress_t address) {
         return address >= StartAddress && address < EndAddress;
     }
 
@@ -137,7 +139,7 @@ private:
      * @param address FLASH address to be Erased.
      * @return member of the EFC_ERROR enum.
      */
-    [[nodiscard]] static inline EFCError eraseSector(FlashAddress_t address) {
+    [[nodiscard]] static inline EFCError eraseSector(const FlashAddress_t address) {
         if(not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
         }
