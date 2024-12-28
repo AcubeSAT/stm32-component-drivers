@@ -8,6 +8,12 @@
 #include "task.h"
 
 // todo (#31): Find out if isAlligned function is needed.
+// todo (#32): Remove FreeRTOS functions.
+// todo (#33): Add WriteFloat wrapper function.
+// todo (#34): Investigate if we need class instacnes.
+// todo (#35): Protect written data.
+// todo (#36): General Memory class.
+// todo (#37): Multi-variable write.
 
 /**
  * Class to interact with the Internal FLASH Memory of the MCU.
@@ -67,7 +73,7 @@ public:
 
     /**
      * Write function that writes 128 bits. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
-     * program words in a page, the page must first be erased.
+     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.3.
      * @param data pointer to 128-bit data buffer.
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.
@@ -76,7 +82,7 @@ public:
 
     /**
      * Write function that writes an entire page of 512 bytes. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
-     * program words in a page, the page must first be erased.
+     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraies 2.39.4.
      * @param data pointer to data buffer of size equivalent to page size.
      * @param address FLASH address to be modified.
      * @return member of the EFC_ERROR enum.

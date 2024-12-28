@@ -5,9 +5,9 @@
         return EFCError::AddressUnsafe;
     }
 
-    auto Erase = eraseSector(address);
-    if(Erase != EFCError::None) {
-        return Erase;
+    const auto erase = eraseSector(address);
+    if(erase != EFCError::None) {
+        return erase;
     }
 
     EFC_QuadWordWrite(&data, address);
@@ -24,9 +24,9 @@
         return EFCError::AddressUnsafe;
     }
 
-    auto Erase = eraseSector(address);
-    if(Erase != EFCError::None) {
-        return Erase;
+    const auto erase = eraseSector(address);
+    if(erase != EFCError::None) {
+        return erase;
     }
 
     EFC_PageWrite(&data, address);
