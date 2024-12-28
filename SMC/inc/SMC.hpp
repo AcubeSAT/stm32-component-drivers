@@ -18,6 +18,11 @@ protected:
      */
     const uint32_t moduleBaseAddress = 0;
 
+    /**
+     * End address of the memory area mapped to the memory addresses of the external module.
+     */
+    const uint32_t moduleEndAddress = 0;
+
 public:
     /**
      * Available Chip Select pins on the ATSAMV71 MCU.
@@ -31,10 +36,11 @@ public:
 
 protected:
     /**
-     * Initialize the \ref moduleBaseAddress constant.
+     * Initialize the \ref moduleBaseAddress constant & \ref moduleEndAddress constant.
      * @param chipSelect Number of the Chip Select used for enabling the external module.
      */
-    constexpr SMC(ChipSelect chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)) {}
+    constexpr SMC(ChipSelect chipSelect) : moduleBaseAddress(smcGetBaseAddress(chipSelect)),
+                                           moduleEndAddress(smcGetEndAddress(chipSelect)) {}
 
     /**
      * Basic 8-bit write to an EBI address.
@@ -71,6 +77,30 @@ protected:
 
             case NCS3:
                 return EBI_CS3_ADDR;
+
+            default:
+                return 0;
+        }
+    }
+
+    /**
+     * @param chipSelect Number of the Chip Select used for enabling the external module.
+     * @return End address on the EBI peripheral that the Chip Select corresponds to.
+     */
+
+    static inline constexpr uint32_t smcGetEndAddress(ChipSelect ChipSelect){
+        switch (ChipSelect) {
+            case NCS0:
+                return EBI_CS0_ADDR | 0x00FFFFFF;
+
+            case NCS1:
+                return EBI_CS1_ADDR | 0x00FFFFFF;
+
+            case NCS2:
+                return EBI_CS2_ADDR | 0x00FFFFFF;
+
+            case NCS3:
+                return EBI_CS3_ADDR | 0x0FFFFFFF;
 
             default:
                 return 0;
