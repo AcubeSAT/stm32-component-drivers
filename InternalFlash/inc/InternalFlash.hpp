@@ -84,7 +84,7 @@ public:
      * @return member of the EFCError enum.
      */
     template <typename T, size_t N>
-    [[nodiscard]] static EFCError writeQuadWord( etl::array<T, N> data, FlashAddress_t address) {
+    [[nodiscard]] static EFCError writeQuadWord(const etl::array<T, N> data, FlashAddress_t address) {
         static_assert((sizeof(T) * N) <= quadWordSize * numOfBitsinByte, "Data size exceeds 128 bits.");
 
         if (not isAddressSafe(address)) {
@@ -114,7 +114,7 @@ public:
      * @return member of the EFCError enum.
      */
     template <typename T, size_t N>
-    [[nodiscard]] static EFCError writePage( etl::array<T, N> data, FlashAddress_t address) {
+    [[nodiscard]] static EFCError writePage(const etl::array<T, N> data, FlashAddress_t address) {
         static_assert((sizeof(T) * N) == flashPageSize * numOfBitsinByte, "Data size must match the page size.");
 
         if (not isAddressSafe(address)) {
@@ -146,7 +146,7 @@ public:
      * @return A member of the EFCError enum indicating the result.
      */
     template <typename T, size_t N>
-    [[nodiscard]] static EFCError readFromMemory(etl::array<T, N>& data,const FlashReadLength_t length, FlashAddress_t address) {
+    [[nodiscard]] static EFCError readFromMemory(etl::array<T, N>& data, FlashReadLength_t length, FlashAddress_t address) {
         if (not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
         }
