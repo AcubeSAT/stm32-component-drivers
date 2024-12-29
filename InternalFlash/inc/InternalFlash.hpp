@@ -7,13 +7,15 @@
 #include "Logger.hpp"
 #include "task.h"
 
-// todo (#31): Find out if isAlligned function is needed.
-// todo (#32): Remove FreeRTOS functions.
-// todo (#33): Add WriteFloat wrapper function.
-// todo (#34): Investigate if we need class instacnes.
-// todo (#35): Protect written data.
-// todo (#36): General Memory class.
-// todo (#37): Multi-variable write.
+/**
+ * todo (#31): Find out if isAlligned function is needed.
+ * todo (#32): Remove FreeRTOS functions.
+ * todo (#33): Add WriteFloat wrapper function.
+ * todo (#34): Investigate if we need class instacnes.
+ * todo (#35): Protect written data.
+ * todo (#36): General Memory class.
+ * todo (#37): Multi-variable write.
+ */
 
 /**
  * Class to interact with the Internal FLASH Memory of the MCU.
@@ -146,19 +148,19 @@ public:
      * @return A member of the EFCError enum indicating the result.
      */
     template <typename T, size_t N>
-    [[nodiscard]] static EFCError readFromMemory(etl::array<T, N>& data, FlashReadLength_t length, FlashAddress_t address) {
+    [[nodiscard]] static EFCError readFromMemory(etl::array<T, N> &data, FlashReadLength_t length, FlashAddress_t address) {
         if (not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
         }
 
-        EFC_Read(static_cast<uint32_t*>(data.data()), length, address);
+        EFC_Read(static_cast<uint32_t *>(data.data()), length, address);
 
         if (waitForResponse() == EFCError::Timeout) {
             return EFCError::Timeout;
         }
 
         return getEFCError();
-}
+    }
 
 private:
     /**
@@ -184,55 +186,18 @@ private:
      * Function to get match internal EFC errors to the EFCError enum.
      * @return the error returned from EFC_ErrorGet as a EFCError.
      */
-    static EFCError getEFCError() {
-        switch (EFC_ErrorGet()) {
-            case EFC_ERROR_NONE:
-                return EFCError::None;
-            case EFC_CMD_ERROR:
-                return EFCError::InvalidCommand;
-            case EFC_LOCK_ERROR:
-                return EFCError::RegionLocked;
-            case EFC_FLERR_ERROR:
-                return EFCError::FlashError;
-            case EFC_ECC_ERROR:
-                return EFCError::ECCError;
-        }
-        return EFCError::Undefined;
-    }
+    static EFCError getEFCError();
 
     /**
      * This function is used to erase a sector.
      * @param address FLASH address to be Erased.
      * @return member of the EFC_ERROR enum.
      */
-    [[nodiscard]] static EFCError eraseSector(FlashAddress_t address) {
-        if(not isAddressSafe(address)) {
-            return EFCError::AddressUnsafe;
-        }
-
-        EFC_SectorErase(address);
-
-        if(waitForResponse() == EFCError::Timeout) {
-            return EFCError::Timeout;
-        }
-
-        return getEFCError();
-    }
+    static EFCError eraseSector(FlashAddress_t address);
 
     /**
      * Function to ensure that no calls to EFC are made while a transaction is happening and to ensure the transaction doesn't get stuck.
      * @return Timeout is the transaction got stuck, None otherwise.
      */
-    static EFCError waitForResponse() {
-        auto start = xTaskGetTickCount();
-        while (EFC_IsBusy()) {
-            if (xTaskGetTickCount() - start > timeoutTicks) {
-                LOG_ERROR << "EFC transaction failed";
-                EFC_Initialize();
-             return EFCError::Timeout;
-            }
-            taskYIELD();
-        }
-        return EFCError::None;
-    }
+    static EFCError waitForResponse();
 };
