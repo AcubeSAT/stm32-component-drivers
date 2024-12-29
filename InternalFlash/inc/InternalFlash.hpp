@@ -46,32 +46,32 @@ public:
     /**
      * Number of bits in a single byte, used for calculations.
      */
-    static constexpr uint8_t numOfBitsinByte = 8;
+    static constexpr uint8_t NumOfBitsinByte = 8;
 
     /**
      * Wait period before an EFC transaction is skipped.
      */
-    static constexpr uint16_t timeoutTicks = 1000;
+    static constexpr uint16_t TimeoutTicks = 1000;
 
     /**
      * Size of a flash page in Bytes.
      */
-    static constexpr uint32_t flashPageSize = 512;
+    static constexpr uint32_t FlashPageSize = 512;
 
     /**
      * Size of 4 words (128 bits) in Bytes.
      */
-    static constexpr uint32_t quadWordSize = 16;
+    static constexpr uint32_t QuadWordSize = 16;
 
     /**
      * Starting adress of available Flash memory.
      */
-    static constexpr uint32_t startAddress = 0x5F0000;
+    static constexpr uint32_t StartAddress = 0x5F0000;
 
     /**
      * End limit of available Flash memory.
      */
-    static constexpr uint32_t endAddress = 0x600000;
+    static constexpr uint32_t EndAddress = 0x600000;
 
     /**
      * Constructor to create an instance of the class.
@@ -87,7 +87,7 @@ public:
      */
     template <typename T, size_t N>
     [[nodiscard]] static EFCError writeQuadWord(const etl::array<T, N> data, FlashAddress_t address) {
-        static_assert((sizeof(T) * N) <= quadWordSize * numOfBitsinByte, "Data size exceeds 128 bits.");
+        static_assert((sizeof(T) * N) <= QuadWordSize * NumOfBitsinByte, "Data size exceeds 128 bits.");
 
         if (not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
@@ -117,7 +117,7 @@ public:
      */
     template <typename T, size_t N>
     [[nodiscard]] static EFCError writePage(const etl::array<T, N> data, FlashAddress_t address) {
-        static_assert((sizeof(T) * N) == flashPageSize * numOfBitsinByte, "Data size must match the page size.");
+        static_assert((sizeof(T) * N) == FlashPageSize * NumOfBitsinByte, "Data size must match the page size.");
 
         if (not isAddressSafe(address)) {
             return EFCError::AddressUnsafe;
@@ -179,7 +179,7 @@ private:
      * @return True if the address is within the limits defined.
      */
     static bool isAddressSafe(FlashAddress_t address) {
-        return address >= startAddress && address < endAddress;
+        return address >= StartAddress && address < EndAddress;
     }
 
     /**
