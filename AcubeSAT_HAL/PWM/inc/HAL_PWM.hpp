@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include "peripheral/pwm/plib_pwm0.h"
+#ifdef HAL_PWM_1
 #include "peripheral/pwm/plib_pwm1.h"
+#endif
 
     enum class PeripheralNumber : uint8_t {
  Peripheral_0,

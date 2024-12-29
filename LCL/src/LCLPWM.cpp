@@ -4,8 +4,10 @@
 template
 class LCLPWM<PeripheralNumber::Peripheral_0>;
 
+#ifdef HAL_PWM_1
 template
 class LCLPWM<PeripheralNumber::Peripheral_1>;
+#endif
 
 template<PeripheralNumber PWMPeripheral>
 LCLPWM<PWMPeripheral>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin,
