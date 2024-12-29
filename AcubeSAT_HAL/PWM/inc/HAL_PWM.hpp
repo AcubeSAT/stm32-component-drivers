@@ -21,7 +21,7 @@ namespace HAL_PWM {
     /**
      * @brief Start PWM channels for a specific peripheral.
      *
-     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @tparam peripheral The peripheral to use (PeripheralNumber::Peripheral_0 or PeripheralNumber::Peripheral_1).
      * @param channelMask The mask indicating which channels to start.
      *
      * This function starts PWM channels for the specified peripheral.
@@ -32,7 +32,7 @@ namespace HAL_PWM {
     /**
      * @brief Stop PWM channels for a specific peripheral.
      *
-     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @tparam peripheral The peripheral to use (PeripheralNumber::Peripheral_0 or PeripheralNumber::Peripheral_1).
      * @param channelMask The mask indicating which channels to stop.
      *
      * This function stops PWM channels for the specified peripheral.
@@ -43,7 +43,7 @@ namespace HAL_PWM {
     /**
      * @brief Set duty cycle for a specific channel of a peripheral.
      *
-     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @tparam peripheral The peripheral to use (PeripheralNumber::Peripheral_0 or PeripheralNumber::Peripheral_1).
      * @param pwmChannel The PWM channel number.
      * @param dutyCycle The duty cycle value (0 to 65535).
      *
@@ -55,7 +55,7 @@ namespace HAL_PWM {
     /**
      * @brief Gets period for a specific channel of a peripheral.
      *
-     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @tparam peripheral The peripheral to use (PeripheralNumber::Peripheral_0 or PeripheralNumber::Peripheral_1).
      * @param pwmChannel The PWM channel number.
      */
     template<PeripheralNumber peripheral>
@@ -64,7 +64,7 @@ namespace HAL_PWM {
     /**
      * @brief Sets period for a specific channel of a peripheral.
      *
-     * @tparam peripheralNumber The peripheral number (0 or 1).
+     * @tparam peripheral The peripheral to use (PeripheralNumber::Peripheral_0 or PeripheralNumber::Peripheral_1).
      * @param pwmChannel The PWM channel number.
      * @param period The period value (0 to 65535).
      */
