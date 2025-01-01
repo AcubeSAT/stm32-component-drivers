@@ -1,98 +1,138 @@
-#include <etl/span.h>
 #include "MR4A08BUYS45.hpp"
 
-MRAM_Errno MRAM::mramWriteByte(uint32_t dataAddress, const uint8_t &data) {
+bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
+    if (startAddress > MaxWriteableAddress || 
+        size > MaxWriteableAddress ||
+        (startAddress + size - 1) > MaxWriteableAddress) {
+        return false;
+    }
+
+    uint32_t endAddress = moduleBaseAddress | (startAddress + size - 1);
+    return endAddress <= moduleEndAddress;
+}
+
+MRAMError MRAM::mramWriteByte(uint32_t dataAddress, uint8_t data) {
+    if (!isAddressRangeValid(dataAddress, 1)) {
+        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
+        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
+    }
+
     uint32_t writeAddress = moduleBaseAddress | dataAddress;
-    if( (dataAddress > maxWriteableAddress) || (writeAddress > moduleEndAddress) ){
-        return MRAM_Errno::MRAM_ADDRESS_OUT_OF_BOUNDS;
-    }
     smcWriteByte(writeAddress, data);
-    return MRAM_Errno ::MRAM_NONE;
+    return MRAMError::NONE;
 }
 
-MRAM_Errno MRAM::mramReadByte(uint32_t dataAddress, uint8_t &data) {
+MRAMError MRAM::mramReadByte(uint32_t dataAddress, uint8_t &data) {
+    if (!isAddressRangeValid(dataAddress, 1)) {
+        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
+        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
+    }
+
     uint32_t readAddress = moduleBaseAddress | dataAddress;
-    if( (dataAddress > maxAllowedAddress) || (readAddress > moduleEndAddress) ){
-        return MRAM_Errno::MRAM_ADDRESS_OUT_OF_BOUNDS;
-    }
     data = smcReadByte(readAddress);
-    return MRAM_Errno ::MRAM_NONE;
+    return MRAMError::NONE;
 }
 
-MRAM_Errno MRAM::mramWriteData(uint32_t startAddress, etl::span<const uint8_t> &data){
-    MRAM_Errno  error = MRAM_Errno::MRAM_NONE;
-    for(size_t i=0;i<data.size();i++){
-        error = mramWriteByte((startAddress+i), data[i]);
-        if(error!=MRAM_Errno::MRAM_NONE){
+MRAMError MRAM::mramWriteData(uint32_t startAddress, const etl::span<const uint8_t> &data) {
+    if (data.empty()) {
+        return MRAMError::INVALID_ARGUMENT;
+    }
+
+    if (!isAddressRangeValid(startAddress, data.size())) {
+        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
+        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
+    }
+
+    for (size_t i = 0; i < data.size(); i++) {
+        MRAMError error = mramWriteByte(startAddress + i, data[i]);
+        if (error != MRAMError::NONE) {
             return error;
         }
     }
-    return error;
+    return MRAMError::NONE;
 }
 
-MRAM_Errno MRAM::mramReadData(uint32_t startAddress, etl::span<uint8_t> data){
-    MRAM_Errno  error = MRAM_Errno::MRAM_NONE;
-    for(size_t i=0;i<data.size();i++){
-        error = mramReadByte((startAddress+i), data[i]);
-        if(error!=MRAM_Errno::MRAM_NONE){
+MRAMError MRAM::mramReadData(uint32_t startAddress, etl::span<uint8_t> data) {
+    if (data.empty()) {
+        return MRAMError::INVALID_ARGUMENT;
+    }
+
+    if (!isAddressRangeValid(startAddress, data.size())) {
+        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
+        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
+    }
+
+    for (size_t i = 0; i < data.size(); i++) {
+        MRAMError error = mramReadByte(startAddress + i, data[i]);
+        if (error != MRAMError::NONE) {
             return error;
         }
     }
-    return error;
+    return MRAMError::NONE;
 }
 
-void MRAM::writeID(void){
-    for(size_t i=0;i<customIDSize;i++){
-        smcWriteByte( (moduleBaseAddress | (customMRAMIDAddress+i)), customID[i] );
+void MRAM::writeID(void) {
+    for (size_t i = 0; i < CustomIDSize; i++) {
+        uint32_t address = moduleBaseAddress | (CustomMRAMIDAddress + i);
+        smcWriteByte(address, CustomID[i]);
     }
 }
+bool MRAM::checkID(const etl::span<const uint8_t>& idArray) {
+    if (idArray.size() != CustomIDSize) {
+        return false;
+    }
 
-bool MRAM::checkID(uint8_t* idArray){
-    for(size_t i=0;i<customIDSize;i++){
-        if(idArray[i]!=customID[i]){
+    for (size_t i = 0; i < CustomIDSize; i++) {
+        if (idArray[i] != CustomID[i]) {
             return false;
         }
     }
     return true;
 }
 
-MRAM_Errno MRAM::isMRAMAlive(){
-    etl::array<uint8_t, customIDSize> readId{};
+MRAMError MRAM::isMRAMAlive() {
+    etl::array<uint8_t, CustomIDSize> readId{};
     etl::span<uint8_t> readIDspan(readId.data(), readId.size());
-    MRAM_Errno error = MRAM_Errno ::MRAM_NONE;
-    error = mramReadData(customMRAMIDAddress, readId);
-    if(error!=MRAM_Errno::MRAM_NONE){
+
+    MRAMError error = mramReadData(CustomMRAMIDAddress, readIDspan);
+    if (error != MRAMError::NONE) {
         return error;
     }
-    if(checkID(readId.data())){
-        return MRAM_Errno::MRAM_READY;
+
+    const etl::span<const uint8_t> constReadIDSpan(readId.data(), readId.size());
+    if (checkID(constReadIDSpan)) {
+        return MRAMError::READY;
     }
-    // Try writing the id Since it can be the first time booting the device
+
+    // Try writing the ID since it might be the first boot
     writeID();
-    error = mramReadData(customMRAMIDAddress, readId);
-    if(error!=MRAM_Errno::MRAM_NONE){
+    
+    error = mramReadData(CustomMRAMIDAddress, readIDspan);
+    if (error != MRAMError::NONE) {
         return error;
     }
-    if(checkID(readId.data())){
-        return MRAM_Errno::MRAM_READY;
+
+    if (checkID(constReadIDSpan)) {
+        return MRAMError::READY;
     }
-    //Couldn't read after write attempt, MRAM is unresponsive
-    return MRAM_Errno ::MRAM_NOT_READY;
+
+    return MRAMError::NOT_READY;
 }
-
-void MRAM::errorHandler(MRAM_Errno error){
+void MRAM::errorHandler(MRAMError error) {
     switch (error) {
-        case MRAM_Errno::MRAM_TIMEOUT:
-
+        case MRAMError::TIMEOUT:
             break;
-        case MRAM_Errno::MRAM_ADDRESS_OUT_OF_BOUNDS:
-
+            
+        case MRAMError::ADDRESS_OUT_OF_BOUNDS:
             break;
-        case MRAM_Errno::MRAM_NOT_READY:
-
+            
+        case MRAMError::NOT_READY:
             break;
+            
+        case MRAMError::INVALID_ARGUMENT:
+            break;
+            
         default:
-
             break;
     }
 }
