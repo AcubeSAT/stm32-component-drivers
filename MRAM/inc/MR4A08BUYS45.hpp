@@ -57,7 +57,7 @@ private:
      * @return true if ID matches expected value, false otherwise
      * @pre idArray must be of size CustomIDSize
      */
-    bool checkID(const etl::span<const uint8_t>& idArray);
+    bool checkID(etl::span<const uint8_t> idArray);
 
     /**
      * Validates if an address range is within bounds
@@ -103,7 +103,7 @@ public:
      * @param data Span containing bytes to write
      * @return NONE if successful, error code otherwise
      */
-    MRAMError mramWriteData(uint32_t startAddress, const etl::span<const uint8_t> &data);
+    MRAMError mramWriteData(uint32_t startAddress, etl::span<const uint8_t> data);
 
     /**
      * Reads multiple bytes starting at the specified address.

@@ -33,7 +33,7 @@ MRAMError MRAM::mramReadByte(uint32_t dataAddress, uint8_t &data) {
     return MRAMError::NONE;
 }
 
-MRAMError MRAM::mramWriteData(uint32_t startAddress, const etl::span<const uint8_t> &data) {
+MRAMError MRAM::mramWriteData(uint32_t startAddress, etl::span<const uint8_t> data) {
     if (data.empty()) {
         return MRAMError::INVALID_ARGUMENT;
     }
@@ -77,7 +77,7 @@ void MRAM::writeID(void) {
         smcWriteByte(address, CustomID[i]);
     }
 }
-bool MRAM::checkID(const etl::span<const uint8_t>& idArray) {
+bool MRAM::checkID(etl::span<const uint8_t> idArray) {
     if (idArray.size() != CustomIDSize) {
         return false;
     }
