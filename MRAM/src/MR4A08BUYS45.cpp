@@ -7,7 +7,7 @@ bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
         return false;
     }
 
-    uint32_t endAddress = moduleBaseAddress | (startAddress + size - 1);
+    const uint32_t endAddress = moduleBaseAddress | (startAddress + size - 1);
     return endAddress <= moduleEndAddress;
 }
 
@@ -71,13 +71,13 @@ MRAMError MRAM::mramReadData(uint32_t startAddress, etl::span<uint8_t> data) {
     return MRAMError::NONE;
 }
 
-void MRAM::writeID(void) {
+void MRAM::writeID() {
     for (size_t i = 0; i < CustomIDSize; i++) {
         uint32_t address = moduleBaseAddress | (CustomMRAMIDAddress + i);
         smcWriteByte(address, CustomID[i]);
     }
 }
-bool MRAM::checkID(etl::span<const uint8_t> idArray) {
+bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
     if (idArray.size() != CustomIDSize) {
         return false;
     }

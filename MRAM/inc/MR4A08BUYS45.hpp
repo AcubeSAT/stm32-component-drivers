@@ -27,60 +27,12 @@ enum class MRAMError : uint8_t {
  * @see https://gr.mouser.com/datasheet/MR4A08B_Datasheet-1511665.pdf
  */
 class MRAM final : public SMC {
-private:
-    /// Size of the device identification signature in bytes
-    static constexpr uint8_t CustomIDSize = 4;
-    
-    /// Device identification signature used to verify correct device
-    static constexpr uint8_t CustomID[CustomIDSize] = {0xDE, 0xAD, 0xBE, 0xEF};
-    
-    /// Maximum valid address (2^21-1)
-    static constexpr uint32_t MaxAllowedAddress = 0x1FFFFF;   
-    
-    /// Address where device ID is stored
-    static constexpr uint32_t CustomMRAMIDAddress = MaxAllowedAddress - CustomIDSize;
-    
-    /// Maximum address available for user data
-    static constexpr uint32_t MaxWriteableAddress = CustomMRAMIDAddress - 1;
-    
-    /// Word size in bits
-    static constexpr uint8_t WordSizeBits = 8;
-
-    /**
-     * Writes the custom identification signature to the device.
-     * This should typically only be called once during device initialization.
-     */
-    void writeID(void);
-
-    /**
-     * Verifies the device identification signature.
-     * @param idArray Span containing the ID to verify
-     * @return true if ID matches expected value, false otherwise
-     * @pre idArray must be of size CustomIDSize
-     */
-    bool checkID(etl::span<const uint8_t> idArray);
-
-    /**
-     * Validates if an address range is within bounds
-     * @param startAddress Starting address of range
-     * @param size Size of range in bytes
-     * @return true if range is valid, false otherwise
-     */
-    bool isAddressRangeValid(uint32_t startAddress, size_t size) const;
-
-protected:
-    /**
-     * Handles errors that occur during device operations.
-     * @param error The error code to be handled
-     */
-    void errorHandler(MRAMError error);
-
 public:
     /**
      * Initializes the MRAM device.
      * @param chipSelect Chip Select signal used for this device
      */
-    constexpr MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
+    explicit MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
 
     /**
      * Writes a single byte to the specified address.
@@ -115,8 +67,55 @@ public:
     MRAMError mramReadData(uint32_t startAddress, etl::span<uint8_t> data);
 
     /**
+     * Handles errors that occur during device operations.
+     * @param error The error code to be handled
+     */
+    void errorHandler(MRAMError error);
+
+    /**
      * Checks if the device is responding correctly.
      * @return READY if device is working correctly, error code otherwise
      */
     MRAMError isMRAMAlive();
+
+private:
+    /// Size of the device identification signature in bytes
+    static constexpr uint8_t CustomIDSize = 4;
+    
+    /// Device identification signature used to verify correct device
+    static constexpr uint8_t CustomID[CustomIDSize] = {0xDE, 0xAD, 0xBE, 0xEF};
+    
+    /// Maximum valid address (2^21-1)
+    static constexpr uint32_t MaxAllowedAddress = 0x1FFFFF;   
+    
+    /// Address where device ID is stored
+    static constexpr uint32_t CustomMRAMIDAddress = MaxAllowedAddress - CustomIDSize;
+    
+    /// Maximum address available for user data
+    static constexpr uint32_t MaxWriteableAddress = CustomMRAMIDAddress - 1;
+    
+    /// Word size in bits
+    static constexpr uint8_t WordSizeBits = 8;
+
+    /**
+     * Writes the custom identification signature to the device.
+     * This should typically only be called once during device initialization.
+     */
+    void writeID();
+
+    /**
+     * Verifies the device identification signature.
+     * @param idArray Span containing the ID to verify
+     * @return true if ID matches expected value, false otherwise
+     * @pre idArray must be of size CustomIDSize
+     */
+    bool checkID(etl::span<const uint8_t> idArray) const;
+
+    /**
+     * Validates if an address range is within bounds
+     * @param startAddress Starting address of range
+     * @param size Size of range in bytes
+     * @return true if range is valid, false otherwise
+     */
+    bool isAddressRangeValid(uint32_t startAddress, size_t size) const;
 };
