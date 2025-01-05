@@ -1,7 +1,3 @@
-//
-// Created by tats on 21/11/2024.
-//
-
 #pragma once
 #include <etl/to_string.h>
 #include <etl/String.hpp>
