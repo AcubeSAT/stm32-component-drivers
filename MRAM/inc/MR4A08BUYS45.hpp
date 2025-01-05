@@ -8,13 +8,13 @@
  * Error codes for MRAM operations
  */
 enum class MRAMError : uint8_t {
-    NONE = 0,            ///< Operation completed successfully
-    TIMEOUT = 1,         ///< Operation timed out
-    ADDRESS_OUT_OF_BOUNDS = 2,  ///< Attempted to access invalid address
-    READY = 3,           ///< Device is ready for operation
-    NOT_READY = 4,       ///< Device is not ready for operation
-    INVALID_ARGUMENT = 5 ///< Invalid argument provided,
-    DATA_MISMATCH = 6 ///< Unexpected read value
+    NONE = 0,                  ///< Operation completed successfully
+    TIMEOUT = 1,               ///< Operation timed out
+    ADDRESS_OUT_OF_BOUNDS = 2, ///< Attempted to access invalid address
+    READY = 3,                 ///< Device is ready for operation
+    NOT_READY = 4,             ///< Device is not ready for operation
+    INVALID_ARGUMENT = 5,      ///< Invalid argument provided
+    DATA_MISMATCH = 6          ///< Unexpected read value
 };
 
 /**
