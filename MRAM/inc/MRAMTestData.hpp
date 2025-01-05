@@ -2,7 +2,7 @@
 #include <etl/to_string.h>
 #include <etl/String.hpp>
 
-etl::array<uint8_t, 200> mramTestDatadata = {
+etl::array<uint8_t, 200> mramTestData = {
     76, 111, 114, 101, 109, 32, 105, 112, 115, 117,
     109, 32, 100, 111, 108, 111, 114, 32, 115, 105,
     116, 32, 97, 109, 101, 116, 44, 32, 99, 111,
