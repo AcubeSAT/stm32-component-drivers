@@ -13,7 +13,8 @@ enum class MRAMError : uint8_t {
     ADDRESS_OUT_OF_BOUNDS = 2,  ///< Attempted to access invalid address
     READY = 3,           ///< Device is ready for operation
     NOT_READY = 4,       ///< Device is not ready for operation
-    INVALID_ARGUMENT = 5 ///< Invalid argument provided
+    INVALID_ARGUMENT = 5 ///< Invalid argument provided,
+    DATA_MISMATCH = 6 ///< Unexpected read value
 };
 
 /**
