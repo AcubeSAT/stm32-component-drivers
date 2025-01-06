@@ -1,44 +1,84 @@
 #include "InternalFlash.hpp"
 
 [[nodiscard]] FlashDriver::EFCError FlashDriver::getEFCError() {
-    switch (EFC_ErrorGet()) {
-        case EFC_ERROR_NONE:
-            return EFCError::None;
-        case EFC_CMD_ERROR:
-            return EFCError::InvalidCommand;
-        case EFC_LOCK_ERROR:
-            return EFCError::RegionLocked;
-        case EFC_FLERR_ERROR:
-            return EFCError::FlashError;
-        case EFC_ECC_ERROR:
-            return EFCError::ECCError;
-    }
-    return EFCError::Undefined;
+        switch (EFC_ErrorGet()) {
+            case EFC_ERROR_NONE:
+                return EFCError::NONE;
+            case EFC_CMD_ERROR:
+                return EFCError::INVALID_COMMAND;
+            case EFC_LOCK_ERROR:
+                return EFCError::REGION_LOCKED;
+            case EFC_FLERR_ERROR:
+                return EFCError::FLASH_ERROR;
+            case EFC_ECC_ERROR:
+                return EFCError::ECC_ERROR;
+        }
+        return EFCError::UNDEFINED;
 }
 
 [[nodiscard]] FlashDriver::EFCError FlashDriver::eraseSector(FlashAddress_t address) {
     if (not isAddressSafe(address)) {
-        return EFCError::AddressUnsafe;
+        return EFCError::ADDRESS_UNSAFE;
     }
 
     EFC_SectorErase(address);
 
-    if (waitForResponse() == EFCError::Timeout) {
-        return EFCError::Timeout;
+    if (waitForResponse() == EFCError::TIMEOUT) {
+        return EFCError::TIMEOUT;
     }
 
     return getEFCError();
 }
 
 [[nodiscard]] FlashDriver::EFCError FlashDriver::waitForResponse() {
-    auto start = xTaskGetTickCount();
-    while (EFC_IsBusy()) {
-        if (xTaskGetTickCount() - start > timeoutTicks) {
-            LOG_ERROR << "EFC transaction failed";
-            EFC_Initialize();
-            return EFCError::Timeout;
+        auto start = xTaskGetTickCount();
+        while (EFC_IsBusy()) {
+            if (xTaskGetTickCount() - start > TimeoutTicks) {
+                LOG_ERROR << "EFC transaction failed";
+                EFC_Initialize();
+                return EFCError::TIMEOUT;
+            }
+            taskYIELD();
         }
-        taskYIELD();
-    }
-    return EFCError::None;
+        return EFCError::NONE;
 }
+
+
+[[nodiscard]] FlashDriver::EFCError FlashDriver::writeQuadWord(etl::array<uint32_t, 4> data, FlashAddress_t address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::ADDRESS_UNSAFE;
+    }
+
+    const auto EraseResult = eraseSector(address);
+    if(EraseResult != EFCError::NONE) {
+        return EraseResult;
+    }
+
+    EFC_QuadWordWrite(data.data(), address);
+
+    if(waitForResponse() == EFCError::TIMEOUT) {
+        return EFCError::TIMEOUT;
+    }
+
+    return getEFCError();
+}
+
+[[nodiscard]] FlashDriver::EFCError FlashDriver::writePage(etl::array<uint32_t, 128>& data, FlashAddress_t address) {
+    if(not isAddressSafe(address)) {
+        return EFCError::ADDRESS_UNSAFE;
+    }
+
+    const auto EraseResult = eraseSector(address);
+    if(EraseResult != EFCError::NONE) {
+        return EraseResult;
+    }
+
+    EFC_PageWrite(data.data(), address);
+
+    if(waitForResponse() == EFCError::TIMEOUT) {
+        return EFCError::TIMEOUT;
+    }
+
+    return getEFCError();
+}
+

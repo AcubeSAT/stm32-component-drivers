@@ -15,6 +15,8 @@
  * todo (#35): Protect written data.
  * todo (#36): General Memory class.
  * todo (#37): Multi-variable write.
+ * todo (#39): Peripheral initialization.
+ * todo (#42): Find out why a reference doesn't work in writeQuadWord.
  */
 
 /**
@@ -32,15 +34,15 @@ public:
      * @brief enum to represent various EFC errors
      */
     enum class EFCError : uint8_t {
-        None,
-        Timeout,
-        AddressUnsafe,
-        AdressNotAligned,
-        InvalidCommand,
-        RegionLocked,
-        FlashError,
-        ECCError,
-        Undefined
+        NONE,
+        TIMEOUT,
+        ADDRESS_UNSAFE,
+        ADDRESS_NOT_ALIGNED,
+        INVALID_COMMAND,
+        REGION_LOCKED,
+        FLASH_ERROR,
+        ECC_ERROR,
+        UNDEFINED,
     };
 
     /**
@@ -79,84 +81,41 @@ public:
     FlashDriver() = default;
 
     /**
-    * Templated write function for writing 128 bits (QuadWord). Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
+     * Write function for writing 128 bits (QuadWord). Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
      * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.3.
      * @param data Array containing the data to be written.
      * @param address FLASH address to be modified.
-     * @return member of the EFCError enum.
+     * @return Member of the EFCError enum.
      */
-    template <typename T, size_t N>
-    [[nodiscard]] static EFCError writeQuadWord(const etl::array<T, N> data, FlashAddress_t address) {
-        static_assert((sizeof(T) * N) <= QuadWordSize * NumOfBitsinByte, "Data size exceeds 128 bits.");
-
-        if (not isAddressSafe(address)) {
-            return EFCError::AddressUnsafe;
-        }
-
-        const auto eraseResult = eraseSector(address);
-        if (eraseResult != EFCError::None) {
-            return eraseResult;
-        }
-
-        EFC_QuadWordWrite(static_cast<uint32_t *>(const_cast<T *>(data.data())), address);
-
-
-        if (waitForResponse() == EFCError::Timeout) {
-            return EFCError::Timeout;
-        }
-
-        return getEFCError();
-    }
+    static EFCError writeQuadWord(etl::array<uint32_t, 4> data, FlashAddress_t address);
 
     /**
-    * Templated write function for writing a page. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
-     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.3.
+     * Write function for writing a page. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
+     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.4.
      * @param data Array containing the data to be written.
      * @param address FLASH address to be modified.
-     * @return member of the EFCError enum.
+     * @return Member of the EFCError enum.
      */
-    template <typename T, size_t N>
-    [[nodiscard]] static EFCError writePage(const etl::array<T, N> data, FlashAddress_t address) {
-        static_assert((sizeof(T) * N) == FlashPageSize * NumOfBitsinByte, "Data size must match the page size.");
-
-        if (not isAddressSafe(address)) {
-            return EFCError::AddressUnsafe;
-        }
-
-        const auto eraseResult = eraseSector(address);
-        if (eraseResult != EFCError::None) {
-            return eraseResult;
-        }
-
-        EFC_PageWrite(static_cast<uint32_t *>(const_cast<T *>(data.data())), address);
-
-        if (waitForResponse() == EFCError::Timeout) {
-            return EFCError::Timeout;
-        }
-
-        return getEFCError();
-    }
+    static EFCError writePage(etl::array<uint32_t, 128>& data, FlashAddress_t address);
 
     /**
-     * Reads a specified length of bytes from a given address in FLASH memory into
-     * the user-provided buffer.
-     * @tparam T The type of data stored in the array (e.g., uint8_t or uint32_t).
-     * @tparam N The number of elements in the array.
-     * @param data A reference to an array of type T and size N to store the read data.
-     * @param length The number of bytes to read from the flash memory.
+     * Reads a specified length of bytes from a given address in FLASH memory into the user-provided buffer.
+     * @tparam N The number of elements in the user-provided array.
+     * @param data A reference to an array to store the read data. The size of the array must be large enough to accommodate the specified length in bytes.
+     * @param length The number of bytes to read from the flash memory. Must be less than or equal to the total size of the array in bytes.
      * @param address FLASH address to be read from.
-     * @return A member of the EFCError enum indicating the result.
+     * @return Member of the EFCError enum indicating success or an error.
      */
-    template <typename T, size_t N>
-    [[nodiscard]] static EFCError readFromMemory(etl::array<T, N> &data, FlashReadLength_t length, FlashAddress_t address) {
-        if (not isAddressSafe(address)) {
-            return EFCError::AddressUnsafe;
+    template <size_t N>
+    [[nodiscard]] static EFCError readFromMemory(etl::array<uint32_t, N>& data, FlashReadLength_t length, FlashAddress_t address){
+        if(not isAddressSafe(address)) {
+            return EFCError::ADDRESS_UNSAFE;
         }
 
-        EFC_Read(static_cast<uint32_t *>(data.data()), length, address);
+        EFC_Read(data.data(), length, address);
 
-        if (waitForResponse() == EFCError::Timeout) {
-            return EFCError::Timeout;
+        if(waitForResponse() == EFCError::TIMEOUT) {
+            return EFCError::TIMEOUT;
         }
 
         return getEFCError();
@@ -197,7 +156,7 @@ private:
 
     /**
      * Function to ensure that no calls to EFC are made while a transaction is happening and to ensure the transaction doesn't get stuck.
-     * @return Timeout is the transaction got stuck, None otherwise.
+     * @return Timeout if the transaction got stuck, None otherwise.
      */
     static EFCError waitForResponse();
 };
