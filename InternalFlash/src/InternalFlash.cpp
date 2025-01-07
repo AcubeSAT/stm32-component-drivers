@@ -12,8 +12,9 @@
                 return EFCError::FLASH_ERROR;
             case EFC_ECC_ERROR:
                 return EFCError::ECC_ERROR;
+            default:
+                return EFCError::UNDEFINED;
         }
-        return EFCError::UNDEFINED;
 }
 
 [[nodiscard]] FlashDriver::EFCError FlashDriver::eraseSector(FlashAddress_t address) {
