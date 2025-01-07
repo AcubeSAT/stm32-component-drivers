@@ -28,6 +28,7 @@ class FlashDriver {
 public:
     using FlashAddress_t = uint32_t;
     using FlashReadLength_t = uint32_t;
+    using TickType_t = uint16_t;
 
     /**
      * @enum EFCError
@@ -53,17 +54,7 @@ public:
     /**
      * Wait period before an EFC transaction is skipped.
      */
-    static constexpr uint16_t TimeoutTicks = 1000;
-
-    /**
-     * Size of a flash page in Bytes.
-     */
-    static constexpr uint32_t FlashPageSize = 512;
-
-    /**
-     * Size of 4 words (128 bits) in Bytes.
-     */
-    static constexpr uint32_t QuadWordSize = 16;
+    static constexpr TickType_t TimeoutTicks = 1000;
 
     /**
      * Starting adress of available Flash memory.
@@ -74,6 +65,16 @@ public:
      * End limit of available Flash memory.
      */
     static constexpr uint32_t EndAddress = 0x600000;
+
+    /**
+     * Number of 32-bit words in a quad word (128 bits).
+     */
+    static constexpr uint32_t WordsPerQuadWord = 4;
+
+    /**
+     * Number of 32-bit words in a flash page.
+     */
+    static constexpr uint32_t WordsPerPage = 128;
 
     /**
      * Constructor to create an instance of the class.
@@ -87,7 +88,7 @@ public:
      * @param address FLASH address to be modified.
      * @return Member of the EFCError enum.
      */
-    static EFCError writeQuadWord(etl::array<uint32_t, 4> data, FlashAddress_t address);
+    EFCError writeQuadWord(etl::array<uint32_t, WordsPerQuadWord> data, FlashAddress_t address);
 
     /**
      * Write function for writing a page. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
@@ -96,7 +97,7 @@ public:
      * @param address FLASH address to be modified.
      * @return Member of the EFCError enum.
      */
-    static EFCError writePage(etl::array<uint32_t, 128>& data, FlashAddress_t address);
+    EFCError writePage(etl::array<uint32_t, WordsPerPage>& data, FlashAddress_t address);
 
     /**
      * Reads a specified length of bytes from a given address in FLASH memory into the user-provided buffer.
@@ -107,7 +108,7 @@ public:
      * @return Member of the EFCError enum indicating success or an error.
      */
     template <size_t N>
-    [[nodiscard]] static EFCError readFromMemory(etl::array<uint32_t, N>& data, FlashReadLength_t length, FlashAddress_t address){
+    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N>& data, FlashReadLength_t length, FlashAddress_t address){
         if(not isAddressSafe(address)) {
             return EFCError::ADDRESS_UNSAFE;
         }
