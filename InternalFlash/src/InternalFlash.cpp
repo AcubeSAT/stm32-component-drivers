@@ -44,7 +44,7 @@
 }
 
 
-[[nodiscard]] FlashDriver::EFCError FlashDriver::writeQuadWord(etl::array<uint32_t, WordsPerQuadWord> data, FlashAddress_t address) {
+[[nodiscard]] FlashDriver::EFCError FlashDriver::writeQuadWord(etl::array<uint32_t, WordsPerQuadWord>& data, FlashAddress_t address) {
     if(not isAddressSafe(address)) {
         return EFCError::ADDRESS_UNSAFE;
     }
