@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include "peripheral/pio/plib_pio.h"
-#include "plib_efc.h"
 #include "FreeRTOS.h"
 #include "Logger.hpp"
+#include "peripheral/pio/plib_pio.h"
+#include "plib_efc.h"
 #include "task.h"
+#include <cstdint>
 
 /**
  * todo (#31): Find out if isAlligned function is needed.
@@ -22,10 +22,11 @@
 /**
  * Class to interact with the Internal FLASH Memory of the MCU.
  *
- * @brief This class provides functions with a generic implementation based on the EFC peripheral library for easy integration into any code.
+ * @brief This class provides functions with a generic implementation based on
+ * the EFC peripheral library for easy integration into any code.
  */
 class FlashDriver {
-public:
+  public:
     using FlashAddress_t = uint32_t;
     using FlashReadLength_t = uint32_t;
 
@@ -81,54 +82,68 @@ public:
     FlashDriver() = default;
 
     /**
-     * Write function for writing 128 bits (QuadWord). Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
-     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.3.
+     * Write function for writing 128 bits (QuadWord). Only ‘0’ values can be
+     * programmed using Flash technology; ‘1’ is the erased value. In order to
+     * program words in a page, the page must first be erased, as documented in
+     * Harmony Peripheral Libraries 2.39.3.
      * @param data Array containing the data to be written.
      * @param address FLASH address to be modified.
      * @return Member of the EFCError enum.
      */
-    [[nodiscard]] EFCError writeQuadWord(etl::array<uint32_t, WordsPerQuadWord>& data, FlashAddress_t address);
+    [[nodiscard]] EFCError
+    writeQuadWord(etl::array<uint32_t, WordsPerQuadWord> &data,
+                  FlashAddress_t address);
 
     /**
-     * Write function for writing a page. Only ‘0’ values can be programmed using Flash technology; ‘1’ is the erased value. In order to
-     * program words in a page, the page must first be erased, as documented in Harmony Peripheral Libraries 2.39.4.
+     * Write function for writing a page. Only ‘0’ values can be programmed
+     * using Flash technology; ‘1’ is the erased value. In order to program
+     * words in a page, the page must first be erased, as documented in Harmony
+     * Peripheral Libraries 2.39.4.
      * @param data Array containing the data to be written.
      * @param address FLASH address to be modified.
      * @return Member of the EFCError enum.
      */
-    [[nodiscard]] EFCError writePage(etl::array<uint32_t, WordsPerPage>& data, FlashAddress_t address);
+    [[nodiscard]] EFCError writePage(etl::array<uint32_t, WordsPerPage> &data,
+                                     FlashAddress_t address);
 
     /**
-     * Reads a specified length of bytes from a given address in FLASH memory into the user-provided buffer.
+     * Reads a specified length of bytes from a given address in FLASH memory
+     * into the user-provided buffer.
      * @tparam N The number of elements in the user-provided array.
-     * @param data A reference to an array to store the read data. The size of the array must be large enough to accommodate the specified length in bytes.
-     * @param length The number of bytes to read from the flash memory. Must be less than or equal to the total size of the array in bytes.
+     * @param data A reference to an array to store the read data. The size of
+     * the array must be large enough to accommodate the specified length in
+     * bytes.
+     * @param length The number of bytes to read from the flash memory. Must be
+     * less than or equal to the total size of the array in bytes.
      * @param address FLASH address to be read from.
      * @return Member of the EFCError enum indicating success or an error.
      */
     template <size_t N>
-    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N>& data, FlashReadLength_t length, FlashAddress_t address){
-        if(not isAddressSafe(address)) {
+    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N> &data,
+                                          FlashReadLength_t length,
+                                          FlashAddress_t address) {
+        if (not isAddressSafe(address)) {
             return EFCError::ADDRESS_UNSAFE;
         }
 
         EFC_Read(data.data(), length, address);
 
-        if(waitForResponse() == EFCError::TIMEOUT) {
+        if (waitForResponse() == EFCError::TIMEOUT) {
             return EFCError::TIMEOUT;
         }
 
         return getEFCError();
     }
 
-private:
+  private:
     /**
      * Ensure Flash address used is correctly alligned.
      * @param address FLASH address to be modified.
      * @param alignment the allignment that should be kept.
      * @return True if the address is correctly aligned.
      */
-    [[nodiscard]] static bool isAligned(FlashAddress_t address, uint32_t alignment) {
+    [[nodiscard]] static bool isAligned(FlashAddress_t address,
+                                        uint32_t alignment) {
         return (address % alignment) == 0;
     }
 
@@ -155,7 +170,8 @@ private:
     [[nodiscard]] static EFCError eraseSector(FlashAddress_t address);
 
     /**
-     * Function to ensure that no calls to EFC are made while a transaction is happening and to ensure the transaction doesn't get stuck.
+     * Function to ensure that no calls to EFC are made while a transaction is
+     * happening and to ensure the transaction doesn't get stuck.
      * @return Timeout if the transaction got stuck, None otherwise.
      */
     [[nodiscard]] static EFCError waitForResponse();
