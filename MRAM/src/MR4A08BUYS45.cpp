@@ -1,7 +1,7 @@
 #include "MR4A08BUYS45.hpp"
 
 bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
-    if (startAddress == CustomMRAMIDAddress) {
+    if (isIDOperationInProgress) {
         return true;
     }
 
@@ -96,16 +96,19 @@ bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
 }
 
 MRAMError MRAM::isMRAMAlive() {
+    isIDOperationInProgress(true);
     etl::array<uint8_t, CustomIDSize> readId{};
     etl::span<uint8_t> readIDspan(readId.data(), readId.size());
 
     MRAMError error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
+        isIDOperationInProgress(false);
         return error;
     }
 
     const etl::span<const uint8_t> constReadIDSpan(readId.data(), readId.size());
     if (checkID(constReadIDSpan)) {
+        isIDOperationInProgress(false);
         return MRAMError::READY;
     }
 
@@ -114,10 +117,12 @@ MRAMError MRAM::isMRAMAlive() {
 
     error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
+        isIDOperationInProgress(false);
         return error;
     }
 
     if (checkID(constReadIDSpan)) {
+        isIDOperationInProgress(false);
         return MRAMError::READY;
     }
 

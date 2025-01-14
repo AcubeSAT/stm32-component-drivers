@@ -80,6 +80,9 @@ public:
     MRAMError isMRAMAlive();
 
 private:
+    /// Variable that allows specific address checks to pass
+    bool isIDOperationInProgress = false;
+
     /// Size of the device identification signature in bytes
     static constexpr uint8_t CustomIDSize = 4;
 
