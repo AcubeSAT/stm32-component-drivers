@@ -8,13 +8,13 @@
  * Error codes for MRAM operations
  */
 enum class MRAMError : uint8_t {
-    NONE = 0,                  ///< Operation completed successfully
-    TIMEOUT = 1,               ///< Operation timed out
+    NONE = 0, ///< Operation completed successfully
+    TIMEOUT = 1, ///< Operation timed out
     ADDRESS_OUT_OF_BOUNDS = 2, ///< Attempted to access invalid address
-    READY = 3,                 ///< Device is ready for operation
-    NOT_READY = 4,             ///< Device is not ready for operation
-    INVALID_ARGUMENT = 5,      ///< Invalid argument provided
-    DATA_MISMATCH = 6          ///< Unexpected read value
+    READY = 3, ///< Device is ready for operation
+    NOT_READY = 4, ///< Device is not ready for operation
+    INVALID_ARGUMENT = 5, ///< Invalid argument provided
+    DATA_MISMATCH = 6 ///< Unexpected read value
 };
 
 /**
@@ -32,7 +32,8 @@ public:
      * Initializes the MRAM device.
      * @param chipSelect Chip Select signal used for this device
      */
-    explicit MRAM(ChipSelect chipSelect) : SMC(chipSelect) {}
+    explicit MRAM(ChipSelect chipSelect) : SMC(chipSelect) {
+    }
 
     /**
      * Writes a single byte to the specified address.
@@ -79,21 +80,52 @@ public:
     MRAMError isMRAMAlive();
 
 private:
+    /// Variable that allows specific address checks to pass
+    bool isIDOperationInProgress = false;
+
+    /**
+     * @brief RAII guard class that temporarily enables access to the MRAM ID section.
+     *
+     * This guard enables access to the protected ID memory region during its lifetime.
+     * Access is automatically revoked when the guard is destroyed.
+     * Only used internally by isMRAMAlive().
+     *
+     * Usage example:
+     * @code
+     * void MRAM::someFunction() {
+     *     IdAccessGuard guard(*this);
+     *     // ID section access is now allowed
+     * } // Access is automatically revoked here
+     * @endcode
+     */
+    class IdAccessGuard {
+        MRAM& mram;
+    public:
+        explicit IdAccessGuard(MRAM& m) : mram(m) {
+            mram.isIDOperationInProgress = true;
+        }
+        ~IdAccessGuard() {
+            mram.isIDOperationInProgress = false;
+        }
+    };
+
+    friend class IdAccessGuard;
+
     /// Size of the device identification signature in bytes
     static constexpr uint8_t CustomIDSize = 4;
-    
+
     /// Device identification signature used to verify correct device
     static constexpr uint8_t CustomID[CustomIDSize] = {0xDE, 0xAD, 0xBE, 0xEF};
-    
+
     /// Maximum valid address (2^21-1)
-    static constexpr uint32_t MaxAllowedAddress = 0x1FFFFF;   
-    
+    static constexpr uint32_t MaxAllowedAddress = 0x1FFFFF;
+
     /// Address where device ID is stored
     static constexpr uint32_t CustomMRAMIDAddress = MaxAllowedAddress - CustomIDSize;
-    
+
     /// Maximum address available for user data
     static constexpr uint32_t MaxWriteableAddress = CustomMRAMIDAddress - 1;
-    
+
     /// Word size in bits
     static constexpr uint8_t WordSizeBits = 8;
 

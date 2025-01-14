@@ -1,7 +1,11 @@
 #include "MR4A08BUYS45.hpp"
 
 bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
-    if (startAddress > MaxWriteableAddress || 
+    if (isIDOperationInProgress) {
+        return true;
+    }
+
+    if (startAddress > MaxWriteableAddress ||
         size > MaxWriteableAddress ||
         (startAddress + size - 1) > MaxWriteableAddress) {
         return false;
@@ -77,6 +81,7 @@ void MRAM::writeID() {
         smcWriteByte(address, CustomID[i]);
     }
 }
+
 bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
     if (idArray.size() != CustomIDSize) {
         return false;
@@ -91,6 +96,7 @@ bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
 }
 
 MRAMError MRAM::isMRAMAlive() {
+    IdAccessGuard guard(*this);
     etl::array<uint8_t, CustomIDSize> readId{};
     etl::span<uint8_t> readIDspan(readId.data(), readId.size());
 
@@ -106,7 +112,7 @@ MRAMError MRAM::isMRAMAlive() {
 
     // Try writing the ID since it might be the first boot
     writeID();
-    
+
     error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
         return error;
@@ -118,20 +124,21 @@ MRAMError MRAM::isMRAMAlive() {
 
     return MRAMError::NOT_READY;
 }
+
 void MRAM::errorHandler(MRAMError error) {
     switch (error) {
         case MRAMError::TIMEOUT:
             break;
-            
+
         case MRAMError::ADDRESS_OUT_OF_BOUNDS:
             break;
-            
+
         case MRAMError::NOT_READY:
             break;
-            
+
         case MRAMError::INVALID_ARGUMENT:
             break;
-            
+
         default:
             break;
     }
