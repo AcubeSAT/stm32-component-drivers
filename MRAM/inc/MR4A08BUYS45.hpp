@@ -83,6 +83,34 @@ private:
     /// Variable that allows specific address checks to pass
     bool isIDOperationInProgress = false;
 
+    /**
+     * @brief RAII guard class that temporarily enables access to the MRAM ID section.
+     *
+     * This guard enables access to the protected ID memory region during its lifetime.
+     * Access is automatically revoked when the guard is destroyed.
+     * Only used internally by isMRAMAlive().
+     *
+     * Usage example:
+     * @code
+     * void MRAM::someFunction() {
+     *     IdAccessGuard guard(*this);
+     *     // ID section access is now allowed
+     * } // Access is automatically revoked here
+     * @endcode
+     */
+    class IdAccessGuard {
+        MRAM& mram;
+    public:
+        explicit IdAccessGuard(MRAM& m) : mram(m) {
+            mram.isIDOperationInProgress = true;
+        }
+        ~IdAccessGuard() {
+            mram.isIDOperationInProgress = false;
+        }
+    };
+
+    friend class IdAccessGuard;
+
     /// Size of the device identification signature in bytes
     static constexpr uint8_t CustomIDSize = 4;
 

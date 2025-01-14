@@ -96,19 +96,17 @@ bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
 }
 
 MRAMError MRAM::isMRAMAlive() {
-    isIDOperationInProgress = true;
+    IdAccessGuard guard(*this);
     etl::array<uint8_t, CustomIDSize> readId{};
     etl::span<uint8_t> readIDspan(readId.data(), readId.size());
 
     MRAMError error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
-        isIDOperationInProgress = false;
         return error;
     }
 
     const etl::span<const uint8_t> constReadIDSpan(readId.data(), readId.size());
     if (checkID(constReadIDSpan)) {
-        isIDOperationInProgress = false;
         return MRAMError::READY;
     }
 
@@ -117,16 +115,13 @@ MRAMError MRAM::isMRAMAlive() {
 
     error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
-        isIDOperationInProgress = false;
         return error;
     }
 
     if (checkID(constReadIDSpan)) {
-        isIDOperationInProgress = false;
         return MRAMError::READY;
     }
 
-    isIDOperationInProgress = false;
     return MRAMError::NOT_READY;
 }
 
