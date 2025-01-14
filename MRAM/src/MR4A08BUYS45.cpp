@@ -126,6 +126,7 @@ MRAMError MRAM::isMRAMAlive() {
         return MRAMError::READY;
     }
 
+    isIDOperationInProgress = false;
     return MRAMError::NOT_READY;
 }
 
