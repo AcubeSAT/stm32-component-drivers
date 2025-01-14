@@ -1,6 +1,10 @@
 #include "MR4A08BUYS45.hpp"
 
 bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
+    if (startAddress == CustomMRAMIDAddress) {
+        return true;
+    }
+
     if (startAddress > MaxWriteableAddress || 
         size > MaxWriteableAddress ||
         (startAddress + size - 1) > MaxWriteableAddress) {
