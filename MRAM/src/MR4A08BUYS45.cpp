@@ -102,13 +102,13 @@ MRAMError MRAM::isMRAMAlive() {
 
     MRAMError error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
-    isIDOperationInProgress = true;
+        isIDOperationInProgress = true;
         return error;
     }
 
     const etl::span<const uint8_t> constReadIDSpan(readId.data(), readId.size());
     if (checkID(constReadIDSpan)) {
-    isIDOperationInProgress = true;
+        isIDOperationInProgress = true;
         return MRAMError::READY;
     }
 
@@ -117,12 +117,12 @@ MRAMError MRAM::isMRAMAlive() {
 
     error = mramReadData(CustomMRAMIDAddress, readIDspan);
     if (error != MRAMError::NONE) {
-    isIDOperationInProgress = true;
+        isIDOperationInProgress = true;
         return error;
     }
 
     if (checkID(constReadIDSpan)) {
-    isIDOperationInProgress = true;
+        isIDOperationInProgress = true;
         return MRAMError::READY;
     }
 
