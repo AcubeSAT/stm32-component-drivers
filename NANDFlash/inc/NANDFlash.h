@@ -6,6 +6,18 @@
 #include "task.h"
 #include "Logger.hpp"
 
+enum class MT29F_Errno : uint8_t{
+    NONE = 0,
+    TIMEOUT = 1,
+    ADDRESS_OUT_OF_BOUNDS = 2,
+    BUSY_IO = 3,
+    BUSY_ARRAY = 4,
+    FAIL_PREVIOUS = 5,
+    FAIL_RECENT = 6,
+    NOT_READY= 7
+};
+
+
 /**
  * This is a driver for MT29F NAND Flash.
  * @ingroup drivers
@@ -24,43 +36,80 @@ private:
 
     enum Commands : uint8_t {
         RESET = 0xFF,
+
         READID = 0x90,
         READ_PARAM_PAGE = 0xEC,
         READ_UNIQ_ID = 0xED,
+        READ_ONFI_CONFIRM = 0x20,
+
         SET_FEATURE = 0xEF,
         GET_FEATURE = 0xEE,
+
         READ_STATUS = 0x70,
         READ_STATUS_ENHANCED = 0x78,
+
         ERASE_BLOCK = 0x60,
         ERASE_BLOCK_CONFIRM = 0xD0,
+
         READ_MODE = 0x00,
         READ_CONFIRM = 0x30,
+        READ_NEXT_SEQ_PAGE = 0x31,
+
         PAGE_PROGRAM = 0x80,
         PAGE_PROGRAM_CONFIRM = 0x10,
+
         READ_INTERNAL_DATA_MOVE = 0x35,
         PROGRAM_INTERNAL_DATA_MOVE = 0x85,
+
         LOCK = 0x2A,
         BLOCK_UNLOCK_LOW = 0x23,
         BLOCK_UNLOCK_HIGH = 0x24,
         BLOCK_LOCK_READ_STATUS = 0x7A
     };
 
-    /* The number of bytes a page contains*/
-    const static inline uint16_t PageSizeBytes = 8640;
-    /* The number of bytes a block contains*/
-    const static inline uint32_t BlockSizeBytes = 1105920;
-    /* The ARDY bit is bit 5 of the Status Register */
-    const static inline uint8_t ArrayReadyMask = 0x20;
+    const static inline uint64_t MaxAllowedAddress = 4529848319;    // Max address available by the NAND module
+    const static inline uint16_t PageSizeBytes = 8640;              // Bytes per page
+    const static inline uint8_t PagesPerBlock = 128;                // Pages per block
+    const static inline uint32_t BlockSizeBytes = 1105920;          // Byte per Block = 128 Pages * 8640 bytes
+    const static inline uint32_t BlocksPerLUN = 4095;               // Blocks per LUN
+    /* Status Register Masks*/
+    const static inline uint8_t MASK_STATUS_FAIL  = 0x01;
+    const static inline uint8_t MASK_STATUS_FAILC = 0x02;
+    const static inline uint8_t MASK_STATUS_ARDY = 0x20;
+    const static inline uint8_t MASK_STATUS_RDY = 0x40;
 
     struct Address {
         uint8_t col1, col2, row1, row2, row3;
     };
 
-    const static inline uint8_t TimeoutCycles = 20;
+    const static inline uint8_t TimeoutCycles = 15;     // Tick Rate 1000Hz => 1 Cycle = 1ms
+                                                        // Slowest operation: Erase block ~ max time = 7ms
 
-    const static inline bool NANDTimeout = true;
+    inline void sendData(uint8_t data) {
+        smcWriteByte(moduleBaseAddress, data);
+    }
 
-    const static inline bool NANDisReady = true;
+    inline void sendAddress(uint8_t address) {
+        smcWriteByte(triggerNANDALEAddress, address);
+    }
+
+    inline void sendCommand(uint8_t command) {
+        smcWriteByte(triggerNANDCLEAddress, command);
+    }
+
+    inline uint8_t readData() {
+        return smcReadByte(moduleBaseAddress);
+    }
+
+    bool setAddress(Address *address, uint8_t LUN, uint64_t position);
+
+    // Status register functions
+
+    bool getARDYstatus();
+
+    bool getFAILCstatus();
+
+    bool getFAILstatus();
 
 public:
     /**
@@ -98,43 +147,34 @@ public:
         selectNandConfiguration(chipSelect);
     }
 
-    inline void sendData(uint8_t data) {
-        smcWriteByte(moduleBaseAddress, data);
-    }
 
-    inline void sendAddress(uint8_t address) {
-        smcWriteByte(triggerNANDALEAddress, address);
-    }
+    // Health checks & actions
 
-    inline void sendCommand(uint8_t command) {
-        smcWriteByte(triggerNANDCLEAddress, command);
-    }
+    MT29F_Errno resetNAND();
 
-    inline uint8_t readData() {
-        return smcReadByte(moduleBaseAddress);
-    }
+    MT29F_Errno readNANDID(etl::span<uint8_t, 8> id);
 
-    uint8_t resetNAND();
-
-    void readNANDID(etl::span<uint8_t, 8> id);
-
-    Address setAddress(uint8_t LUN, uint32_t position);
-
-    bool writeNAND(uint8_t LUN, uint32_t position, uint8_t data);
-
-    bool writeNAND(uint8_t LUN, uint32_t position, uint32_t numberOfAddresses, etl::span<uint8_t> data);
-
-    bool readNAND(uint8_t data, uint8_t LUN, uint32_t position);
-
-    bool readNAND(etl::span<uint8_t> data, uint8_t LUN, uint32_t start_position, uint32_t numberOfAddresses);
-
-    bool eraseBlock(uint8_t LUN, uint16_t block);
-
-    bool detectArrayError();
+    MT29F_Errno readONFIID(etl::span<uint8_t, 8> id);
 
     bool isNANDAlive();
 
-    bool waitDelay();
+    bool waitTimeout();
 
-    bool errorHandler();
+    void errorHandler(MT29F_Errno error);
+
+    // R/W Operations
+
+    MT29F_Errno writeNAND(uint8_t LUN, uint64_t position, uint8_t data);
+
+    MT29F_Errno writeNAND(uint8_t LUN, uint64_t position, etl::span<const uint8_t> data);
+
+    MT29F_Errno readNAND(uint8_t LUN, uint64_t position, uint8_t& data);
+
+    MT29F_Errno readNAND(uint8_t LUN, uint64_t start_position, etl::span<uint8_t> data);
+
+    MT29F_Errno eraseBlock(uint8_t LUN, uint16_t block);
+
+    // Exposed so LittleFS can use the Ready status bit
+
+    bool getRDYstatus();
 };
