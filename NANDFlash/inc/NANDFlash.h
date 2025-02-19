@@ -6,7 +6,7 @@
 #include "task.h"
 #include "Logger.hpp"
 
-enum class MT29F_Errno : uint8_t{
+enum class MT29F_Errno : uint8_t {
     NONE = 0,
     TIMEOUT = 1,
     ADDRESS_OUT_OF_BOUNDS = 2,
@@ -14,7 +14,7 @@ enum class MT29F_Errno : uint8_t{
     BUSY_ARRAY = 4,
     FAIL_PREVIOUS = 5,
     FAIL_RECENT = 6,
-    NOT_READY= 7
+    NOT_READY = 7
 };
 
 
@@ -73,7 +73,7 @@ private:
     const static inline uint32_t BlockSizeBytes = 1105920;          // Byte per Block = 128 Pages * 8640 bytes
     const static inline uint32_t BlocksPerLUN = 4095;               // Blocks per LUN
     /* Status Register Masks*/
-    const static inline uint8_t MASK_STATUS_FAIL  = 0x01;
+    const static inline uint8_t MASK_STATUS_FAIL = 0x01;
     const static inline uint8_t MASK_STATUS_FAILC = 0x02;
     const static inline uint8_t MASK_STATUS_ARDY = 0x20;
     const static inline uint8_t MASK_STATUS_RDY = 0x40;
@@ -83,7 +83,7 @@ private:
     };
 
     const static inline uint8_t TimeoutCycles = 15;     // Tick Rate 1000Hz => 1 Cycle = 1ms
-                                                        // Slowest operation: Erase block ~ max time = 7ms
+    // Slowest operation: Erase block ~ max time = 7ms
 
     inline void sendData(uint8_t data) {
         smcWriteByte(moduleBaseAddress, data);
@@ -147,7 +147,11 @@ public:
         selectNandConfiguration(chipSelect);
     }
 
-
+    uint32_t getBlockSizeBytes() { return BlockSizeBytes; }
+    uint32_t getBlocksPerLUN() { return BlocksPerLUN; }
+    uint8_t getPagesPerBlock() { return PagesPerBlock; }
+    uint16_t getPageSizeBytes() { return PageSizeBytes; }
+    uint64_t getMaxAllowedAddress() { return MaxAllowedAddress; }
     // Health checks & actions
 
     MT29F_Errno resetNAND();
@@ -168,7 +172,7 @@ public:
 
     MT29F_Errno writeNAND(uint8_t LUN, uint64_t position, etl::span<const uint8_t> data);
 
-    MT29F_Errno readNAND(uint8_t LUN, uint64_t position, uint8_t& data);
+    MT29F_Errno readNAND(uint8_t LUN, uint64_t position, uint8_t &data);
 
     MT29F_Errno readNAND(uint8_t LUN, uint64_t start_position, etl::span<uint8_t> data);
 
