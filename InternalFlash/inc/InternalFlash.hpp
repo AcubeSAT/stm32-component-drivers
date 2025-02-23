@@ -8,7 +8,6 @@
 #include <cstdint>
 
 /**
- * todo (#31): Find out if isAlligned function is needed.
  * todo (#32): Remove FreeRTOS functions.
  * todo (#33): Add WriteFloat wrapper function.
  * todo (#34): Investigate if we need class instacnes.
@@ -16,7 +15,6 @@
  * todo (#36): General Memory class.
  * todo (#37): Multi-variable write.
  * todo (#39): Peripheral initialization.
- * todo (#42): Find out why a reference doesn't work in writeQuadWord.
  */
 
 /**
@@ -26,7 +24,7 @@
  * the EFC peripheral library for easy integration into any code.
  */
 class FlashDriver {
-  public:
+public:
     using FlashAddress_t = uint32_t;
     using FlashReadLength_t = uint32_t;
 
@@ -136,17 +134,6 @@ class FlashDriver {
     }
 
   private:
-    /**
-     * Ensure Flash address used is correctly alligned.
-     * @param address FLASH address to be modified.
-     * @param alignment the allignment that should be kept.
-     * @return True if the address is correctly aligned.
-     */
-    [[nodiscard]] static bool isAligned(FlashAddress_t address,
-                                        uint32_t alignment) {
-        return (address % alignment) == 0;
-    }
-
     /**
      * Ensure Flash addressed used is within defined limits.
      * @param address FLASH address to be modified.
