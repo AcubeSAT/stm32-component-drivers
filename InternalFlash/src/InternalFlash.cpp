@@ -1,4 +1,4 @@
-#include "InternalFlash.hpp"
+#include "lib/atsam-component-drivers/InternalFlash/inc/InternalFlash.hpp"
 
 [[nodiscard]] FlashDriver::EFCError FlashDriver::getEFCError() {
     switch (EFC_ErrorGet()) {
