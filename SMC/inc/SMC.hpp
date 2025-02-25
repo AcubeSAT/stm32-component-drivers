@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include "samv71q21b.h"
+#include "mutex_Handler.h"
 
 /**
  * Implementation of the basic functions handling the Static Memory Controller (SMC) of ATSAMV71.
@@ -47,8 +48,14 @@ protected:
      * @param dataAddress EBI address to write to.
      * @param data 8-bit data to write to the address.
      */
-    inline void smcWriteByte(uint32_t dataAddress, uint8_t data) {
+    void smcWriteByte(uint32_t dataAddress, uint8_t data) {
+        while (!takeSemaphoreGroup(GROUP_A)) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
         *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
+
+        releaseSemaphoreGroup(GROUP_A);
     }
 
     /**
@@ -56,8 +63,16 @@ protected:
      * @param dataAddress EBI address to read from.
      * @return 8-bit data saved in that address.
      */
-    inline uint8_t smcReadByte(uint32_t dataAddress) {
-        return *(reinterpret_cast<volatile uint8_t *>(dataAddress));
+    uint8_t smcReadByte(uint32_t dataAddress) {
+        uint8_t result;
+
+        while (!takeSemaphoreGroup(GROUP_A)) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+        result = *(reinterpret_cast<volatile uint8_t *>(dataAddress));
+        releaseSemaphoreGroup(GROUP_A);
+
+        return result;
     }
 
     /**
