@@ -49,13 +49,13 @@ protected:
      * @param data 8-bit data to write to the address.
      */
     void smcWriteByte(uint32_t dataAddress, uint8_t data) {
-        while (!takeSemaphoreGroup(GROUP_A)) {
+        while (!takeSemaphoreGroup(smcMutex)) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
 
         *(reinterpret_cast<volatile uint8_t *>(dataAddress)) = data;
 
-        releaseSemaphoreGroup(GROUP_A);
+        releaseSemaphoreGroup(smcMutex);
     }
 
     /**
@@ -66,11 +66,11 @@ protected:
     uint8_t smcReadByte(uint32_t dataAddress) {
         uint8_t result;
 
-        while (!takeSemaphoreGroup(GROUP_A)) {
+        while (!takeSemaphoreGroup(smcMutex)) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
         result = *(reinterpret_cast<volatile uint8_t *>(dataAddress));
-        releaseSemaphoreGroup(GROUP_A);
+        releaseSemaphoreGroup(smcMutex);
 
         return result;
     }
