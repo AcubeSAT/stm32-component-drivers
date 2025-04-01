@@ -7,10 +7,10 @@
 #include "Logger.hpp"
 
 #ifdef  SPI0_ENABLED
-#include  ""peripheral/spi/spi_master/plib_spi0_master.h""
+#include  "peripheral/spi/spi_master/plib_spi0_master.h"
 #endif
 #ifdef  SPI1_ENABLED
-#include  ""peripheral/spi/spi_master/plib_spi1_master.h""
+#include  "peripheral/spi/spi_master/plib_spi1_master.h"
 #endif
 
 namespace HAL_SPI {
@@ -27,33 +27,6 @@ namespace HAL_SPI {
         SPI0,
         SPI1,
     };
-
-    using SPI_CALLBACK = void (*)(uintptr_t context);
-
-    struct SPI_CALLBACK_CONTEXT {
-        PIO_PIN cs;
-        SPI_CALLBACK userCallback;
-        uintptr_t userContext;
-    };
-
-    static SPI_CALLBACK_CONTEXT spi0CallbackContext;
-    static SPI_CALLBACK_CONTEXT spi1CallbackContext;
-
-    void SPI0_TransferHandler(uintptr_t context) {
-        PIO_PinWrite(spi0CallbackContext.cs, true);
-
-        if (spi0CallbackContext.userCallback != nullptr) {
-            spi0CallbackContext.userCallback(spi0CallbackContext.userContext);
-        }
-    }
-
-    void SPI1_TransferHandler(uintptr_t context) {
-        PIO_PinWrite(spi1CallbackContext.cs, true);
-
-        if (spi1CallbackContext.userCallback != nullptr) {
-            spi1CallbackContext.userCallback(spi1CallbackContext.userContext);
-        }
-    }
 
     template <PeripheralNumber peripheralNumber>
     static bool isBusy() {
@@ -141,30 +114,13 @@ namespace HAL_SPI {
     }
 }
 
-    template <PeripheralNumber peripheralNumber>
-    static void registerCallback(SPI_CALLBACK userCallback, uintptr_t userContext) {
-        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
-#ifdef SPI0_ENABLED
-            spi0CallbackContext.userCallback = userCallback;
-            spi0CallbackContext.userContext = userContext;
-            SPI0_CallbackRegister(SPI0_TransferHandler, (uintptr_t)&spi0CallbackContext);
-#endif
-    }
-        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
-#ifdef SPI1_ENABLED
-            spi1CallbackContext.userCallback = userCallback;
-            spi1CallbackContext.userContext = userContext;
-            SPI1_CallbackRegister(SPI1_TransferHandler, (uintptr_t)&spi1CallbackContext);
-#endif
-    }
-}
-
     template<PeripheralNumber peripheralNumber>
-    SPIError waitForResponse(const uint16_t ms) {
-        const auto start = SYSTICK_TimerCounterGet();
+    SPIError waitForResponse(const uint32_t timeoutMs) {
+        SYSTICK_TimerStart();
+        const auto start = SYSTICK_TimerCounterGet()/300000;
+
         while (isBusy<peripheralNumber>()) {
-            if (SYSTICK_TimerCounterGet() - start > ms) {
-                LOG_ERROR << "SPI" << peripheralNumber << " timed out";
+            if (SYSTICK_TimerCounterGet()/300000 - start > timeoutMs) {
                 initialize<peripheralNumber>();
                 return SPIError::TIMEOUT;
             }
@@ -174,76 +130,49 @@ namespace HAL_SPI {
 
     template<PeripheralNumber peripheralNumber>
     SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data, SPI_CALLBACK callback, uintptr_t context) {
-        if (isBusy<peripheralNumber>()) {
-            return SPIError::BUSY;
-        }
-
-        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
-            spi0CallbackContext.cs = cs;
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
-            spi1CallbackContext.cs = cs;
-        }
-
-        registerCallback<peripheralNumber>(callback, context);
-
         PIO_PinWrite(cs, false);
 
-        if (!writeRegister<peripheralNumber>(data)) {
+        auto error = writeRegister<peripheralNumber>(data);
+
+        if (not error) {
             PIO_PinWrite(cs, true);
             return SPIError::WRITE_READ_ERROR;
         }
 
-        return SPIError::NONE;
+        PIO_PinWrite(cs, true);
+
+        return waitForResponse<peripheralNumber>(100);
     }
 
     template<PeripheralNumber peripheralNumber>
     SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data, SPI_CALLBACK callback, uintptr_t context) {
-        if (isBusy<peripheralNumber>()) {
-            return SPIError::BUSY;
-        }
-
-        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
-            spi0CallbackContext.cs = cs;
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
-            spi1CallbackContext.cs = cs;
-        }
-
-        registerCallback<peripheralNumber>(callback, context);
-
         PIO_PinWrite(cs, false);
 
-        if (!readRegister<peripheralNumber>(data)) {
+        auto error = readRegister<peripheralNumber>(data);
+
+        if (not error) {
             PIO_PinWrite(cs, true);
             return SPIError::WRITE_READ_ERROR;
         }
 
-        return SPIError::NONE;
+        PIO_PinWrite(cs, true);
+
+        return waitForResponse<peripheralNumber>(100);
     }
 
     template<PeripheralNumber peripheralNumber>
-    SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& TransmitData, etl::array<uint8_t, 4>& ReceiveData, SPI_CALLBACK callback, uintptr_t context) {
-        if (isBusy<peripheralNumber>()) {
-            return SPIError::BUSY;
-        }
-
-        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
-            spi0CallbackContext.cs = cs;
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
-            spi1CallbackContext.cs = cs;
-        }
-
-        registerCallback<peripheralNumber>(callback, context);
-
+    SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& TransmitData, etl::array<uint8_t, 4>& ReceiveData) {
         PIO_PinWrite(cs, false);
 
-        if (!writeReadRegister<peripheralNumber>(TransmitData, ReceiveData)) {
+        auto error = writeReadRegister<peripheralNumber>(TransmitData, ReceiveData);
+
+        if (not error) {
             PIO_PinWrite(cs, true);
             return SPIError::WRITE_READ_ERROR;
         }
 
-        return SPIError::NONE;
+        PIO_PinWrite(cs, true);
+
+        return waitForResponse<peripheralNumber>(100);
     }
 }
