@@ -129,7 +129,7 @@ namespace HAL_SPI {
     }
 
     template<PeripheralNumber peripheralNumber>
-    SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data, SPI_CALLBACK callback, uintptr_t context) {
+    SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
         PIO_PinWrite(cs, false);
 
         auto error = writeRegister<peripheralNumber>(data);
@@ -145,7 +145,7 @@ namespace HAL_SPI {
     }
 
     template<PeripheralNumber peripheralNumber>
-    SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data, SPI_CALLBACK callback, uintptr_t context) {
+    SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
         PIO_PinWrite(cs, false);
 
         auto error = readRegister<peripheralNumber>(data);
