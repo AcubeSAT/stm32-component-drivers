@@ -44,6 +44,7 @@ namespace HAL_SPI {
             return false;
 #endif
         }
+        return false;
     }
 
     template <PeripheralNumber peripheralNumber>
@@ -58,6 +59,7 @@ namespace HAL_SPI {
             SPI1_Initialize();
 #endif
         }
+        return false;
     }
 
     template<PeripheralNumber peripheralNumber>
@@ -76,6 +78,7 @@ namespace HAL_SPI {
             return false;
 #endif
     }
+        return false;
 }
 
     template<PeripheralNumber peripheralNumber>
@@ -94,6 +97,7 @@ namespace HAL_SPI {
             return false;
 #endif
         }
+        return false;
     }
 
     template<PeripheralNumber peripheralNumber>
@@ -112,6 +116,7 @@ namespace HAL_SPI {
             return false;
 #endif
     }
+        return false;
 }
 
     template<PeripheralNumber peripheralNumber>
