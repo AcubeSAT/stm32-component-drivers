@@ -59,7 +59,6 @@ namespace HAL_SPI {
             SPI1_Initialize();
 #endif
         }
-        return false;
     }
 
     template<PeripheralNumber peripheralNumber>
@@ -135,6 +134,10 @@ namespace HAL_SPI {
 
     template<PeripheralNumber peripheralNumber>
     SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
+        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
+            return SPIError::TIMEOUT;
+        }
+
         PIO_PinWrite(cs, false);
 
         auto error = writeRegister<peripheralNumber>(data);
@@ -144,15 +147,19 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
-        error = waitForResponse<peripheralNumber>(100);
+        auto responseError = waitForResponse<peripheralNumber>(100);
 
         PIO_PinWrite(cs, true);
 
-        return error;
+        return responseError;
     }
 
     template<PeripheralNumber peripheralNumber>
     SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
+        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
+            return SPIError::TIMEOUT;
+        }
+
         PIO_PinWrite(cs, false);
 
         auto error = readRegister<peripheralNumber>(data);
@@ -162,15 +169,19 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
-        error = waitForResponse<peripheralNumber>(100);
+        auto responseError = waitForResponse<peripheralNumber>(100);
 
         PIO_PinWrite(cs, true);
 
-        return error;
+        return responseError;
     }
 
     template<PeripheralNumber peripheralNumber>
     SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& TransmitData, etl::array<uint8_t, 4>& ReceiveData) {
+        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
+            return SPIError::TIMEOUT;
+        }
+
         PIO_PinWrite(cs, false);
 
         auto error = writeReadRegister<peripheralNumber>(TransmitData, ReceiveData);
@@ -180,10 +191,10 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
-        error = waitForResponse<peripheralNumber>(100);
+        auto responseError = waitForResponse<peripheralNumber>(100);
 
         PIO_PinWrite(cs, true);
 
-        return error;
+        return responseError;
     }
 }
