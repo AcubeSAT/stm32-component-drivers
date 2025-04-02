@@ -13,7 +13,13 @@
 #include  "peripheral/spi/spi_master/plib_spi1_master.h"
 #endif
 
+/**
+ * Namespace to be used for communication with AcubeSAT's component that use SPI.
+ */
 namespace HAL_SPI {
+    /**
+     * Enum containing the errors that can appear during SPI transfers.
+     */
     enum class SPIError : uint8_t {
         NONE             = 0,
         INVALID_ARGUMENT = 1,
@@ -23,11 +29,39 @@ namespace HAL_SPI {
         UNDEFINED        = 255
     };
 
+    /**
+     * Enum containing the instances of SPI that ATSAM provides.
+     */
     enum class PeripheralNumber : uint8_t {
         SPI0,
         SPI1,
     };
 
+     /**
+     * Helper function to map PeripheralNumber enum to the corresponding SPI function.
+     *
+     * @tparam peripheralNumber The SPI peripheral to check.
+     */
+    template <PeripheralNumber peripheralNumber>
+    static void initialize() {
+        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
+#ifdef SPI0_ENABLED
+            SPI0_Initialize();
+#endif
+        }
+        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
+#ifdef SPI1_ENABLED
+            SPI1_Initialize();
+#endif
+        }
+    }
+
+    /**
+     * Helper function to map PeripheralNumber enum to the corresponding SPI function.
+     *
+     * @tparam peripheralNumber The SPI peripheral to check
+     * @return true if the operation was succesful; false otherwise.
+     */
     template <PeripheralNumber peripheralNumber>
     static bool isBusy() {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
@@ -47,20 +81,12 @@ namespace HAL_SPI {
         return false;
     }
 
-    template <PeripheralNumber peripheralNumber>
-    static void initialize() {
-        if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
-#ifdef SPI0_ENABLED
-            SPI0_Initialize();
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
-#ifdef SPI1_ENABLED
-            SPI1_Initialize();
-#endif
-        }
-    }
-
+    /**
+     * Helper function to map PeripheralNumber enum to the corresponding SPI function.
+     *
+     * @tparam peripheralNumber The SPI peripheral to check.
+     * @return true if the operation was succesful; false otherwise.
+     */
     template<PeripheralNumber peripheralNumber>
     bool writeRegister(etl::array<uint8_t, 4>& data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
@@ -80,6 +106,12 @@ namespace HAL_SPI {
         return false;
 }
 
+    /**
+     * Helper function to map PeripheralNumber enum to the corresponding SPI function.
+     *
+     * @tparam peripheralNumber The SPI peripheral to check.
+     * @return true if the operation was succesful; false otherwise.
+     */
     template<PeripheralNumber peripheralNumber>
     bool readRegister(etl::array<uint8_t, 4>& data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
@@ -99,6 +131,12 @@ namespace HAL_SPI {
         return false;
     }
 
+    /**
+     * Helper function to map PeripheralNumber enum to the corresponding SPI function.
+     *
+     * @tparam peripheralNumber The SPI peripheral to check.
+     * @return true if the operation was succesful; false otherwise.
+     */
     template<PeripheralNumber peripheralNumber>
     bool writeReadRegister(etl::array<uint8_t, 4>& TransmitData, etl::array<uint8_t, 4>& ReceiveData) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
@@ -118,6 +156,13 @@ namespace HAL_SPI {
         return false;
 }
 
+    /**
+     * Function to poll SPI peripheral and reset it if it is unresponsive after a time period.
+     *
+     * @tparam peripheralNumber The chosen SPI peripheral.
+     * @param timeoutMs Time period after which SPI peripheral is reseted if it is unresponsive.
+     * @return NONE is the peripheral responded in time; TIMEOUT otherwise.
+     */
     template<PeripheralNumber peripheralNumber>
     SPIError waitForResponse(const uint32_t timeoutMs) {
         SYSTICK_TimerStart();
@@ -132,6 +177,14 @@ namespace HAL_SPI {
         return SPIError::NONE;
     }
 
+    /**
+     * Function to only write data.
+     *
+     * @tparam peripheralNumber The chosen SPI peripheral.
+     * @param cs The pin used for chip select.
+     * @param data An array containing the bytes to be written.
+     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     */
     template<PeripheralNumber peripheralNumber>
     SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
@@ -154,6 +207,14 @@ namespace HAL_SPI {
         return responseError;
     }
 
+    /**
+     * Function to only read data.
+     *
+     * @tparam peripheralNumber The chosen SPI peripheral.
+     * @param cs The pin used for chip select.
+     * @param data An array to which the read data is copied.
+     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     */
     template<PeripheralNumber peripheralNumber>
     SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& data) {
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
@@ -176,10 +237,19 @@ namespace HAL_SPI {
         return responseError;
     }
 
+    /**
+     * Function to both write and read data on the same SPI transfer.
+     *
+     * @tparam peripheralNumber The chosen SPI peripheral.
+     * @param cs The pin used for chip select.
+     * @param TransmitData An array containing the bytes to be written.
+     * @param ReceiveData An array to which the read data is copied.
+     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     */
     template<PeripheralNumber peripheralNumber>
     SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, 4>& TransmitData, etl::array<uint8_t, 4>& ReceiveData) {
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
-            return SPIError::TIMEOUT;
+            return SPIError::BUSY;
         }
 
         PIO_PinWrite(cs, false);
