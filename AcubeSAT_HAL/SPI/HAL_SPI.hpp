@@ -144,9 +144,11 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
+        error = waitForResponse<peripheralNumber>(100);
+
         PIO_PinWrite(cs, true);
 
-        return waitForResponse<peripheralNumber>(100);
+        return error;
     }
 
     template<PeripheralNumber peripheralNumber>
@@ -160,9 +162,11 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
+        error = waitForResponse<peripheralNumber>(100);
+
         PIO_PinWrite(cs, true);
 
-        return waitForResponse<peripheralNumber>(100);
+        return error;
     }
 
     template<PeripheralNumber peripheralNumber>
@@ -176,8 +180,10 @@ namespace HAL_SPI {
             return SPIError::WRITE_READ_ERROR;
         }
 
+        error = waitForResponse<peripheralNumber>(100);
+
         PIO_PinWrite(cs, true);
 
-        return waitForResponse<peripheralNumber>(100);
+        return error;
     }
 }
