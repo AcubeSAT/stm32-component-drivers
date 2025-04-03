@@ -46,13 +46,18 @@ namespace HAL_SPI {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
             SPI0_Initialize();
+#else
+            return;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
             SPI1_Initialize();
+#else
+            return;
 #endif
         }
+        return;
     }
 
     /**
