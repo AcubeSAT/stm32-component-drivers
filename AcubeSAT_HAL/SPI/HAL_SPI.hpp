@@ -192,6 +192,12 @@ namespace HAL_SPI {
      */
     template<PeripheralNumber peripheralNumber, size_t N>
     SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, N>& data) {
+        static_assert(N > 0, "Array size must be greater than zero");
+
+        if (data.empty()) {
+            return SPIError::WRITE_READ_ERROR;
+        }
+
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
             return SPIError::TIMEOUT;
         }
@@ -223,6 +229,12 @@ namespace HAL_SPI {
      */
     template<PeripheralNumber peripheralNumber, size_t N>
     SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, N>& data) {
+        static_assert(N > 0, "Array size must be greater than zero");
+
+        if (data.empty()) {
+            return SPIError::WRITE_READ_ERROR;
+        }
+
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
             return SPIError::TIMEOUT;
         }
@@ -255,6 +267,12 @@ namespace HAL_SPI {
      */
     template<PeripheralNumber peripheralNumber, size_t N>
     SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, N>& TransmitData, etl::array<uint8_t, N>& ReceiveData) {
+        static_assert(N > 0, "Array size must be greater than zero");
+
+        if (TransmitData.empty() && ReceiveData.empty()) {
+            return SPIError::WRITE_READ_ERROR;
+        }
+
         if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
             return SPIError::BUSY;
         }
