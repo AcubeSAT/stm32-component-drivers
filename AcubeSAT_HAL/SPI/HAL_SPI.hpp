@@ -172,17 +172,14 @@ namespace HAL_SPI {
      */
     template<PeripheralNumber peripheralNumber>
     SPIError waitForResponse(const uint32_t timeoutMs) {
-        SYSTICK_TimerStart();
-        const auto start = SYSTICK_TimerCounterGet()/300000;
-
+        auto start = xTaskGetTickCount();
         while (isBusy<peripheralNumber>()) {
-            if (SYSTICK_TimerCounterGet()/300000 - start > timeoutMs) {
+            if (xTaskGetTickCount() - start > timeoutMs) {
                 initialize<peripheralNumber>();
-                return SPIError::TIMEOUT;
             }
+            taskYIELD();
         }
-        return SPIError::NONE;
-    }
+    };
 
     /**
      * Function to only write data.
