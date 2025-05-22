@@ -91,12 +91,17 @@ public:
 
     /**
      * Specifies the type of error occured in reading and writing operations
+     *
+     * note : ID_READ_WAS_WRONG reffers to when the Manufacturer ID was read but instead of 0x54,
+     * a random non zero value is read, possibly due to a bit flip
      */
     enum class Error : uint8_t {
         ERROR_NONE = TWIHS_ERROR_NONE,
         ERROR_NACK = TWIHS_ERROR_NACK,
         READ_REQUEST_FAILED,
-        WRITE_REQUEST_FAILED
+        WRITE_REQUEST_FAILED,
+        ID_READ_WAS_WRONG,
+        ID_READ_FAILED
     };
 
     /**
@@ -247,7 +252,7 @@ public:
      * Check the Manufacturer ID register against the expected value.
      * @return Returns true if the device is connected and responds correctly.
      */
-    etl::expected<bool, Error> isDeviceConnected();
+    MCP9808::Error MCP9808::isDeviceConnected();
 
     /**
      * Getter function
@@ -407,8 +412,9 @@ private:
     /**
      * Manufacturer's ID.
      */
-    static constexpr uint8_t MANUFACTURER_ID = 0x0054u;
+    static constexpr uint8_t ManufacturerID = 0x0054u;
 
+    static constexpr uint186_t FalseData =  0xFFFF;
     /**
      * High Speed Two-Wired Interface transaction error
      */
