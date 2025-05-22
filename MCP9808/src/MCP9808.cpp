@@ -141,11 +141,17 @@ etl::expected<float, MCP9808::Error> MCP9808::getUpperTemperatureLimit() {
 etl::expected<float, MCP9808::Error> MCP9808::getLowerTemperatureLimit() {
     return getTemperature(Register::REG_TLOWER);
 }
-etl::expected<bool, MCP9808::Error> MCP9808::isDeviceConnected() {
+MCP9808::Error MCP9808::isDeviceConnected() {
     const auto ReadValue = readRegister(Register::REG_MFGID);
     if (ReadValue.has_value())
-        return ReadValue.value();
-    return etl::unexpected(ReadValue.error());
+        if(ReadValue.value() == ManufacturerID)
+            return Error::ERROR_NONE;
+        else if(ReadValue.value() == FalseData)
+            return Error::ID_READ_FAILED;
+        else
+            return Error::ID_READ_WAS_WRONG;
+    else
+        return ReadValue.error();
 }
 
 etl::expected<void, MCP9808::Error> MCP9808::setUpperTemperatureLimit(float temp) {
