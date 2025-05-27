@@ -107,97 +107,97 @@ public:
     /**
      * Enter low power mode (SHDN - shutdown mode)
      */
-    etl::expected<void, Error> enableLowPowerMode();
+    Error enableLowPowerMode();
 
     /**
      * Exit low power mode (SHDN - shutdown mode)
      */
-    etl::expected<void, Error> disableLowPowerMode();
+    Error disableLowPowerMode();
 
     /**
      * Enable locking of the critical temperature (TCRIT) register
      */
-    etl::expected<void, Error> enableCriticalTemperatureLock();
+    Error enableCriticalTemperatureLock();
 
     /**
      * Disable locking of the critical temperature (TCRIT) register
      */
-    etl::expected<void, Error> disableCriticalTemperatureLock();
+    Error disableCriticalTemperatureLock();
 
     /**
      * Enable locking of the temperature window (T_UPPER, T_LOWER) registers
      */
-    etl::expected<void, Error> enableTemperatureWindowLock();
+    Error enableTemperatureWindowLock();
 
     /**
      * Disable locking of the temperature window (T_UPPER, T_LOWER) registers
      */
-    etl::expected<void, Error> disableTemperatureWindowLock();
+    Error disableTemperatureWindowLock();
 
     /**
      * Enable temperature alerts.
      * Alert output is asserted as a comparator/interrupt or critical temperature
      */
-    etl::expected<void, Error> enableAlertStatus();
+    Error enableAlertStatus();
 
     /**
      * Disable temperature alerts.
      * Alert output is not asserted by the device (power-up default)
      */
-    etl::expected<void, Error> disableAlertStatus();
+    Error disableAlertStatus();
 
     /**
      * Enable alert control mode.
      */
-    etl::expected<void, Error> enableAlertControl();
+    Error enableAlertControl();
 
     /**
      * Disable alert control mode.
      */
-    etl::expected<void, Error> disableAlertControl();
+    Error disableAlertControl();
 
     /**
      * An alert is emitted only when T_ambient > T_crit (T_UPPER and T_LOWER temperature boundaries are disabled)
      */
-    etl::expected<void, Error> setAlertSelectionOnCriticalTemperature();
+    Error setAlertSelectionOnCriticalTemperature();
 
     /**
      * Alert output for T_UPPER, T_LOWER and T_CRIT (power-up default)
      */
-    etl::expected<void, Error> setAlertSelectionOnAll();
+    Error setAlertSelectionOnAll();
 
     /**
      * Set the polarity of the emitted alert active-high
      */
-    etl::expected<void, Error> setAlertPolarityActiveHigh();
+    Error setAlertPolarityActiveHigh();
 
     /**
      * Set the polarity of the emitted alert active-low
      */
-    etl::expected<void, Error> setAlertPolarityActiveLow();
+    Error setAlertPolarityActiveLow();
 
     /**
      * Set the alert mode to comparator output
      */
-    etl::expected<void, Error> setAlertModeComparator();
+    Error setAlertModeComparator();
 
     /**
      * Set the alert mode to interrupt output
      */
-    etl::expected<void, Error> setAlertModeInterrupt();
+    Error setAlertModeInterrupt();
 
     /**
      * Set the hysteresis temperature (THYST)
      * Available options are: 0, 1.5, 3, 6 degrees Celsius
      * @param option desired hysteresis temperature option
      */
-    etl::expected<void, Error> setHysteresisTemperature(HysteresisTemperatureOptions option);
+    Error setHysteresisTemperature(HysteresisTemperatureOptions option);
 
     /**
      * Set the interrupts to be cleared on the next read attempt (namely, a temperature
      * reading or a command in general)
      */
-    etl::expected<void, Error> clearInterrupts();
+    Error clearInterrupts();
 
     /**
      * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
@@ -205,25 +205,25 @@ public:
      * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
      * @param setting the desired measurement resolution option
      */
-    etl::expected<void, Error> setResolution(MeasurementResolution setting);
+    Error setResolution(MeasurementResolution setting);
 
     /**
      * Set upper temperature limit
      * @param temp the desired upper temperature limit with format as specified at page 21 of the datasheet
      */
-    etl::expected<void, Error> setUpperTemperatureLimit(float temp);
+    Error setUpperTemperatureLimit(float temp);
 
     /**
      * Set lower temperature limit
      * @param temp the desired lower temperature limit with format as specified at page 21 of the datasheet
      */
-    etl::expected<void, Error> setLowerTemperatureLimit(float temp);
+    Error setLowerTemperatureLimit(float temp);
 
     /**
      * Set critical temperature limit
      * @param temp the desired critical temperature limit with format as specified at page 21 of the datasheet
      */
-    etl::expected<void, Error> setCriticalTemperatureLimit(float temp);
+    Error setCriticalTemperatureLimit(float temp);
 
     /**
     * Get the current ambient temperature (in Celsius)
@@ -339,7 +339,7 @@ private:
     /**
      * Wait period before a sensor read is skipped
      */
-    const uint8_t TIMEOUT_TICKS = 100;
+    static constexpr uint8_t TimeoutTicks = 100;
 
     /**
      * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
@@ -363,12 +363,12 @@ private:
     /**
      * The required value in order to set interrupts to be cleared on next read of CONFIG register.
      */
-    static constexpr uint8_t IRQ_CLEAR = 0x20;
+    static constexpr uint8_t IrqClear = 0x20;
 
     /**
      * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
      */
-    const uint8_t I2C_USER_ADDRESS = 0x00;
+    static constexpr uint8_t I2CUserAddress = 0x00;
 
     /**
      * System constants - INTERNAL USE ONLY!
@@ -396,17 +396,17 @@ private:
     /**
      * Base slave bus address manufacturer-defined, used on the I2C bus.
      */
-    const uint8_t I2C_BASE_ADDRESS = 0x18u;
+    static constexpr uint8_t I2CBaseAddress = 0x18u;
 
     /**
      * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
      */
-    const uint8_t I2C_USER_ADDRESS_MASK = 0x78u;
+    static constexpr uint8_t I2CUserAddressMask = 0x78u;
 
     /**
      * Custom bus address for usage in read-write requests.
      */
-    const uint8_t I2C_BUS_ADDRESS = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
+    static constexpr uint8_t I2CBusAddress = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
                                                           I2C_USER_ADDRESS);
 
     /**
@@ -414,7 +414,35 @@ private:
      */
     static constexpr uint8_t ManufacturerID = 0x0054u;
 
-    static constexpr uint186_t FalseData =  0xFFFF;
+    static constexpr uint16_t FalseData =  0xFFFF;
+
+    static constexpr uint8_t TempUpperByteMask = 0x1F;
+
+    static constexpr uint8_t TempLowerByteMask = 0xFF;
+
+    static constexpr uint8_t TempSignBitMask = 0x10;
+
+    static constexpr uint8_t TempValueMask = 0x0F;
+
+    static constexpr float TempConvFactor = 16.0f;
+
+    static constexpr float TempNegativeOffset = 256.0f;
+
+    static constexpr uint16_t FloatConvIntMask = 0x0FFC;
+
+    static constexpr float FloatConvFractBase = 100.0f;
+
+    static constexpr uint16_t FloatConvFractDiv1 = 50;
+
+    static constexpr uint16_t FloatConvFractDiv2 = 25;
+
+    static constexpr uint8_t FloatConvShift1 = 4;
+
+    static constexpr uint8_t FloatConvShift2 = 3;
+
+    static constexpr uint8_t FloatConvShift3 = 2;
+
+    static constexpr uint8_t ByteShift = 8;
     /**
      * High Speed Two-Wired Interface transaction error
      */
@@ -424,32 +452,32 @@ private:
      * Enter/exit low power mode (SHDN - shutdown mode)
      * @param setting the desired low power mode option
      */
-    etl::expected<void, Error> setLowPowerMode(LowPowerMode setting);
+    Error setLowPowerMode(LowPowerMode setting);
 
     /**
      * Set locking status of the critical temperature (TCRIT) register
      * @param setting the desired critical temperature locking option
      */
-    etl::expected<void, Error> setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
+    Error setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
 
     /**
      * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
      * @param setting the desired locking status option
      */
-    etl::expected<void, Error> setTemperatureWindowLock(TemperatureWindowLock setting);
+    Error setTemperatureWindowLock(TemperatureWindowLock setting);
 
     /**
      * Enable or disable temperature alerts.
      * If enabled, alert output is asserted as a comparator/interrupt or critical temperature
      * @param setting the desired alert status option
      */
-    etl::expected<void, Error> setAlertStatus(AlertStatus setting);
+    Error setAlertStatus(AlertStatus setting);
 
     /**
      * Enable or disable alert control mode.
      * @param setting the desired alert control option
      */
-    etl::expected<void, Error> setAlertControl(AlertControl setting);
+    Error setAlertControl(AlertControl setting);
 
     /**
      * Select the event for which an alert will be emitted, if triggered.
@@ -457,19 +485,19 @@ private:
      * T_ambient > T_crit.
      * @param setting the desired alert selection option
      */
-    etl::expected<void, Error> setAlertSelection(AlertSelection setting);
+    Error setAlertSelection(AlertSelection setting);
 
     /**
      * Set the polarity of the emitted alert (active-low or active-high)
      * @param setting desired alert polarity option
      */
-    etl::expected<void, Error> setAlertPolarity(AlertPolarity setting);
+    Error setAlertPolarity(AlertPolarity setting);
 
     /**
      * Set the alert mode (comparator or interrupt output)
      * @param setting the desired alert mode option
      */
-    etl::expected<void, Error> setAlertMode(AlertMode setting);
+    Error setAlertMode(AlertMode setting);
 
     /**
      * Write a value to a register. Microchip-specific functions are used.
@@ -478,7 +506,7 @@ private:
      * @param data the data octets to be written
      * @param numOfBytes the number of bytes to be written
      */
-    etl::expected<void, Error>  writeRegister(etl::span<uint8_t> data);
+    Error writeRegister(etl::span<uint8_t> data);
 
     /**
      * Read a value from a register. About register reading operations
@@ -499,7 +527,7 @@ private:
      * @param setting the new value of the setting to be changed
      * (also found in mcp9808-constants.hpp)
      */
-    etl::expected<void, Error> setRegister(Register address, Mask mask, uint16_t setting);
+    Error setRegister(Register address, Mask mask, uint16_t setting);
 
     /**
      * Function that prevents hanging when a I2C device is not responding.
