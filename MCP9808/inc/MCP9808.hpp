@@ -63,7 +63,7 @@ public:
      * @see I2C_USER_ADDRESS
      * @param i2cUserAddress user selectable address
      */
-    explicit MCP9808(uint8_t i2cUserAddress) : I2C_USER_ADDRESS(i2cUserAddress) {}
+    explicit MCP9808(uint8_t i2cUserAddress) : I2CUserAddress(i2cUserAddress) {}
 
     /**
      * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
@@ -252,14 +252,14 @@ public:
      * Check the Manufacturer ID register against the expected value.
      * @return Returns true if the device is connected and responds correctly.
      */
-    MCP9808::Error MCP9808::isDeviceConnected();
+    Error isDeviceConnected();
 
     /**
      * Getter function
      * @return the I2C_USER_ADDRESS private variable
      */
     inline uint8_t getI2CUserAddress() const {
-        return I2C_USER_ADDRESS;
+        return I2CUserAddress;
     }
 
 private:
@@ -368,7 +368,7 @@ private:
     /**
      * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
      */
-    static constexpr uint8_t I2CUserAddress = 0x00;
+    const uint8_t I2CUserAddress = 0x00;
 
     /**
      * System constants - INTERNAL USE ONLY!
@@ -406,8 +406,8 @@ private:
     /**
      * Custom bus address for usage in read-write requests.
      */
-    static constexpr uint8_t I2CBusAddress = static_cast<uint16_t>(I2C_BASE_ADDRESS & I2C_USER_ADDRESS_MASK |
-                                                          I2C_USER_ADDRESS);
+    const uint8_t I2CBusAddress = static_cast<uint16_t>(I2CBaseAddress & I2CUserAddressMask |
+                                                          I2CUserAddress);
 
     /**
      * Manufacturer's ID.
@@ -535,8 +535,8 @@ private:
     inline void waitForResponse() const {
         const auto Start = xTaskGetTickCount();
         while (MCP9808_TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - Start > TIMEOUT_TICKS) {
-                LOG_ERROR << "Temperature sensor with address " << I2C_USER_ADDRESS
+            if (xTaskGetTickCount() - Start > TimeoutTicks) {
+                LOG_ERROR << "Temperature sensor with address " << I2CUserAddress
                           << " has timed out";
                 MCP9808_TWIHS_Initialize();
             }
