@@ -20,8 +20,8 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
             static_cast<std::underlying_type_t<Register>>(address)};
     const auto WriteError = writeRegister(addr);
-    if (WriteError.error() != Error::ERROR_NONE)
-        return etl::unexpected(WriteError.error());
+    if (WriteError != Error::ERROR_NONE)
+        return etl::unexpected(WriteError);
 
     if (MCP9808_TWIHS_Read(I2CBusAddress, buffer.data(), buffer.size())) {
         waitForResponse();
