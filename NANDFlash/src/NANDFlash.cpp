@@ -518,6 +518,10 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
     badBlockCount = 0;
     
     for (uint16_t block = 0; block < BLOCKS_PER_LUN; ++block) {
+        if (block % 16 == 0 && block > 0) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        
         for (uint8_t lun = 0; lun < LUNS_PER_CE; ++lun) {
             auto markerResult = readBadBlockMarker(block, lun);
             if (!markerResult) {
