@@ -606,12 +606,17 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
         }
     }
     
-    uint16_t storedCrc = paramPage[254] | (static_cast<uint16_t>(paramPage[255]) << 8);
+    uint16_t storedCrc = static_cast<uint16_t>(paramPage[254]) | 
+                        (static_cast<uint16_t>(paramPage[255]) << 8);
     
     bool isValid = (crc == storedCrc);
     if (!isValid) {
-        LOG_DEBUG << "NAND: CRC mismatch - calculated: 0x" << static_cast<uint32_t>(crc) 
-                  << ", stored: 0x" << static_cast<uint32_t>(storedCrc);
+        LOG_DEBUG << "NAND: CRC mismatch - calculated: 0x" << std::hex << crc 
+                  << ", stored: 0x" << std::hex << storedCrc;
+        LOG_DEBUG << "First few bytes: " << std::hex << static_cast<uint32_t>(paramPage[0]) 
+                  << " " << static_cast<uint32_t>(paramPage[1]) 
+                  << " " << static_cast<uint32_t>(paramPage[2]) 
+                  << " " << static_cast<uint32_t>(paramPage[3]);
     }
     
     return isValid;
