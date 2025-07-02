@@ -177,7 +177,7 @@ private:
     
     /* ============= Device identification constants ============ */
 
-    static constexpr etl::array<uint8_t, 5> EXPECTED_DEVICE_ID = {0x2C, 0x68, 0x04, 0x4A, 0xA9}; /*!< Expected device ID for MT29F32G09ABAAA */
+    static constexpr etl::array<uint8_t, 5> EXPECTED_DEVICE_ID = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F32G09ABAAA */
     
     /** 
      * @brief Structure for 5-cycle NAND addressing 
