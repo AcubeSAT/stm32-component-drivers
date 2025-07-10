@@ -4,7 +4,7 @@
 #include <plib_pio.h>
 #include <plib_systick.h>
 #include <etl/span.h>
-
+#include "ADCS_Definitions.hpp"
 #ifdef  SPI0_ENABLED
 #include  "peripheral/spi/spi_master/plib_spi0_master.h"
 #endif
