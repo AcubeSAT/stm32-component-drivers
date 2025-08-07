@@ -504,7 +504,7 @@ public:
      * 
      * @return Success or error code
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readSpare(const NANDAddress& addr, etl::span<uint8_t>& data, uint32_t length);
     
     /**
      * @brief Program (write) data to NAND flash page
@@ -576,6 +576,21 @@ public:
      * @return Number of bad blocks found
      */
     [[nodiscard]] size_t getBadBlockCount() const noexcept { return badBlockCount; }
+    
+    /**
+     * @brief Initialize blocks by erasing them and marking failed ones as bad
+     * 
+     * @details This function is used to initialize fresh NAND devices where spare areas
+     * may contain uninitialized data. It attempts to erase each block in the specified range.
+     * Blocks that fail to erase are marked as bad. Successfully erased blocks will have
+     * their spare areas set to 0xFF (good block marker).
+     * 
+     * @param startBlock First block to initialize
+     * @param endBlock Last block to initialize (inclusive)
+     * 
+     * @return Success or error code
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> initializeBlocks(uint16_t startBlock, uint16_t endBlock);
    
 };
 

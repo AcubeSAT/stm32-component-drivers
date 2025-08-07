@@ -7,29 +7,38 @@
 /* ================= Driver Initialization and Basic Info ================= */
 
 etl::expected<void, NANDErrorCode> MT29F::initialize() {
+    LOG_DEBUG << "NAND: Starting reset";
     auto resetResult = reset();
     if (!resetResult) {
+        LOG_ERROR << "NAND: Reset failed";
         return resetResult;
     }
+    LOG_DEBUG << "NAND: Reset completed successfully";
     
+    LOG_DEBUG << "NAND: Reading device ID";
     etl::array<uint8_t, 5> deviceId;
     auto idResult = readDeviceID(deviceId);
     if (!idResult) {
+        LOG_ERROR << "NAND: Failed to read device ID";
         return idResult;
     }
+    LOG_DEBUG << "NAND: Device ID read successfully";
     
     if (!std::equal(EXPECTED_DEVICE_ID.begin(), EXPECTED_DEVICE_ID.end(), deviceId.begin())) {
-        LOG_ERROR << "NAND: Unexpected device ID: " << static_cast<uint32_t>(deviceId[0]) << " " 
-                  << static_cast<uint32_t>(deviceId[1]) << " " << static_cast<uint32_t>(deviceId[2]) 
+        LOG_ERROR << "NAND: Unexpected device ID: " << static_cast<uint32_t>(deviceId[0]) << " "
+                  << static_cast<uint32_t>(deviceId[1]) << " " << static_cast<uint32_t>(deviceId[2])
                   << " " << static_cast<uint32_t>(deviceId[3]) << " " << static_cast<uint32_t>(deviceId[4]);
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
     
+    LOG_DEBUG << "NAND: Reading ONFI signature";
     etl::array<uint8_t, 4> onfiSignature;
     auto onfiResult = readONFISignature(onfiSignature);
     if (!onfiResult) {
+        LOG_ERROR << "NAND: Failed to read ONFI signature";
         return onfiResult;
     }
+    LOG_DEBUG << "NAND: ONFI signature read successfully";
     
     const char* expectedOnfi = "ONFI";
     if (std::memcmp(onfiSignature.data(), expectedOnfi, 4) != 0) {
@@ -55,7 +64,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     
     isInitialized = true;
 
-    LOG_INFO << "NAND initialized successfully. Bad blocks: " << badBlockCount;
+    LOG_DEBUG << "NAND initialized successfully. Bad blocks: " << badBlockCount;
     
     return {};
 }
@@ -101,10 +110,17 @@ etl::expected<NANDDeviceInfo, NANDErrorCode> MT29F::readParameterPage() {
     sendCommand(Commands::READ_PARAM_PAGE);
     sendAddress(0x00);  // Parameter page address
     
+    vTaskDelay(1); // Wait tWHR
+    
     auto waitResult = waitForReady(TIMEOUT_READ_MS);
     if (!waitResult) {
         return etl::unexpected(waitResult.error());
     }
+    
+    // CRITICAL: After waitForReady(), device is in status mode
+    // Send READ_MODE command to return to data output mode
+    sendCommand(Commands::READ_MODE);
+    vTaskDelay(1); // Wait tWHR
     
     /* ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one */
     for (uint8_t copy = 0; copy < 3; copy++) {
@@ -166,22 +182,36 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return waitResult;
     }
     
+    // CRITICAL: After waitForReady(), device is in status mode
+    // Send READ_MODE command to return to data output mode
+    sendCommand(Commands::READ_MODE);
+    vTaskDelay(1); // Wait tWHR
+    
     for (uint32_t i = 0; i < length; ++i) {
         data[i] = readData();
     }
     
-    auto statusResult = checkOperationStatus();
+    // For read operations, only check read-specific error flags
+    // Don't check write protection as it's irrelevant for reads
+    auto statusResult = readStatusRegister();
     if (!statusResult) {
-        return statusResult;
+        return etl::unexpected(statusResult.error());
+    }
+    
+    uint8_t status = statusResult.value();
+    
+    if ((status & STATUS_FAILC) != 0) {
+        LOG_ERROR << "NAND: Read operation failed (STATUS_FAILC set)";
+        return etl::unexpected(NANDErrorCode::READ_FAILED);
     }
     
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length) {
-    if (!isInitialized) {
-        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
-    }
+etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl::span<uint8_t>& data, uint32_t length) {
+    // if (!isInitialized) {
+    //     return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    // }
     
     if (length > SPARE_BYTES_PER_PAGE || length > data.size()) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
@@ -209,8 +239,14 @@ etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl
         return waitResult;
     }
     
+    // CRITICAL: After waitForReady(), device is in status mode
+    // Send READ_MODE command to return to data output mode
+    sendCommand(Commands::READ_MODE);
+    vTaskDelay(1); // Wait tWHR
+
     for (uint32_t i = 0; i < length; ++i) {
-        data[i] = readData();
+        uint8_t readValue = readData();
+        data[i] = readValue;
     }
     
     return {};
@@ -221,9 +257,9 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
     
-    if (isWriteProtected()) {
-        return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
-    }
+    // if (isWriteProtected()) {
+    //     return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
+    // }
     
     auto validateResult = validateAddress(addr);
     if (!validateResult) {
@@ -284,9 +320,9 @@ etl::expected<void, NANDErrorCode> MT29F::programSpare(const NANDAddress& addr, 
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
     
-    if (isWriteProtected()) {
-        return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
-    }
+    // if (isWriteProtected()) {
+    //     return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
+    // }
     
     if (data.size() > SPARE_BYTES_PER_PAGE) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
@@ -338,9 +374,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
     
-    if (isWriteProtected()) {
-        return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
-    }
+    // if (isWriteProtected()) {
+    //     return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
+    // }
     
     if (block >= BLOCKS_PER_LUN || lun >= LUNS_PER_CE) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
@@ -394,7 +430,7 @@ etl::expected<bool, NANDErrorCode> MT29F::checkBlockBad(uint16_t block, uint8_t 
             return true;
         }
     }
-    
+
     auto markerResult = readBadBlockMarker(block, lun);
     if (!markerResult) {
         return etl::unexpected(markerResult.error());
@@ -489,15 +525,23 @@ etl::expected<void, NANDErrorCode> MT29F::checkOperationStatus() {
     
     uint8_t status = statusResult.value();
     
+    LOG_DEBUG << "NAND: Status register = 0x" << std::hex << static_cast<uint32_t>(status) 
+              << " (FAIL=" << ((status & STATUS_FAIL) ? "1" : "0")
+              << ", FAILC=" << ((status & STATUS_FAILC) ? "1" : "0") 
+              << ", WP=" << ((status & STATUS_WP) ? "1" : "0") << ")";
+    
     if ((status & STATUS_FAIL) != 0) {
+        LOG_ERROR << "NAND: STATUS_FAIL bit set";
         return etl::unexpected(NANDErrorCode::PROGRAM_FAILED);
     }
     
     if ((status & STATUS_FAILC) != 0) {
+        LOG_ERROR << "NAND: STATUS_FAILC bit set"; 
         return etl::unexpected(NANDErrorCode::READ_FAILED);
     }
     
     if ((status & STATUS_WP) == 0) {
+        LOG_ERROR << "NAND: STATUS_WP bit clear (write protected)";
         return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
     }
     
@@ -545,13 +589,17 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBadBlockMarker(uint16_t block, uint8_t lun) {
     NANDAddress addr(lun, block, 0, DATA_BYTES_PER_PAGE);
     etl::array<uint8_t, 1> marker;
+    marker[0] = 0xAA; // Debug: Initialize with known value
     
-    auto readResult = readSpare(addr, etl::span<uint8_t>(marker), 1);
+    etl::span<uint8_t> markerSpan(marker);
+    auto readResult = readSpare(addr, markerSpan, 1);
     if (!readResult) {
         return etl::unexpected(readResult.error());
     }
     
-    return marker[0];
+    // Debug: Check value immediately after readSpare
+    uint8_t debugValue = marker[0];
+    return debugValue;
 }
 
 etl::expected<NANDDeviceInfo, NANDErrorCode> MT29F::parseParameterPage(const etl::span<const uint8_t, 256>& paramPage) {
@@ -630,6 +678,72 @@ etl::expected<bool, NANDErrorCode> MT29F::isBadBlock(uint16_t block, uint8_t lun
 
 etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t lun) {
     return markBlockBad(block, lun, false);
+}
+
+etl::expected<void, NANDErrorCode> MT29F::initializeBlocks(uint16_t startBlock, uint16_t endBlock) {
+    if (!isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+    
+    if (startBlock > endBlock || endBlock >= BLOCKS_PER_LUN) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+    
+    LOG_INFO << "NAND: Initializing blocks " << startBlock << " to " << endBlock;
+    
+    enableWrites();
+    
+    uint16_t successCount = 0;
+    uint16_t failCount = 0;
+    
+    for (uint16_t block = startBlock; block <= endBlock; ++block) {
+        // Build address for block erase (LUN 0, block, page 0, column 0)
+        NANDAddress addr(0, block, 0, 0);
+        AddressCycles cycles;
+        buildAddressCycles(addr, cycles);
+        
+        // Send erase command sequence
+        sendCommand(Commands::ERASE_BLOCK);
+        sendAddress(cycles.cycle[2]);  // Row 1
+        sendAddress(cycles.cycle[3]);  // Row 2  
+        sendAddress(cycles.cycle[4]);  // Row 3
+        sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+        
+        // Wait for operation to complete
+        auto waitResult = waitForReady(TIMEOUT_ERASE_MS);
+        if (!waitResult) {
+            disableWrites();
+            LOG_ERROR << "NAND: Timeout during block " << block << " initialization";
+            return waitResult;
+        }
+        
+        // Check if erase operation succeeded
+        auto statusResult = checkOperationStatus();
+        if (!statusResult) {
+            // Erase failed - this is a genuinely bad block
+            LOG_WARNING << "NAND: Block " << block << " failed erase during initialization - marking as bad";
+            auto markResult = markBlockBad(block, 0, false);  // Not factory bad, but runtime detected
+            if (!markResult) {
+                LOG_ERROR << "NAND: Failed to mark block " << block << " as bad";
+            }
+            failCount++;
+        } else {
+            LOG_DEBUG << "NAND: Successfully initialized block " << block;
+            successCount++;
+        }
+        
+        // Yield every 8 blocks to prevent watchdog timeout
+        if (block % 8 == 0 && block > startBlock) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+    }
+    
+    disableWrites();
+    
+    LOG_INFO << "NAND: Block initialization complete - " << successCount << " successful, " 
+             << failCount << " failed (marked as bad)";
+    
+    return {};
 }
 
 /* ================== Write Protection Management ======================= */
