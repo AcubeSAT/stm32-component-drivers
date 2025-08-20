@@ -479,29 +479,41 @@ void MT29F::buildAddressCycles(const NANDAddress& addr, AddressCycles& cycles) {
 
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
     const uint32_t startTime = xTaskGetTickCount();
+    const uint32_t timeoutTicks = pdMS_TO_TICKS(timeoutMs);
+    
+   // LOG_DEBUG << "NAND: waitForReady() called with timeout " << timeoutMs << "ms (" << timeoutTicks << " ticks)";
     
     if (nandReadyBusyPin != PIO_PIN_NONE) {
         while (PIO_PinRead(nandReadyBusyPin) == 0) {
-            if ((xTaskGetTickCount() - startTime) > timeoutMs) {
+            if ((xTaskGetTickCount() - startTime) > timeoutTicks) {
+                LOG_ERROR << "NAND: Hardware ready pin timeout";
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
             vTaskDelay(1);
         }
+        // LOG_DEBUG << "NAND: Hardware ready pin signaled ready";
     }
     
+    // uint32_t statusChecks = 0;
     while (true) {
         auto statusResult = readStatusRegister();
         if (!statusResult) {
+            LOG_ERROR << "NAND: Failed to read status register";
             return etl::unexpected(statusResult.error());
         }
         
         uint8_t status = statusResult.value();
+        // statusChecks++;
         
         if ((status & STATUS_RDY) != 0 && (status & STATUS_ARDY) != 0) {
+            // LOG_DEBUG << "NAND: Device ready after " << statusChecks << " status checks, "
+            //           << (xTaskGetTickCount() - startTime) << " ticks elapsed";
             return {};
         }
         
-        if ((xTaskGetTickCount() - startTime) > timeoutMs) {
+        if ((xTaskGetTickCount() - startTime) > timeoutTicks) {
+            // LOG_ERROR << "NAND: Status register timeout after " << statusChecks << " checks, status=0x" 
+            //           << std::hex << static_cast<uint32_t>(status);
             return etl::unexpected(NANDErrorCode::TIMEOUT);
         }
         
