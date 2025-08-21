@@ -347,6 +347,35 @@ private:
      */
     etl::expected<uint8_t, NANDErrorCode> readBadBlockMarker(uint16_t block, uint8_t lun);
 
+    /**
+     * @brief Force erase a block without checking bad block status
+     * 
+     * @details Performs low-level erase operation bypassing bad block checks.
+     * Returns actual hardware erase result without automatically marking blocks as bad.
+     * Used by comprehensive erase test to validate true block hardware status.
+     * 
+     * @param block Block number to erase
+     * @param lun LUN number
+     * 
+     * @return Success if erase succeeded, ERASE_FAILED if hardware erase failed
+     */
+    etl::expected<void, NANDErrorCode> forceEraseBlock(uint16_t block, uint8_t lun);
+
+    /**
+     * @brief Mark a block as good by writing 0xFF to spare area
+     * 
+     * @param block Block number to mark as good
+     * @param lun LUN number
+     * 
+     * @return Success or error code
+     */
+    etl::expected<void, NANDErrorCode> markBlockGood(uint16_t block, uint8_t lun);
+
+    /**
+     * @brief Clear the bad block table (reset to empty state)
+     */
+    void clearBadBlockTable();
+
     
     /* ================ Parameter page parsing functions ================ */
     
@@ -591,6 +620,27 @@ public:
      * @return Success or error code
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> initializeBlocks(uint16_t startBlock, uint16_t endBlock);
+
+    /**
+     * @brief Comprehensive block erase test that validates hardware erase capability
+     * 
+     * @details This test performs hardware-level validation of each block by:
+     * 1. Clearing the bad block table to start fresh
+     * 2. Attempting to erase each block regardless of current bad block markers
+     * 3. Marking blocks as bad if erase fails, good if erase succeeds
+     * 4. Writing proper spare area markers (0x00 for bad, 0xFF for good)
+     * 5. Providing detailed statistics and progress reporting
+     * 
+     * @warning This is a DESTRUCTIVE test that will ERASE ALL DATA on the device
+     * @warning Use only for hardware validation or fresh device characterization
+     * 
+     * @param startBlock First block to test (inclusive)
+     * @param endBlock Last block to test (inclusive) 
+     * @param resetBadBlockTable If true, clears bad block table before testing
+     * 
+     * @return Success or error code with detailed results
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> comprehensiveEraseTest(uint16_t startBlock, uint16_t endBlock, bool resetBadBlockTable = true);
    
 };
 

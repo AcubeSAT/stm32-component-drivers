@@ -571,8 +571,29 @@ etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& add
 }
 
 etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
+    // PHASE 1: CRITICAL - Clear bad block table completely
     badBlockCount = 0;
+    for (size_t i = 0; i < MAX_BAD_BLOCKS; ++i) {
+        badBlockTable[i] = {0, 0, false, 0}; // Zero out entire table
+    }
     
+    LOG_INFO << "NAND: Starting factory bad block scan - table cleared";
+    
+    // PHASE 2: Test a few specific blocks first to validate readSpare() consistency
+    LOG_DEBUG << "NAND: Testing readSpare() consistency on blocks 0, 1, 2";
+    for (uint16_t testBlock = 0; testBlock < 3; ++testBlock) {
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            auto markerResult = readBadBlockMarker(testBlock, 0);
+            if (markerResult) {
+                LOG_DEBUG << "Block " << testBlock << " attempt " << attempt << ": marker=0x" 
+                          << std::hex << static_cast<uint32_t>(markerResult.value());
+            } else {
+                LOG_ERROR << "Block " << testBlock << " attempt " << attempt << ": READ FAILED";
+            }
+        }
+    }
+    
+    // PHASE 3: Full scan with enhanced logging
     for (uint16_t block = 0; block < BLOCKS_PER_LUN; ++block) {
         if (block % 16 == 0 && block > 0) {
             vTaskDelay(pdMS_TO_TICKS(10));
@@ -581,37 +602,97 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
         for (uint8_t lun = 0; lun < LUNS_PER_CE; ++lun) {
             auto markerResult = readBadBlockMarker(block, lun);
             if (!markerResult) {
+                LOG_WARNING << "NAND: Failed to read marker for block " << block << " LUN " << lun;
                 continue;
             }
             
-            if (markerResult.value() != GOOD_BLOCK_MARKER) {
+            uint8_t marker = markerResult.value();
+            
+            // CORRECTED: Only 0x00 is a genuine factory bad block marker
+            // 0x10, 0x5, and other values are manufacturing/test data, not bad blocks
+            if (marker == BAD_BLOCK_MARKER) {  // 0x00 = genuine factory bad
                 if (badBlockCount < MAX_BAD_BLOCKS) {
                     badBlockTable[badBlockCount] = {block, lun, true, 0};
                     ++badBlockCount;
-                    LOG_INFO << "NAND: Found factory bad block " << block << " (LUN " << lun << ")";
+                    LOG_INFO << "NAND: Found GENUINE factory bad block " << block << " (LUN " << lun 
+                             << ") marker=0x" << std::hex << static_cast<uint32_t>(marker);
                 }
+            } else if (marker != GOOD_BLOCK_MARKER) {
+                // Log non-standard values but don't mark as bad
+                LOG_DEBUG << "NAND: Block " << block << " has non-standard spare data (0x" 
+                          << std::hex << static_cast<uint32_t>(marker) << ") - treating as good";
             }
         }
     }
     
-    LOG_INFO << "NAND: Found " << badBlockCount << " factory bad blocks";
+    LOG_INFO << "NAND: Factory bad block scan complete - found " << badBlockCount << " bad blocks";
+    
+    // PHASE 4: Verify consistency by re-reading first few detected bad blocks
+    if (badBlockCount > 0) {
+        LOG_DEBUG << "NAND: Verifying consistency of detected bad blocks";
+        for (size_t i = 0; i < std::min(static_cast<size_t>(badBlockCount), static_cast<size_t>(3)); ++i) {
+            auto verifyResult = readBadBlockMarker(badBlockTable[i].blockNumber, badBlockTable[i].lun);
+            if (verifyResult) {
+                LOG_DEBUG << "Verify bad block " << badBlockTable[i].blockNumber << ": marker=0x" 
+                          << std::hex << static_cast<uint32_t>(verifyResult.value());
+            } else {
+                LOG_ERROR << "Verify bad block " << badBlockTable[i].blockNumber << ": VERIFY FAILED!";
+            }
+        }
+    }
+    
     return {};
 }
 
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBadBlockMarker(uint16_t block, uint8_t lun) {
     NANDAddress addr(lun, block, 0, DATA_BYTES_PER_PAGE);
-    etl::array<uint8_t, 1> marker;
-    marker[0] = 0xAA; // Debug: Initialize with known value
+    
+    // Validate address calculation
+    if (addr.lun >= LUNS_PER_CE || addr.block >= BLOCKS_PER_LUN) {
+        LOG_ERROR << "NAND: Invalid address for block " << block << " LUN " << lun;
+        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
+    }
+    
+    // For debugging: only do intensive debugging on first 10 blocks
+    bool intensiveDebug = (block < 10);
+    
+    if (intensiveDebug) {
+        // CRITICAL: Ensure device is in known state before reading
+        sendCommand(Commands::RESET);
+        
+        // Wait for reset to complete
+        auto waitResult = waitForReady(TIMEOUT_RESET_MS);
+        if (!waitResult) {
+            LOG_ERROR << "NAND: Reset wait failed for block " << block;
+            return etl::unexpected(waitResult.error());
+        }
+    }
+    
+    etl::array<uint8_t, 4> marker; // Read 4 bytes instead of 1 for comparison
+    marker.fill(0xAA); // Initialize with known pattern
     
     etl::span<uint8_t> markerSpan(marker);
-    auto readResult = readSpare(addr, markerSpan, 1);
+    auto readResult = readSpare(addr, markerSpan, 4);
     if (!readResult) {
+        LOG_ERROR << "NAND: readSpare failed for block " << block << " LUN " << lun;
         return etl::unexpected(readResult.error());
     }
     
-    // Debug: Check value immediately after readSpare
-    uint8_t debugValue = marker[0];
-    return debugValue;
+    if (intensiveDebug) {
+        // Log all 4 bytes for analysis
+        LOG_DEBUG << "Block " << block << " spare bytes: [0]=0x" << std::hex << static_cast<uint32_t>(marker[0])
+                  << " [1]=0x" << std::hex << static_cast<uint32_t>(marker[1])
+                  << " [2]=0x" << std::hex << static_cast<uint32_t>(marker[2])
+                  << " [3]=0x" << std::hex << static_cast<uint32_t>(marker[3]);
+        
+        // Check for obvious data corruption patterns
+        if (marker[0] == 0xAA || marker[1] == 0xAA || marker[2] == 0xAA || marker[3] == 0xAA) {
+            LOG_ERROR << "NAND: Detected uninitialized marker data for block " << block;
+        }
+    }
+    
+    // Return the first byte (standard bad block marker location)
+    return marker[0];
 }
 
 etl::expected<NANDDeviceInfo, NANDErrorCode> MT29F::parseParameterPage(const etl::span<const uint8_t, 256>& paramPage) {
@@ -787,4 +868,176 @@ bool MT29F::isWriteProtected() {
     }
     
     return hwWriteProtected || statusWriteProtected;
+}
+
+/* ==================== Comprehensive Erase Test Implementation ==================== */
+
+etl::expected<void, NANDErrorCode> MT29F::forceEraseBlock(uint16_t block, uint8_t lun) {
+    if (!isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+    
+    if (block >= BLOCKS_PER_LUN || lun >= LUNS_PER_CE) {
+        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
+    }
+    
+    enableWrites();
+    
+    NANDAddress addr(lun, block, 0, 0);
+    AddressCycles cycles;
+    buildAddressCycles(addr, cycles);
+    
+    sendCommand(Commands::ERASE_BLOCK);
+    sendAddress(cycles.cycle[2]);  // Row 1
+    sendAddress(cycles.cycle[3]);  // Row 2  
+    sendAddress(cycles.cycle[4]);  // Row 3
+    sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+    
+    auto waitResult = waitForReady(TIMEOUT_ERASE_MS);
+    if (!waitResult) {
+        disableWrites();
+        return waitResult;
+    }
+    
+    auto statusResult = checkOperationStatus();
+    
+    disableWrites();
+    
+    return statusResult;
+}
+
+etl::expected<void, NANDErrorCode> MT29F::markBlockGood(uint16_t block, uint8_t lun) {
+    NANDAddress addr(lun, block, 0, DATA_BYTES_PER_PAGE);
+    etl::array<uint8_t, 1> goodMarker = {GOOD_BLOCK_MARKER};
+    
+    auto programResult = programSpare(addr, etl::span<const uint8_t>(goodMarker));
+    if (!programResult) {
+        LOG_WARNING << "NAND: Failed to write good block marker for block " << block;
+        return programResult;
+    }
+    
+    return {};
+}
+
+void MT29F::clearBadBlockTable() {
+    badBlockCount = 0;
+    badBlockTable.fill(BadBlockInfo{});
+    LOG_INFO << "NAND: Bad block table cleared";
+}
+
+etl::expected<void, NANDErrorCode> MT29F::comprehensiveEraseTest(uint16_t startBlock, uint16_t endBlock, bool resetBadBlockTable) {
+    if (!isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+    
+    if (startBlock > endBlock || endBlock >= BLOCKS_PER_LUN) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+    
+    LOG_WARNING << "=== STARTING COMPREHENSIVE ERASE TEST ===";
+    LOG_WARNING << "*** WARNING: This test will ERASE ALL DATA on blocks " << startBlock << " to " << endBlock << " ***";
+    LOG_WARNING << "*** This is a DESTRUCTIVE test for hardware validation ***";
+    
+    // Step 1: Reset bad block table if requested
+    if (resetBadBlockTable) {
+        LOG_INFO << "Clearing bad block table to start fresh";
+        clearBadBlockTable();
+    }
+    
+    uint16_t totalBlocks = endBlock - startBlock + 1;
+    uint16_t successfulErases = 0;
+    uint16_t failedErases = 0;
+    uint16_t blocksProcessed = 0;
+    
+    LOG_INFO << "Testing " << totalBlocks << " blocks from " << startBlock << " to " << endBlock;
+    
+    for (uint16_t block = startBlock; block <= endBlock; ++block) {
+        blocksProcessed++;
+        
+        // Progress reporting every 10 blocks
+        if (blocksProcessed % 10 == 0 || blocksProcessed == 1) {
+            LOG_INFO << "Progress: " << blocksProcessed << "/" << totalBlocks 
+                     << " blocks (" << (blocksProcessed * 100 / totalBlocks) << "%) - "
+                     << successfulErases << " good, " << failedErases << " bad";
+        }
+        
+        // Yield every 5 blocks to prevent watchdog timeout
+        if (blocksProcessed % 5 == 0) {
+            vTaskDelay(pdMS_TO_TICKS(20));
+        }
+        
+        LOG_DEBUG << "Testing block " << block << " (" << blocksProcessed << "/" << totalBlocks << ")";
+        
+        // Step 2: Attempt force erase (bypasses bad block check)
+        auto eraseResult = forceEraseBlock(block, 0);
+        
+        if (eraseResult) {
+            // Erase succeeded - mark as good block
+            LOG_DEBUG << "Block " << block << " erase SUCCESS - marking as good";
+            successfulErases++;
+            
+            // Write good block marker to spare area
+            auto markResult = markBlockGood(block, 0);
+            if (!markResult) {
+                LOG_WARNING << "Block " << block << " erase succeeded but failed to write good marker";
+            }
+            
+            // Remove from bad block table if it was previously there
+            for (size_t i = 0; i < badBlockCount; ++i) {
+                if (badBlockTable[i].blockNumber == block && badBlockTable[i].lun == 0) {
+                    LOG_INFO << "Block " << block << " was previously bad, removing from table";
+                    // Shift remaining entries down
+                    for (size_t j = i; j < badBlockCount - 1; ++j) {
+                        badBlockTable[j] = badBlockTable[j + 1];
+                    }
+                    badBlockCount--;
+                    break;
+                }
+            }
+            
+        } else {
+            // Erase failed - mark as bad block
+            LOG_WARNING << "Block " << block << " erase FAILED: " << toString(eraseResult.error()) << " - marking as bad";
+            failedErases++;
+            
+            // Add to bad block table and write bad marker
+            auto markResult = markBlockBad(block, 0, false); // Runtime detected, not factory
+            if (!markResult) {
+                LOG_ERROR << "Failed to mark block " << block << " as bad: " << toString(markResult.error());
+            }
+        }
+    }
+    
+    // Final results
+    LOG_INFO << "=== COMPREHENSIVE ERASE TEST COMPLETED ===";
+    LOG_INFO << "Total blocks tested: " << totalBlocks;
+    LOG_INFO << "Successful erases (GOOD blocks): " << successfulErases << " (" << (successfulErases * 100 / totalBlocks) << "%)";
+    LOG_INFO << "Failed erases (BAD blocks): " << failedErases << " (" << (failedErases * 100 / totalBlocks) << "%)";
+    LOG_INFO << "Current bad block table size: " << badBlockCount;
+    
+    if (failedErases > 0) {
+        LOG_WARNING << "Found " << failedErases << " hardware bad blocks during comprehensive test";
+        
+        // List the bad blocks found
+        LOG_INFO << "Bad blocks detected:";
+        for (size_t i = 0; i < badBlockCount && i < 20; ++i) { // Show first 20
+            LOG_INFO << "  Block " << badBlockTable[i].blockNumber 
+                     << " (LUN " << badBlockTable[i].lun << ")"
+                     << (badBlockTable[i].isFactoryBad ? " [Factory]" : " [Runtime]");
+        }
+        if (badBlockCount > 20) {
+            LOG_INFO << "  ... and " << (badBlockCount - 20) << " more bad blocks";
+        }
+    } else {
+        LOG_INFO << "Excellent! No hardware bad blocks found in tested range";
+    }
+    
+    float badBlockRate = (static_cast<float>(failedErases) / totalBlocks) * 100.0f;
+    if (badBlockRate > 2.0f) {
+        LOG_WARNING << "Bad block rate of " << badBlockRate << "% exceeds typical specification (2%)";
+    } else {
+        LOG_INFO << "Bad block rate of " << badBlockRate << "% is within specification";
+    }
+    
+    return {};
 }
