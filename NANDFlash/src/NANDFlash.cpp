@@ -54,6 +54,9 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     }
     deviceInfo = paramResult.value();
     
+    // Yield before starting factory bad block scan (critical for watchdog)
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
     auto scanResult = scanFactoryBadBlocks();
     if (!scanResult) {
         LOG_WARNING << "NAND: Failed to scan factory bad blocks: " << toString(scanResult.error());
@@ -590,13 +593,28 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
             } else {
                 LOG_ERROR << "Block " << testBlock << " attempt " << attempt << ": READ FAILED";
             }
+            // Small yield between consistency test attempts
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
+        // Yield after each test block
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
-    // PHASE 3: Full scan with enhanced logging
-    for (uint16_t block = 0; block < BLOCKS_PER_LUN; ++block) {
-        if (block % 16 == 0 && block > 0) {
-            vTaskDelay(pdMS_TO_TICKS(10));
+    // PHASE 3: REDUCED scan to prevent watchdog timeout during initialization
+    // Scan only first 500 blocks initially - full scan can be done later during operation
+    const uint16_t INITIAL_SCAN_BLOCKS = 500;
+    LOG_INFO << "NAND: Initial factory bad block scan (first " << INITIAL_SCAN_BLOCKS << " blocks only)";
+    
+    for (uint16_t block = 0; block < INITIAL_SCAN_BLOCKS; ++block) {
+        // Yield more frequently during critical initialization phase
+        if (block % 8 == 0 && block > 0) {
+            vTaskDelay(pdMS_TO_TICKS(5));  // Yield every 8 blocks, 5ms each
+        }
+        
+        // Progress reporting and longer yield every 50 blocks
+        if (block % 50 == 0 && block > 0) {
+            LOG_DEBUG << "NAND: Factory scan progress: " << block << "/" << INITIAL_SCAN_BLOCKS << " blocks";
+            vTaskDelay(pdMS_TO_TICKS(50));  // Longer yield to ensure watchdog can run
         }
         
         for (uint8_t lun = 0; lun < LUNS_PER_CE; ++lun) {
@@ -625,7 +643,8 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
         }
     }
     
-    LOG_INFO << "NAND: Factory bad block scan complete - found " << badBlockCount << " bad blocks";
+    LOG_INFO << "NAND: Initial factory bad block scan complete - found " << badBlockCount << " bad blocks in first " << INITIAL_SCAN_BLOCKS << " blocks";
+    LOG_INFO << "NAND: Full scan of remaining " << (BLOCKS_PER_LUN - INITIAL_SCAN_BLOCKS) << " blocks can be done during operation";
     
     // PHASE 4: Verify consistency by re-reading first few detected bad blocks
     if (badBlockCount > 0) {
