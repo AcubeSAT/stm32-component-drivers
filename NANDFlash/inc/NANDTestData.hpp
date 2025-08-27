@@ -3,7 +3,7 @@
 #include <etl/to_string.h>
 #include <etl/String.hpp>
 
-etl::array<uint8_t, 200> nand_test_data = {
+etl::array<uint8_t, 200> nandTestData = {
     76, 111, 114, 101, 109, 32, 105, 112, 115, 117,
     109, 32, 100, 111, 108, 111, 114, 32, 115, 105,
     116, 32, 97, 109, 101, 116, 44, 32, 99, 111,
@@ -24,6 +24,20 @@ etl::array<uint8_t, 200> nand_test_data = {
     110, 99, 32, 116, 111, 114, 116, 111, 114, 44,
     32, 98, 108, 97, 110, 100, 105, 116, 32, 115,
     101, 100, 32, 115, 117, 115, 99, 105, 112, 105};
+
+constexpr etl::array<uint8_t, 64> nandSpareTestData = {
+    0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF,
+    0xB0, 0xB1, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF,
+    0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF,
+    0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF
+};
+
+constexpr etl::array<uint8_t, 1> nandSingleByteTestPattern1 = {0x23};
+constexpr etl::array<uint8_t, 1> nandSingleByteTestPattern2 = {'A'};
+constexpr etl::array<uint8_t, 1> nandSingleByteTestPattern3 = {0x55};
+
+etl::array<uint8_t, 200> nandReadBuffer{};
+etl::array<uint8_t, 64> nandSpareReadBuffer{};
 
 //etl::array<uint8_t, 200> nand_test_data = {
 //    1, 2, 3, 4, 5, 6, 7, 8, 9, 10,

@@ -116,7 +116,7 @@ private:
     
     static constexpr size_t MAX_BAD_BLOCKS = 256;  /*!< Maximum number of bad blocks to track */
     
-    etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
+    // etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
     
     size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
     
@@ -414,7 +414,7 @@ public:
         : SMC(chipSelect),
           nandReadyBusyPin(readyBusyPin),
           nandWriteProtect(writeProtectPin),
-          badBlockTable{},
+          // badBlockTable{},
           badBlockCount(0) {
         selectNandConfiguration(chipSelect);
     }
@@ -595,9 +595,9 @@ public:
      * 
      * @return Span of bad block information entries
      */
-    [[nodiscard]] etl::span<const BadBlockInfo> getBadBlockList() const noexcept {
-        return etl::span<const BadBlockInfo>(badBlockTable.data(), badBlockCount);
-    }
+    // [[nodiscard]] etl::span<const BadBlockInfo> getBadBlockList() const noexcept {
+    //     return etl::span<const BadBlockInfo>(badBlockTable.data(), badBlockCount);
+    // }
     
     /**
      * @brief Get count of bad blocks
