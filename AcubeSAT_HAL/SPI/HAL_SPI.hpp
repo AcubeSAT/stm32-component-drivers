@@ -165,6 +165,7 @@ namespace HAL_SPI {
      * @param timeoutMs Time period after which SPI peripheral is reseted if it is unresponsive.
      * @return NONE is the peripheral responded in time; TIMEOUT otherwise.
      */
+    template<PeripheralNumber peripheralNumber>
     SPIError waitForResponse(const uint32_t timeoutMs) {
         auto start = xTaskGetTickCount();
         while (isBusy<peripheralNumber>()) {
