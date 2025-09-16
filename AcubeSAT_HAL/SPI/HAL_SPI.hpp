@@ -4,13 +4,8 @@
 #include <plib_pio.h>
 #include <plib_systick.h>
 #include <etl/span.h>
-
-#ifdef  SPI0_ENABLED
 #include  "peripheral/spi/spi_master/plib_spi0_master.h"
-#endif
-#ifdef  SPI1_ENABLED
 #include  "peripheral/spi/spi_master/plib_spi1_master.h"
-#endif
 
 /**
  * Namespace to be used for communication with AcubeSAT's component that use SPI.
