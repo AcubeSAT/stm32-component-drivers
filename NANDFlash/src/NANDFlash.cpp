@@ -7,22 +7,22 @@
 /* ================= Driver Initialization and Basic Info ================= */
 
 etl::expected<void, NANDErrorCode> MT29F::initialize() {
-    LOG_DEBUG << "NAND: Starting reset";
+    // LOG_DEBUG << "NAND: Starting reset";
     auto resetResult = reset();
     if (!resetResult) {
         LOG_ERROR << "NAND: Reset failed";
         return resetResult;
     }
-    LOG_DEBUG << "NAND: Reset completed successfully";
+    // LOG_DEBUG << "NAND: Reset completed successfully";
     
-    LOG_DEBUG << "NAND: Reading device ID";
+    // LOG_DEBUG << "NAND: Reading device ID";
     etl::array<uint8_t, 5> deviceId;
     auto idResult = readDeviceID(deviceId);
     if (!idResult) {
         LOG_ERROR << "NAND: Failed to read device ID";
         return idResult;
     }
-    LOG_DEBUG << "NAND: Device ID read successfully";
+    // LOG_DEBUG << "NAND: Device ID read successfully";
     
     if (!std::equal(EXPECTED_DEVICE_ID.begin(), EXPECTED_DEVICE_ID.end(), deviceId.begin())) {
         LOG_ERROR << "NAND: Unexpected device ID: " << static_cast<uint32_t>(deviceId[0]) << " "
@@ -31,43 +31,33 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
     
-    LOG_DEBUG << "NAND: Reading ONFI signature";
+    // LOG_DEBUG << "NAND: Reading ONFI signature";
     etl::array<uint8_t, 4> onfiSignature;
     auto onfiResult = readONFISignature(onfiSignature);
     if (!onfiResult) {
         LOG_ERROR << "NAND: Failed to read ONFI signature";
         return onfiResult;
     }
-    LOG_DEBUG << "NAND: ONFI signature read successfully";
+    // LOG_DEBUG << "NAND: ONFI signature read successfully";
     
     const char* expectedOnfi = "ONFI";
     if (std::memcmp(onfiSignature.data(), expectedOnfi, 4) != 0) {
         LOG_WARNING << "NAND: Device is not ONFI compliant";
-        deviceInfo.isONFICompliant = false;
-    } else {
-        deviceInfo.isONFICompliant = true;
     }
     
-    auto paramResult = readParameterPage();
+    LOG_DEBUG << "NAND: Validating device parameters";
+    auto paramResult = validateDeviceParameters();
     if (!paramResult) {
-        return etl::unexpected(paramResult.error());
+        LOG_ERROR << "NAND: Device parameter validation failed";
+        return paramResult;
     }
-    deviceInfo = paramResult.value();
-    
-    // Yield before starting factory bad block scan (critical for watchdog)
-    vTaskDelay(pdMS_TO_TICKS(100));
-    
-    auto scanResult = scanFactoryBadBlocks();
-    if (!scanResult) {
-        LOG_WARNING << "NAND: Failed to scan factory bad blocks: " << toString(scanResult.error());
-        /* This is not critical in order to failt the initialization */
-    }
+    // LOG_DEBUG << "NAND: Device parameters validated successfully";
     
     disableWrites();
     
     isInitialized = true;
 
-    LOG_DEBUG << "NAND initialized successfully. Bad blocks: " << badBlockCount;
+    LOG_DEBUG << "NAND initialized successfully (bad block scanning deferred)";
     
     return {};
 }
@@ -109,7 +99,8 @@ etl::expected<void, NANDErrorCode> MT29F::readONFISignature(etl::span<uint8_t, 4
     return {};
 }
 
-etl::expected<NANDDeviceInfo, NANDErrorCode> MT29F::readParameterPage() {
+
+etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_PARAM_PAGE);
     sendAddress(0x00);  // Parameter page address
     
@@ -128,22 +119,63 @@ etl::expected<NANDDeviceInfo, NANDErrorCode> MT29F::readParameterPage() {
     /* ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one */
     for (uint8_t copy = 0; copy < 3; copy++) {
         etl::array<uint8_t, 256> paramPageData;
-        
-        for (size_t i = 0; i < 256; ++i) { 
+    
+        for (size_t i = 0; i < 256; ++i) {
             paramPageData[i] = readData();
         }
-        
+    
         if (validateParameterPageCRC(paramPageData)) {
-            LOG_INFO << "NAND: Valid parameter page found (copy " << copy << ")";
-            return parseParameterPage(etl::span<const uint8_t, 256>(paramPageData));
+            // LOG_DEBUG << "NAND: Valid parameter page found (copy " << copy << "), validating geometry";
+    
+            // Validate ONFI signature
+            if (std::memcmp(paramPageData.data(), "ONFI", 4) != 0) {
+                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+            }
+    
+            // Extract geometry values from parameter page (little-endian)
+            auto asUint16 = [](uint8_t low, uint8_t high) -> uint16_t {
+                return low | (static_cast<uint16_t>(high) << 8);
+            };
+    
+            auto asUint32 = [](uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) -> uint32_t {
+                return b0 | (static_cast<uint32_t>(b1) << 8) |
+                       (static_cast<uint32_t>(b2) << 16) | (static_cast<uint32_t>(b3) << 24);
+            };
+    
+            uint32_t readDataBytesPerPage = asUint32(paramPageData[80], paramPageData[81], paramPageData[82], paramPageData[83]);
+            uint16_t readSpareBytesPerPage = asUint16(paramPageData[84], paramPageData[85]);
+            uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
+            uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
+    
+            // Validate against hardcoded constants
+            if (readDataBytesPerPage != DATA_BYTES_PER_PAGE) {
+                LOG_ERROR << "NAND: Data bytes per page mismatch: expected " << DATA_BYTES_PER_PAGE << ", got " << readDataBytesPerPage;
+                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+            }
+            if (readSpareBytesPerPage != SPARE_BYTES_PER_PAGE) {
+                LOG_ERROR << "NAND: Spare bytes per page mismatch: expected " << SPARE_BYTES_PER_PAGE << ", got " << readSpareBytesPerPage;
+                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+            }
+            if (readPagesPerBlock != PAGES_PER_BLOCK) {
+                LOG_ERROR << "NAND: Pages per block mismatch: expected " << PAGES_PER_BLOCK << ", got " << readPagesPerBlock;
+                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+            }
+            if (readBlocksPerLUN != BLOCKS_PER_LUN) {
+                LOG_ERROR << "NAND: Blocks per LUN mismatch: expected " << BLOCKS_PER_LUN << ", got " << readBlocksPerLUN;
+                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+            }
+    
+            LOG_DEBUG << "NAND: Device geometry validated successfully";
+            // Parameter page goes out of scope here - stack space reclaimed!
+            return {};
         } else {
             LOG_WARNING << "NAND: Parameter page copy " << copy << " has invalid CRC";
         }
     }
     
     LOG_ERROR << "NAND: All parameter page copies have invalid CRC";
-
     return etl::unexpected(NANDErrorCode::BAD_PARAMETER_PAGE);
+    // return {};
 }
 
 
@@ -163,13 +195,13 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
     
-    auto badBlockResult = checkBlockBad(addr.block, addr.lun);
-    if (!badBlockResult) {
-        return etl::unexpected(badBlockResult.error());
-    }
-    if (badBlockResult.value()) {
-        return etl::unexpected(NANDErrorCode::BAD_BLOCK);
-    }
+    // auto badBlockResult = checkBlockBad(addr.block, addr.lun);
+    // if (!badBlockResult) {
+    //     return etl::unexpected(badBlockResult.error());
+    // }
+    // if (badBlockResult.value()) {
+    //     return etl::unexpected(NANDErrorCode::BAD_BLOCK);
+    // }
     
     AddressCycles cycles;
     buildAddressCycles(addr, cycles);
@@ -211,7 +243,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl::span<uint8_t>& data, uint32_t length) {
+etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length) {
     // if (!isInitialized) {
     //     return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     // }
@@ -273,13 +305,13 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
     
-    auto badBlockResult = checkBlockBad(addr.block, addr.lun);
-    if (!badBlockResult) {
-        return etl::unexpected(badBlockResult.error());
-    }
-    if (badBlockResult.value()) {
-        return etl::unexpected(NANDErrorCode::BAD_BLOCK);
-    }
+    // auto badBlockResult = checkBlockBad(addr.block, addr.lun);
+    // if (!badBlockResult) {
+    //     return etl::unexpected(badBlockResult.error());
+    // }
+    // if (badBlockResult.value()) {
+    //     return etl::unexpected(NANDErrorCode::BAD_BLOCK);
+    // }
     
     enableWrites();
     
@@ -385,13 +417,13 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
     
-    auto badBlockResult = checkBlockBad(block, lun);
-    if (!badBlockResult) {
-        return etl::unexpected(badBlockResult.error());
-    }
-    if (badBlockResult.value()) {
-        return etl::unexpected(NANDErrorCode::BAD_BLOCK);
-    }
+    // auto badBlockResult = checkBlockBad(block, lun);
+    // if (!badBlockResult) {
+    //     return etl::unexpected(badBlockResult.error());
+    // }
+    // if (badBlockResult.value()) {
+    //     return etl::unexpected(NANDErrorCode::BAD_BLOCK);
+    // }
     
     enableWrites();
     
@@ -540,10 +572,10 @@ etl::expected<void, NANDErrorCode> MT29F::checkOperationStatus() {
     
     uint8_t status = statusResult.value();
     
-    LOG_DEBUG << "NAND: Status register = 0x" << std::hex << static_cast<uint32_t>(status) 
-              << " (FAIL=" << ((status & STATUS_FAIL) ? "1" : "0")
-              << ", FAILC=" << ((status & STATUS_FAILC) ? "1" : "0") 
-              << ", WP=" << ((status & STATUS_WP) ? "1" : "0") << ")";
+    // LOG_DEBUG << "NAND: Status register = 0x" << std::hex << static_cast<uint32_t>(status)
+    //           << " (FAIL=" << ((status & STATUS_FAIL) ? "1" : "0")
+    //           << ", FAILC=" << ((status & STATUS_FAILC) ? "1" : "0")
+    //           << ", WP=" << ((status & STATUS_WP) ? "1" : "0") << ")";
     
     if ((status & STATUS_FAIL) != 0) {
         LOG_ERROR << "NAND: STATUS_FAIL bit set";
@@ -580,7 +612,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks() {
     //     badBlockTable[i] = {0, 0, false, 0}; // Zero out entire table
     // }
     
-    LOG_INFO << "NAND: Starting factory bad block scan - table cleared";
+    // LOG_INFO << "NAND: Starting factory bad block scan - table cleared";
     
     // PHASE 2: Test a few specific blocks first to validate readSpare() consistency
     // LOG_DEBUG << "NAND: Testing readSpare() consistency on blocks 0, 1, 2";
@@ -673,22 +705,22 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBadBlockMarker(uint16_t block, 
     }
     
     // For debugging: only do intensive debugging on first 10 blocks
-    bool intensiveDebug = (block < 10);
-    
-    if (intensiveDebug) {
-        // CRITICAL: Ensure device is in known state before reading
-        sendCommand(Commands::RESET);
-        
-        // Wait for reset to complete
-        auto waitResult = waitForReady(TIMEOUT_RESET_MS);
-        if (!waitResult) {
-            LOG_ERROR << "NAND: Reset wait failed for block " << block;
-            return etl::unexpected(waitResult.error());
-        }
-    }
+    // bool intensiveDebug = (block < 10);
+    //
+    // if (intensiveDebug) {
+    //     // CRITICAL: Ensure device is in known state before reading
+    //     sendCommand(Commands::RESET);
+    //
+    //     // Wait for reset to complete
+    //     auto waitResult = waitForReady(TIMEOUT_RESET_MS);
+    //     if (!waitResult) {
+    //         LOG_ERROR << "NAND: Reset wait failed for block " << block;
+    //         return etl::unexpected(waitResult.error());
+    //     }
+    // }
     
     etl::array<uint8_t, 4> marker; // Read 4 bytes instead of 1 for comparison
-    marker.fill(0xAA); // Initialize with known pattern
+    // marker.fill(0xAA); // Initialize with known pattern
     
     etl::span<uint8_t> markerSpan(marker);
     auto readResult = readSpare(addr, markerSpan, 4);
@@ -697,18 +729,18 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBadBlockMarker(uint16_t block, 
         return etl::unexpected(readResult.error());
     }
     
-    if (intensiveDebug) {
-        // Log all 4 bytes for analysis
-        LOG_DEBUG << "Block " << block << " spare bytes: [0]=0x" << std::hex << static_cast<uint32_t>(marker[0])
-                  << " [1]=0x" << std::hex << static_cast<uint32_t>(marker[1])
-                  << " [2]=0x" << std::hex << static_cast<uint32_t>(marker[2])
-                  << " [3]=0x" << std::hex << static_cast<uint32_t>(marker[3]);
-        
-        // Check for obvious data corruption patterns
-        if (marker[0] == 0xAA || marker[1] == 0xAA || marker[2] == 0xAA || marker[3] == 0xAA) {
-            LOG_ERROR << "NAND: Detected uninitialized marker data for block " << block;
-        }
-    }
+    // if (intensiveDebug) {
+    //     // Log all 4 bytes for analysis
+    //     LOG_DEBUG << "Block " << block << " spare bytes: [0]=0x" << std::hex << static_cast<uint32_t>(marker[0])
+    //               << " [1]=0x" << std::hex << static_cast<uint32_t>(marker[1])
+    //               << " [2]=0x" << std::hex << static_cast<uint32_t>(marker[2])
+    //               << " [3]=0x" << std::hex << static_cast<uint32_t>(marker[3]);
+    //
+    //     // Check for obvious data corruption patterns
+    //     if (marker[0] == 0xAA || marker[1] == 0xAA || marker[2] == 0xAA || marker[3] == 0xAA) {
+    //         LOG_ERROR << "NAND: Detected uninitialized marker data for block " << block;
+    //     }
+    // }
     
     // Return the first byte (standard bad block marker location)
     return marker[0];

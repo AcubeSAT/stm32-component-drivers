@@ -108,8 +108,6 @@ private:
     /* ================= Driver state variables ================== */
   
     bool isInitialized = false; /*!< Driver initialization status */
-    
-    NANDDeviceInfo deviceInfo{}; /*!< Device information from parameter page */
 
     
     /* ================= Bad block management  ================== */
@@ -324,18 +322,6 @@ private:
      */
     etl::expected<void, NANDErrorCode> markBlockBad(uint16_t block, uint8_t lun, bool isFactoryBad = false);
     
-    /**
-     * @brief Scan all blocks for factory bad block markers
-     * 
-     * @note Continues scanning even if some blocks can't be read
-     * 
-     * @details Reads the first byte of spare area from first page of each block.
-     * Factory bad blocks are marked with 0x00, good blocks with 0xFF.
-     * Populates the bad block table with found factory bad blocks.
-     * 
-     * @return Success or error code
-     */
-    etl::expected<void, NANDErrorCode> scanFactoryBadBlocks();
     
     /**
      * @brief Read bad block marker from spare area
@@ -453,20 +439,19 @@ public:
     /**
      * @brief Initialize the NAND flash driver and verify device
      * 
-     * @details This function performs complete device initialization including:
+     * @details This function performs basic device initialization including:
      * - Device reset and ID verification
      * - ONFI compliance checking
-     * - Parameter page reading and validation
-     * - Factory bad block scanning
+     * - Parameter page validation against expected geometry
      * - Write protection initialization
      * 
+     * @note Factory bad block scanning is now optional - call scanFactoryBadBlocks() separately if needed
      * @note Must be called before any other operations
      * 
      * @return Success or specific error code
      * @retval NANDErrorCode::SUCCESS Initialization completed successfully
-     * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID or ONFI failure
+     * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
      * @retval NANDErrorCode::TIMEOUT Device not responding
-     * @retval NANDErrorCode::BAD_PARAMETER_PAGE Invalid parameter page
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
     
@@ -496,19 +481,13 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> readONFISignature(etl::span<uint8_t, 4> signature);
     
     /**
-     * @brief Read and parse the parameter page
+     * @brief Validate device parameters match expected geometry
      * 
-     * @return Device information structure or error code
+     * @return Success if device matches expected parameters, error otherwise
      */
-    [[nodiscard]] etl::expected<NANDDeviceInfo, NANDErrorCode> readParameterPage();
+    [[nodiscard]] etl::expected<void, NANDErrorCode> validateDeviceParameters();
     
     
-    /**
-     * @brief Get device information
-     * 
-     * @return Device info structure (only valid after successful initialization)
-     */
-    const NANDDeviceInfo& getDeviceInfo() const { return deviceInfo; }
 
 
     /* ================== Data Operations ================== */
@@ -533,7 +512,7 @@ public:
      * 
      * @return Success or error code
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readSpare(const NANDAddress& addr, etl::span<uint8_t>& data, uint32_t length);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
     
     /**
      * @brief Program (write) data to NAND flash page
@@ -605,6 +584,20 @@ public:
      * @return Number of bad blocks found
      */
     [[nodiscard]] size_t getBadBlockCount() const noexcept { return badBlockCount; }
+
+    /**
+     * @brief Scan all blocks for factory bad block markers (OPTIONAL)
+     * 
+     * @note This is now separate from initialize() - call only if bad block management is needed
+     * @note Continues scanning even if some blocks can't be read
+     * 
+     * @details Reads the first byte of spare area from first page of each block.
+     * Factory bad blocks are marked with 0x00, good blocks with 0xFF.
+     * Populates the bad block table with found factory bad blocks.
+     * 
+     * @return Success or error code
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks();
     
     /**
      * @brief Initialize blocks by erasing them and marking failed ones as bad
