@@ -10,8 +10,7 @@
  * @brief Error codes for NAND flash operations
  */
 enum class NANDErrorCode : uint8_t {
-    SUCCESS = 0,
-    TIMEOUT,
+    TIMEOUT = 1,
     ADDRESS_OUT_OF_BOUNDS,
     BUSY_IO,
     BUSY_ARRAY, 
@@ -28,34 +27,13 @@ enum class NANDErrorCode : uint8_t {
     UNSUPPORTED_OPERATION
 };
 
-/**
- * @brief NAND flash device information from parameter page
- */
-struct NANDDeviceInfo {
-    char manufacturer[13];
-    char model[21];
-    uint8_t jedecId;
-    uint16_t revisionNumber;
-    uint32_t dataBytesPerPage;
-    uint16_t spareBytesPerPage;
-    uint32_t pagesPerBlock;
-    uint32_t blocksPerLUN;
-    uint8_t lunsPerCE;
-    uint16_t maxBadBlocksPerLUN;
-    uint16_t blockEndurance;
-    uint8_t eccBits;
-    bool isONFICompliant;
-};
-
-/**
- * @brief Bad block information structure
- */
-struct BadBlockInfo {
-    uint16_t blockNumber;
-    uint8_t lun;
-    bool isFactoryBad;
-    uint32_t errorCount;
-};
+// /**
+//  * @brief Bad block information structure
+//  */
+// struct BadBlockInfo {
+//     uint16_t blockNumber;
+//     uint8_t lun;
+// };
 
 /**
  * @brief Driver for MT29F32G09ABAAA NAND Flash
@@ -116,7 +94,7 @@ private:
     
     // etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
     
-    size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
+    // size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
     
     static constexpr uint16_t BAD_BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
     
@@ -134,24 +112,14 @@ private:
         RESET = 0xFF,                        
         READID = 0x90,                      
         READ_PARAM_PAGE = 0xEC,              
-        READ_UNIQ_ID = 0xED,                 
-        SET_FEATURE = 0xEF,                  
-        GET_FEATURE = 0xEE,                  
-        READ_STATUS = 0x70,                  
-        READ_STATUS_ENHANCED = 0x78,         
+        READ_UNIQ_ID = 0xED,                              
+        READ_STATUS = 0x70,                     
         ERASE_BLOCK = 0x60,                  
         ERASE_BLOCK_CONFIRM = 0xD0,          
         READ_MODE = 0x00,                    
-        READ_CONFIRM = 0x30,                 
-        READ_NEXT_SEQ_PAGE = 0x31,           
+        READ_CONFIRM = 0x30,                          
         PAGE_PROGRAM = 0x80,                 
-        PAGE_PROGRAM_CONFIRM = 0x10,         
-        READ_INTERNAL_DATA_MOVE = 0x35,      
-        PROGRAM_INTERNAL_DATA_MOVE = 0x85,   
-        LOCK = 0x2A,                         
-        BLOCK_UNLOCK_LOW = 0x23,             
-        BLOCK_UNLOCK_HIGH = 0x24,            
-        BLOCK_LOCK_READ_STATUS = 0x7A       
+        PAGE_PROGRAM_CONFIRM = 0x10         
     };
     
     /** 
@@ -260,15 +228,8 @@ private:
      * 
      * @return Status register value or error code
      */
-    etl::expected<uint8_t, NANDErrorCode> readStatusRegister();
-    
-    /**
-     * @brief Check operation status for errors
-     * 
-     * @return Success or operation-specific error code
-     */
-    etl::expected<void, NANDErrorCode> checkOperationStatus();
-    
+    uint8_t readStatusRegister();
+        
     /**
      * @brief Validate NAND address bounds
      * 
@@ -309,7 +270,7 @@ private:
      * 
      * @return true if block is bad, false if good
      */
-    etl::expected<bool, NANDErrorCode> checkBlockBad(uint16_t block, uint8_t lun);
+    bool checkBlockBad(uint16_t block, uint8_t lun);
     
     /**
      * @brief Mark a block as bad in bad block table and spare area
@@ -320,7 +281,7 @@ private:
      * 
      * @return Success or error code
      */
-    etl::expected<void, NANDErrorCode> markBlockBad(uint16_t block, uint8_t lun, bool isFactoryBad = false);
+    etl::expected<void, NANDErrorCode> markBlockBad(uint16_t block, uint8_t lun);
     
     
     /**
@@ -332,20 +293,6 @@ private:
      * @return Bad block marker byte (0xFF = good, 0x00 = bad)
      */
     etl::expected<uint8_t, NANDErrorCode> readBadBlockMarker(uint16_t block, uint8_t lun);
-
-    /**
-     * @brief Force erase a block without checking bad block status
-     * 
-     * @details Performs low-level erase operation bypassing bad block checks.
-     * Returns actual hardware erase result without automatically marking blocks as bad.
-     * Used by comprehensive erase test to validate true block hardware status.
-     * 
-     * @param block Block number to erase
-     * @param lun LUN number
-     * 
-     * @return Success if erase succeeded, ERASE_FAILED if hardware erase failed
-     */
-    etl::expected<void, NANDErrorCode> forceEraseBlock(uint16_t block, uint8_t lun);
 
     /**
      * @brief Mark a block as good by writing 0xFF to spare area
@@ -364,16 +311,7 @@ private:
 
     
     /* ================ Parameter page parsing functions ================ */
-    
-    /**
-     * @brief Parse ONFI parameter page data
-     * 
-     * @param paramPage 256-byte parameter page data
-     * 
-     * @return Parsed device information or error code
-     */
-    etl::expected<NANDDeviceInfo, NANDErrorCode> parseParameterPage(const etl::span<const uint8_t, 256>& paramPage);
-    
+        
     /**
      * @brief Validate parameter page CRC-16 checksum
      * 
@@ -399,9 +337,10 @@ public:
     MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin) 
         : SMC(chipSelect),
           nandReadyBusyPin(readyBusyPin),
-          nandWriteProtect(writeProtectPin),
+          nandWriteProtect(writeProtectPin)
           // badBlockTable{},
-          badBlockCount(0) {
+          // badBlockCount(0)
+          {
         selectNandConfiguration(chipSelect);
     }
     
@@ -488,8 +427,6 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> validateDeviceParameters();
     
     
-
-
     /* ================== Data Operations ================== */
     
     /**
@@ -568,73 +505,7 @@ public:
      * @return Success or error code
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
-    
-    /**
-     * @brief Get list of all bad blocks
-     * 
-     * @return Span of bad block information entries
-     */
-    // [[nodiscard]] etl::span<const BadBlockInfo> getBadBlockList() const noexcept {
-    //     return etl::span<const BadBlockInfo>(badBlockTable.data(), badBlockCount);
-    // }
-    
-    /**
-     * @brief Get count of bad blocks
-     * 
-     * @return Number of bad blocks found
-     */
-    [[nodiscard]] size_t getBadBlockCount() const noexcept { return badBlockCount; }
-
-    /**
-     * @brief Scan all blocks for factory bad block markers (OPTIONAL)
-     * 
-     * @note This is now separate from initialize() - call only if bad block management is needed
-     * @note Continues scanning even if some blocks can't be read
-     * 
-     * @details Reads the first byte of spare area from first page of each block.
-     * Factory bad blocks are marked with 0x00, good blocks with 0xFF.
-     * Populates the bad block table with found factory bad blocks.
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks();
-    
-    /**
-     * @brief Initialize blocks by erasing them and marking failed ones as bad
-     * 
-     * @details This function is used to initialize fresh NAND devices where spare areas
-     * may contain uninitialized data. It attempts to erase each block in the specified range.
-     * Blocks that fail to erase are marked as bad. Successfully erased blocks will have
-     * their spare areas set to 0xFF (good block marker).
-     * 
-     * @param startBlock First block to initialize
-     * @param endBlock Last block to initialize (inclusive)
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> initializeBlocks(uint16_t startBlock, uint16_t endBlock);
-
-    /**
-     * @brief Comprehensive block erase test that validates hardware erase capability
-     * 
-     * @details This test performs hardware-level validation of each block by:
-     * 1. Clearing the bad block table to start fresh
-     * 2. Attempting to erase each block regardless of current bad block markers
-     * 3. Marking blocks as bad if erase fails, good if erase succeeds
-     * 4. Writing proper spare area markers (0x00 for bad, 0xFF for good)
-     * 5. Providing detailed statistics and progress reporting
-     * 
-     * @warning This is a DESTRUCTIVE test that will ERASE ALL DATA on the device
-     * @warning Use only for hardware validation or fresh device characterization
-     * 
-     * @param startBlock First block to test (inclusive)
-     * @param endBlock Last block to test (inclusive) 
-     * @param resetBadBlockTable If true, clears bad block table before testing
-     * 
-     * @return Success or error code with detailed results
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> comprehensiveEraseTest(uint16_t startBlock, uint16_t endBlock, bool resetBadBlockTable = true);
-   
+        
 };
 
 
@@ -648,7 +519,6 @@ public:
  */
 constexpr const char* toString(NANDErrorCode error) {
     switch (error) {
-        case NANDErrorCode::SUCCESS: return "Success";
         case NANDErrorCode::TIMEOUT: return "Timeout";
         case NANDErrorCode::ADDRESS_OUT_OF_BOUNDS: return "Address out of bounds";
         case NANDErrorCode::BUSY_IO: return "Device busy - I/O";
