@@ -43,22 +43,25 @@ public:
      *   will be driven Low, cutting the power supply towards the protected IC and retain its state after the surge.
      * @note If a surge is detected and the power is cut, the MCU will have to call the @fn enableLCL to provide the IC
      *       with power again.
+     * @return  false on failure
      */
-    void enableLCL() override;
+   [[nodiscard]] bool enableLCL() override;
 
     /**
      * Disable the LCL, cutting the supply voltage to the IC. To achieve this, the Reset Pin is driven Low to force the
      * SR Latch state to Low, cutting the power towards the IC and as an extra step, the PWM signal is closed, setting
      * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
+     * @return  false on failure
      */
-    void disableLCL() override;
+    [[nodiscard]] bool disableLCL() override;
 
     /**
      * This is a helper function that checks if the DACC data have been written successfully to the DACC channel.
      * The timeout ensures that the code will not get stuck in the loop.
      * @param voltage @see DACVolts
+     * @return false on DACC timeout
      */
-    etl::expected<bool, bool> writeDACCDataWithTimeout(uint16_t voltage);
+   [[nodiscard]] bool writeDACCDataWithTimeout(uint16_t voltage);
 
 private:
     /**
