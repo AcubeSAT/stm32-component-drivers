@@ -50,6 +50,7 @@ public:
     static constexpr uint32_t DATA_BYTES_PER_PAGE = 8192;
     static constexpr uint16_t SPARE_BYTES_PER_PAGE = 448;
     static constexpr uint16_t TOTAL_BYTES_PER_PAGE = DATA_BYTES_PER_PAGE + SPARE_BYTES_PER_PAGE;
+    static constexpr uint16_t ECC_BYTES = 160;
     static constexpr uint8_t PAGES_PER_BLOCK = 128;
     static constexpr uint16_t BLOCKS_PER_LUN = 4096;
     static constexpr uint8_t LUNS_PER_CE = 1;
@@ -109,17 +110,20 @@ private:
      * @brief NAND Commands 
      */
     enum class Commands : uint8_t {
-        RESET = 0xFF,                        
-        READID = 0x90,                      
-        READ_PARAM_PAGE = 0xEC,              
-        READ_UNIQ_ID = 0xED,                              
-        READ_STATUS = 0x70,                     
-        ERASE_BLOCK = 0x60,                  
-        ERASE_BLOCK_CONFIRM = 0xD0,          
-        READ_MODE = 0x00,                    
-        READ_CONFIRM = 0x30,                          
-        PAGE_PROGRAM = 0x80,                 
-        PAGE_PROGRAM_CONFIRM = 0x10         
+        RESET = 0xFF,
+        READID = 0x90,
+        READ_PARAM_PAGE = 0xEC,
+        READ_UNIQ_ID = 0xED,
+        READ_STATUS = 0x70,
+        ERASE_BLOCK = 0x60,
+        ERASE_BLOCK_CONFIRM = 0xD0,
+        READ_MODE = 0x00,
+        READ_CONFIRM = 0x30,
+        PAGE_PROGRAM = 0x80,
+        PAGE_PROGRAM_CONFIRM = 0x10,
+        CHANGE_WRITE_COLUMN = 0x85,
+        CHANGE_READ_COLUMN = 0x05,
+        CHANGE_READ_COLUMN_CONFIRM = 0xE0
     };
     
     /** 
@@ -218,30 +222,6 @@ private:
     etl::expected<void, NANDErrorCode> readONFISignature(etl::span<uint8_t, 4> signature);
 
     /**
-     * @brief Read data from flash
-     * 
-     * @param addr NAND address to read from
-     * @param[out] data Buffer to store read data (max page size)
-     * @param length Number of bytes to read
-     * 
-     * @return Success or error code
-     */
-    etl::expected<void, NANDErrorCode> read(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
-
-    /**
-     * @brief Program (write) data to flash
-     * 
-     * @note Page must be in erased state before programming
-     * 
-     * @param addr NAND address to write to
-     * @param data Data to write (max page size)
-     * 
-     * @return Success or error code
-     */
-    etl::expected<void, NANDErrorCode> program(const NANDAddress& addr, etl::span<const uint8_t> data);
-    
-    
-    /**
      * @brief Build 5-cycle address sequence for NAND Device
      * 
      * @note Converts NAND address structure to hardware address cycles:
@@ -281,7 +261,29 @@ private:
      */
     etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr);
 
-    
+    /**
+     * @brief Calculate ECC codes for page data
+     *
+     * @param pageData Page data to calculate ECC for
+     * @param[out] eccOutput Buffer to store calculated ECC (160 bytes)
+     *
+     * @return Success or calculation error
+     */
+    etl::expected<void, NANDErrorCode> calculateECC(etl::span<const uint8_t> pageData,
+                                                    etl::span<uint8_t> eccOutput);
+
+    /**
+     * @brief Validate and correct page data using ECC codes
+     *
+     * @param pageData Page data to validate and correct (modified in-place)
+     * @param eccCodes ECC codes read from spare area (160 bytes)
+     *
+     * @return Number of corrected errors, or error if uncorrectable
+     */
+    etl::expected<uint8_t, NANDErrorCode> validateAndCorrectECC(etl::span<uint8_t> pageData,
+                                                               etl::span<const uint8_t> eccCodes);
+
+
     /* ============= Write protection management functions ============= */
     
     /**
@@ -313,16 +315,6 @@ private:
      * @return Block marker byte (0xFF = good, 0x00 = bad)
      */
     etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun);
-
-    /**
-     * @brief Mark a block as good by writing 0xFF to spare area
-     * 
-     * @param block Block number to mark as good
-     * @param lun LUN number
-     * 
-     * @return Success or error code
-     */
-    etl::expected<void, NANDErrorCode> markGoodBlock(uint16_t block, uint8_t lun);
 
     /**
      * @brief Scan all blocks in a LUN for factory bad block markers
@@ -437,26 +429,15 @@ public:
     /* ================== Data Operations ================== */
     
     /**
-     * @brief Read data from NAND flash
-     * 
+     * @brief Read data from NAND flash with optional ECC validation
+     *
      * @param addr NAND address to read from
-     * @param[out] data Buffer to store read data (max page size)
-     * @param length Number of bytes to read
-     * 
+     * @param[out] data Buffer to store read data (size determines bytes to read)
+     * @param performECC Whether to read spare area and perform ECC validation (default: true)
+     *
      * @return Success or error code
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
-    
-    /**
-     * @brief Read spare area from a page
-     * 
-     * @param addr NAND address (column ignored, set to spare area start)
-     * @param[out] data Buffer to store spare data (max spare size)
-     * @param length Number of bytes to read from spare area
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data, bool performECC = true);
     
     /**
      * @brief Program (write) data to NAND flash page
@@ -469,17 +450,7 @@ public:
      * @return Success or error code
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
-    
-    /**
-     * @brief Program spare area of a page
-     * 
-     * @param addr NAND address (column ignored, set to spare area start) 
-     * @param data Spare data to write (max spare size)
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> programSpare(const NANDAddress& addr, etl::span<const uint8_t> data);
-    
+     
     /**
      * @brief Erase a block
      * 

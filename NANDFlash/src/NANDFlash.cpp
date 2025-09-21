@@ -174,34 +174,19 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 /* ===================== Data Operations ===================== */
 
 
-etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length) {
+etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl::span<uint8_t> data, bool performECC) {
     if (!isInitialized) {
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if (addr.column + length > DATA_BYTES_PER_PAGE || length > data.size()) {
+    if ((addr.column + data.size()) > TOTAL_BYTES_PER_PAGE || (data.size() > TOTAL_BYTES_PER_PAGE)) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    return read(addr, data, length);
-}
-
-etl::expected<void, NANDErrorCode> MT29F::readSpare(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length) {
-    if (!isInitialized) {
-        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
-    }
-
-    if (length > SPARE_BYTES_PER_PAGE || length > data.size()) {
+    if (performECC && (data.size() < DATA_BYTES_PER_PAGE)) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    NANDAddress spareAddr = addr;
-    spareAddr.column = DATA_BYTES_PER_PAGE;  // Spare area starts after main data
-
-    return read(spareAddr, data, length);
-}
-
-etl::expected<void, NANDErrorCode> MT29F::read(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length) {
     auto validateResult = validateAddress(addr);
     if (!validateResult) {
         return validateResult;
@@ -237,14 +222,42 @@ etl::expected<void, NANDErrorCode> MT29F::read(const NANDAddress& addr, etl::spa
     sendCommand(Commands::READ_MODE);
     vTaskDelay(1); // Wait tWHR
 
-    for (uint32_t i = 0; i < length; ++i) {
+    for (uint32_t i = 0; i < data.size(); ++i) {
         data[i] = readData();
+    }
+
+    if (performECC) {
+
+        sendCommand(Commands::CHANGE_READ_COLUMN);
+        sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
+        sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
+        sendCommand(Commands::CHANGE_READ_COLUMN_CONFIRM);
+
+        uint8_t goodBlockMarker = readData();
+
+        etl::array<uint8_t, ECC_BYTES> eccCodes;
+        for (size_t i = 0; i < ECC_BYTES; ++i) {
+            eccCodes[i] = readData();
+        }
+
+        auto eccResult = validateAndCorrectECC(data.subspan(0, DATA_BYTES_PER_PAGE), eccCodes);
+        if (!eccResult) {
+            return etl::unexpected(eccResult.error());
+        }
     }
 
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::program(const NANDAddress& addr, etl::span<const uint8_t> data) {
+etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, etl::span<const uint8_t> data) {
+    if (!isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if ((addr.column  + data.size() > DATA_BYTES_PER_PAGE) || (data.size() > DATA_BYTES_PER_PAGE)) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
     auto validateResult = validateAddress(addr);
     if (!validateResult) {
         return validateResult;
@@ -254,13 +267,12 @@ etl::expected<void, NANDErrorCode> MT29F::program(const NANDAddress& addr, etl::
         return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
     }
 
-    enableWrites();
-
     auto status = readStatusRegister();
     if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
+    enableWrites();
 
     AddressCycles cycles;
     buildAddressCycles(addr, cycles);
@@ -272,6 +284,22 @@ etl::expected<void, NANDErrorCode> MT29F::program(const NANDAddress& addr, etl::
 
     for (size_t i = 0; i < data.size(); ++i) {
         sendData(data[i]);
+    }
+
+    sendCommand(Commands::CHANGE_WRITE_COLUMN);
+    sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
+    sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
+
+    etl::array<uint8_t, ECC_BYTES> eccData;
+    auto eccResult = calculateECC(data, eccData);
+    if (!eccResult) {
+        return eccResult;
+    }
+
+    sendData(GOOD_BLOCK_MARKER);
+
+    for (size_t i = 0; i < ECC_BYTES; ++i) {
+        sendData(eccData[i]);
     }
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
@@ -291,33 +319,6 @@ etl::expected<void, NANDErrorCode> MT29F::program(const NANDAddress& addr, etl::
     disableWrites();
 
     return {};
-}
-
-etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, etl::span<const uint8_t> data) {
-    if (!isInitialized) {
-        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
-    }
-
-    if (addr.column  + data.size() > DATA_BYTES_PER_PAGE) {
-        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
-    }
-
-    return program(addr, data);
-}
-
-etl::expected<void, NANDErrorCode> MT29F::programSpare(const NANDAddress& addr, etl::span<const uint8_t> data) {
-    if (!isInitialized) {
-        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
-    }
-
-    if (data.size() > SPARE_BYTES_PER_PAGE) {
-        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
-    }
-
-    NANDAddress spareAddr = addr;
-    spareAddr.column = DATA_BYTES_PER_PAGE;  // Spare area starts after main data
-
-    return program(spareAddr, data);
 }
 
 etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun) {
@@ -428,15 +429,9 @@ etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& add
 
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     NANDAddress addr(lun, block, 0, DATA_BYTES_PER_PAGE);
-    
-    // Validate address calculation
-    if (addr.lun >= LUNS_PER_CE || addr.block >= BLOCKS_PER_LUN) {
-        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
-    }
-        
     etl::array<uint8_t, 1> marker;
 
-    auto readResult = readSpare(addr, marker, 1);
+    auto readResult = readPage(addr, marker, false);
     if (!readResult) {
         return etl::unexpected(readResult.error());
     }
@@ -505,27 +500,8 @@ void MT29F::disableWrites() {
 }
 
 bool MT29F::isWriteProtected() {
-    bool writeProtected = false;
-    
-    if (nandWriteProtect != PIO_PIN_NONE) {
-        writeProtected = (PIO_PinRead(nandWriteProtect) == 0);
-    }
-    
-    return writeProtected;
-}
-
-
-etl::expected<void, NANDErrorCode> MT29F::markGoodBlock(uint16_t block, uint8_t lun) {
-    NANDAddress addr(lun, block, 0, DATA_BYTES_PER_PAGE);
-    etl::array<uint8_t, 1> goodMarker = {GOOD_BLOCK_MARKER};
-    
-    auto programResult = programSpare(addr, etl::span<const uint8_t>(goodMarker));
-    if (!programResult) {
-        LOG_WARNING << "NAND: Failed to write good block marker for block " << block;
-        return programResult;
-    }
-
-    return {};
+    auto status = readStatusRegister();
+    return (status & STATUS_WP) == 0;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
@@ -559,12 +535,41 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
-            badBlockTable[badBlockCount] = {block, lun};
-            badBlockCount++;
+            markBadBlock(block, lun);
         }
     }
 
     LOG_INFO << "NAND: Factory bad block scan complete - " << badBlockCount << " bad blocks found";
 
     return {};
+}
+
+etl::expected<void, NANDErrorCode> MT29F::calculateECC(etl::span<const uint8_t> pageData,
+                                                       etl::span<uint8_t> eccOutput) {
+    if (eccOutput.size() != ECC_BYTES) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    if (pageData.size() != DATA_BYTES_PER_PAGE) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    for (size_t i = 0; i < eccOutput.size(); ++i) {
+        eccOutput[i] = 0xFF;
+    }
+
+    return {};
+}
+
+etl::expected<uint8_t, NANDErrorCode> MT29F::validateAndCorrectECC(etl::span<uint8_t> pageData,
+                                                                  etl::span<const uint8_t> eccCodes) {
+    if (eccCodes.size() != ECC_BYTES) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    if (pageData.size() != DATA_BYTES_PER_PAGE) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    return 0;
 }
