@@ -27,13 +27,13 @@ enum class NANDErrorCode : uint8_t {
     UNSUPPORTED_OPERATION
 };
 
-// /**
-//  * @brief Bad block information structure
-//  */
-// struct BadBlockInfo {
-//     uint16_t blockNumber;
-//     uint8_t lun;
-// };
+/**
+ * @brief Bad block information structure
+ */
+struct BadBlockInfo {
+    uint16_t blockNumber;
+    uint8_t lun;
+};
 
 /**
  * @brief Driver for MT29F32G09ABAAA NAND Flash
@@ -92,9 +92,9 @@ private:
     
     static constexpr size_t MAX_BAD_BLOCKS = 256;  /*!< Maximum number of bad blocks to track */
     
-    // etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
-    
-    // size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
+    etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
+
+    size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
     
     static constexpr uint16_t BAD_BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
     
@@ -198,6 +198,48 @@ private:
     }
 
     /* ========= Internal helper functions for NAND operations ========= */
+
+            /**
+     * @brief Read device manufacturer and device ID
+     * 
+     * @param[out] id Buffer to store 5-byte device ID
+     * 
+     * @return Success or error code
+     */
+    etl::expected<void, NANDErrorCode> readDeviceID(etl::span<uint8_t, 5> id);
+    
+    /**
+     * @brief Read ONFI signature to verify ONFI compliance
+     * 
+     * @param[out] signature Buffer to store 4-byte ONFI signature
+     * 
+     * @return Success or error code
+     */
+    etl::expected<void, NANDErrorCode> readONFISignature(etl::span<uint8_t, 4> signature);
+
+    /**
+     * @brief Read data from flash
+     * 
+     * @param addr NAND address to read from
+     * @param[out] data Buffer to store read data (max page size)
+     * @param length Number of bytes to read
+     * 
+     * @return Success or error code
+     */
+    etl::expected<void, NANDErrorCode> read(const NANDAddress& addr, etl::span<uint8_t> data, uint32_t length);
+
+    /**
+     * @brief Program (write) data to flash
+     * 
+     * @note Page must be in erased state before programming
+     * 
+     * @param addr NAND address to write to
+     * @param data Data to write (max page size)
+     * 
+     * @return Success or error code
+     */
+    etl::expected<void, NANDErrorCode> program(const NANDAddress& addr, etl::span<const uint8_t> data);
+    
     
     /**
      * @brief Build 5-cycle address sequence for NAND Device
@@ -263,36 +305,14 @@ private:
     /* ========== Bad block management helper functions ================ */
     
     /**
-     * @brief Check if a block is marked as bad
-     * 
+     * @brief Read block marker from spare area
+     *
      * @param block Block number to check
      * @param lun LUN number
-     * 
-     * @return true if block is bad, false if good
+     *
+     * @return Block marker byte (0xFF = good, 0x00 = bad)
      */
-    bool checkBlockBad(uint16_t block, uint8_t lun);
-    
-    /**
-     * @brief Mark a block as bad in bad block table and spare area
-     * 
-     * @param block Block number to mark
-     * @param lun LUN number
-     * @param isFactoryBad true if factory bad block, false if runtime failure
-     * 
-     * @return Success or error code
-     */
-    etl::expected<void, NANDErrorCode> markBlockBad(uint16_t block, uint8_t lun);
-    
-    
-    /**
-     * @brief Read bad block marker from spare area
-     * 
-     * @param block Block number to check
-     * @param lun LUN number
-     * 
-     * @return Bad block marker byte (0xFF = good, 0x00 = bad)
-     */
-    etl::expected<uint8_t, NANDErrorCode> readBadBlockMarker(uint16_t block, uint8_t lun);
+    etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun);
 
     /**
      * @brief Mark a block as good by writing 0xFF to spare area
@@ -302,12 +322,16 @@ private:
      * 
      * @return Success or error code
      */
-    etl::expected<void, NANDErrorCode> markBlockGood(uint16_t block, uint8_t lun);
+    etl::expected<void, NANDErrorCode> markGoodBlock(uint16_t block, uint8_t lun);
 
     /**
-     * @brief Clear the bad block table (reset to empty state)
+     * @brief Scan all blocks in a LUN for factory bad block markers
+     *
+     * @param lun LUN number to scan (default 0)
+     *
+     * @return Success or error code
      */
-    void clearBadBlockTable();
+    etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);
 
     
     /* ================ Parameter page parsing functions ================ */
@@ -324,6 +348,14 @@ private:
      * @return true if CRC matches, false if invalid
      */
     bool validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage);
+
+
+    /**
+     * @brief Validate device parameters match expected geometry
+     * 
+     * @return Success if device matches expected parameters, error otherwise
+     */
+    etl::expected<void, NANDErrorCode> validateDeviceParameters();
     
 
 public:
@@ -337,9 +369,9 @@ public:
     MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin) 
         : SMC(chipSelect),
           nandReadyBusyPin(readyBusyPin),
-          nandWriteProtect(writeProtectPin)
-          // badBlockTable{},
-          // badBlockCount(0)
+          nandWriteProtect(writeProtectPin),
+          badBlockTable{},
+          badBlockCount(0)
           {
         selectNandConfiguration(chipSelect);
     }
@@ -400,31 +432,6 @@ public:
      * @return Success or error code
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
-    
-    /**
-     * @brief Read device manufacturer and device ID
-     * 
-     * @param[out] id Buffer to store 5-byte device ID
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readDeviceID(etl::span<uint8_t, 5> id);
-    
-    /**
-     * @brief Read ONFI signature to verify ONFI compliance
-     * 
-     * @param[out] signature Buffer to store 4-byte ONFI signature
-     * 
-     * @return Success or error code
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readONFISignature(etl::span<uint8_t, 4> signature);
-    
-    /**
-     * @brief Validate device parameters match expected geometry
-     * 
-     * @return Success if device matches expected parameters, error otherwise
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> validateDeviceParameters();
     
     
     /* ================== Data Operations ================== */
@@ -494,7 +501,7 @@ public:
      * 
      * @return true if block is bad, false if good
      */
-    [[nodiscard]] etl::expected<bool, NANDErrorCode> isBadBlock(uint16_t block, uint8_t lun = 0);
+    bool isBlockBad(uint16_t block, uint8_t lun = 0);
     
     /**
      * @brief Mark a block as bad
@@ -502,9 +509,8 @@ public:
      * @param block Block number to mark as bad
      * @param lun LUN number (typically 0)
      * 
-     * @return Success or error code
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
+    void markBadBlock(uint16_t block, uint8_t lun = 0);
         
 };
 
