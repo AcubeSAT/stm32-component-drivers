@@ -52,7 +52,7 @@ public:
     static constexpr uint32_t DATA_BYTES_PER_PAGE = 8192;
     static constexpr uint16_t SPARE_BYTES_PER_PAGE = 448;
     static constexpr uint16_t TOTAL_BYTES_PER_PAGE = DATA_BYTES_PER_PAGE + SPARE_BYTES_PER_PAGE;
-    static constexpr uint16_t ECC_BYTES = 335;
+    static constexpr uint16_t ECC_BYTES = 340;
     static constexpr uint8_t PAGES_PER_BLOCK = 128;
     static constexpr uint16_t BLOCKS_PER_LUN = 4096;
     static constexpr uint8_t LUNS_PER_CE = 1;
