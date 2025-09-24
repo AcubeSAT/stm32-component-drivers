@@ -13,7 +13,7 @@ enum class NANDErrorCode : uint8_t {
     TIMEOUT = 1,
     ADDRESS_OUT_OF_BOUNDS,
     BUSY_IO,
-    BUSY_ARRAY, 
+    BUSY_ARRAY,
     PROGRAM_FAILED,
     ERASE_FAILED,
     READ_FAILED,
@@ -24,7 +24,9 @@ enum class NANDErrorCode : uint8_t {
     NOT_INITIALIZED,
     HARDWARE_FAILURE,
     BAD_PARAMETER_PAGE,
-    UNSUPPORTED_OPERATION
+    UNSUPPORTED_OPERATION,
+    ECC_UNCORRECTABLE,
+    ECC_ALGORITHM_ERROR
 };
 
 /**
@@ -50,7 +52,7 @@ public:
     static constexpr uint32_t DATA_BYTES_PER_PAGE = 8192;
     static constexpr uint16_t SPARE_BYTES_PER_PAGE = 448;
     static constexpr uint16_t TOTAL_BYTES_PER_PAGE = DATA_BYTES_PER_PAGE + SPARE_BYTES_PER_PAGE;
-    static constexpr uint16_t ECC_BYTES = 160;
+    static constexpr uint16_t ECC_BYTES = 335;
     static constexpr uint8_t PAGES_PER_BLOCK = 128;
     static constexpr uint16_t BLOCKS_PER_LUN = 4096;
     static constexpr uint8_t LUNS_PER_CE = 1;
@@ -205,21 +207,17 @@ private:
 
             /**
      * @brief Read device manufacturer and device ID
-     * 
+     *
      * @param[out] id Buffer to store 5-byte device ID
-     * 
-     * @return Success or error code
      */
-    etl::expected<void, NANDErrorCode> readDeviceID(etl::span<uint8_t, 5> id);
+    void readDeviceID(etl::span<uint8_t, 5> id);
     
     /**
      * @brief Read ONFI signature to verify ONFI compliance
-     * 
+     *
      * @param[out] signature Buffer to store 4-byte ONFI signature
-     * 
-     * @return Success or error code
      */
-    etl::expected<void, NANDErrorCode> readONFISignature(etl::span<uint8_t, 4> signature);
+    void readONFISignature(etl::span<uint8_t, 4> signature);
 
     /**
      * @brief Build 5-cycle address sequence for NAND Device
@@ -238,10 +236,11 @@ private:
     
     /**
      * @brief Wait for NAND device to become ready
-     * 
+     *
      * @param timeoutMs Timeout in milliseconds
-     * 
-     * @return Success or timeout error
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout period
      */
     etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutMs);
     
@@ -254,10 +253,11 @@ private:
         
     /**
      * @brief Validate NAND address bounds
-     * 
+     *
      * @param addr Address to validate
-     * 
-     * @return Success or address bounds error
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
      */
     etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr);
 
@@ -265,9 +265,11 @@ private:
      * @brief Calculate ECC codes for page data
      *
      * @param pageData Page data to calculate ECC for
-     * @param[out] eccOutput Buffer to store calculated ECC (160 bytes)
+     * @param[out] eccOutput Buffer to store calculated ECC (335 bytes)
      *
-     * @return Success or calculation error
+     * @return Success or specific error code
+     * @retval NANDErrorCode::INVALID_PARAMETER Invalid buffer size (must be 8192 bytes data, 335 bytes ECC)
+     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH initialization or encoding failure
      */
     etl::expected<void, NANDErrorCode> calculateECC(etl::span<const uint8_t> pageData,
                                                     etl::span<uint8_t> eccOutput);
@@ -276,9 +278,12 @@ private:
      * @brief Validate and correct page data using ECC codes
      *
      * @param pageData Page data to validate and correct (modified in-place)
-     * @param eccCodes ECC codes read from spare area (160 bytes)
+     * @param eccCodes ECC codes read from spare area (335 bytes)
      *
-     * @return Number of corrected errors, or error if uncorrectable
+     * @return Number of corrected errors, or specific error code
+     * @retval NANDErrorCode::INVALID_PARAMETER Invalid buffer size (must be 8192 bytes data, 335 bytes ECC)
+     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH initialization or decoding failure
+     * @retval NANDErrorCode::ECC_UNCORRECTABLE Too many errors (>4 per codeword or >255 total)
      */
     etl::expected<uint8_t, NANDErrorCode> validateAndCorrectECC(etl::span<uint8_t> pageData,
                                                                etl::span<const uint8_t> eccCodes);
@@ -296,14 +301,7 @@ private:
      */
     void disableWrites();
     
-    /**
-     * @brief Check if device is write protected
-     * 
-     * @return true if write protected (hardware or status register)
-     */
-    bool isWriteProtected();
 
-    
     /* ========== Bad block management helper functions ================ */
     
     /**
@@ -312,7 +310,13 @@ private:
      * @param block Block number to check
      * @param lun LUN number
      *
-     * @return Block marker byte (0xFF = good, 0x00 = bad)
+     * @return Block marker byte (0xFF = good, 0x00 = bad) or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
      */
     etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun);
 
@@ -321,7 +325,12 @@ private:
      *
      * @param lun LUN number to scan (default 0)
      *
-     * @return Success or error code
+     * @return Success or specific error code
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN out of bounds
+     * @retval NANDErrorCode::HARDWARE_FAILURE Too many bad blocks (>256)
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized (from readBlockMarker)
+     * @retval NANDErrorCode::TIMEOUT Device not ready (from readBlockMarker)
+     * @retval NANDErrorCode::READ_FAILED Read operation failed (from readBlockMarker)
      */
     etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);
 
@@ -344,8 +353,11 @@ private:
 
     /**
      * @brief Validate device parameters match expected geometry
-     * 
-     * @return Success if device matches expected parameters, error otherwise
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::HARDWARE_FAILURE Device geometry mismatch or ONFI signature invalid
+     * @retval NANDErrorCode::BAD_PARAMETER_PAGE All 3 parameter page copies have invalid CRC
      */
     etl::expected<void, NANDErrorCode> validateDeviceParameters();
     
@@ -406,10 +418,7 @@ public:
      * - Device reset and ID verification
      * - ONFI compliance checking
      * - Parameter page validation against expected geometry
-     * - Write protection initialization
-     * 
-     * @note Factory bad block scanning is now optional - call scanFactoryBadBlocks() separately if needed
-     * @note Must be called before any other operations
+     * - Factory bad block scanning
      * 
      * @return Success or specific error code
      * @retval NANDErrorCode::SUCCESS Initialization completed successfully
@@ -420,8 +429,9 @@ public:
     
     /**
      * @brief Reset the NAND flash device
-     * 
-     * @return Success or error code
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not responding within timeout period
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
     
@@ -431,33 +441,59 @@ public:
     /**
      * @brief Read data from NAND flash with optional ECC validation
      *
+     * @note If you need ECC check for the data then a whole page must be read.
+     * 
      * @param addr NAND address to read from
      * @param[out] data Buffer to store read data (size determines bytes to read)
-     * @param performECC Whether to read spare area and perform ECC validation (default: true)
+     * @param performECC Whether to read spare area and perform ECC validation (default: false)
      *
-     * @return Success or error code
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
+     * @retval NANDErrorCode::ECC_UNCORRECTABLE Too many bit errors to correct
+     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH algorithm failure
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data, bool performECC = true);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data, bool performECC = false);
     
     /**
      * @brief Program (write) data to NAND flash page
+     *
+     * @note Page must be in erased state before programming. Also a whole page must be written everytime. If you need to write  data that are
+     *       lesss than a page, then you need to manually add 0xFF to the rest of the data. The function always expects a buffer that is 
+     *       DATA_BYTES_PER_PAGE in length.
      * 
-     * @note Page must be in erased state before programming
-     * 
+     * @details The function adds ECC data for the data to be written.
+     *
      * @param addr NAND address to write to
      * @param data Data to write (max page size)
-     * 
-     * @return Success or error code
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Data size not equal to full page or column not zero
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH algorithm failure
+     * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
      
     /**
      * @brief Erase a block
-     * 
+     *
      * @param block Block number to erase
      * @param lun LUN number (typically 0)
-     * 
-     * @return Success or error code
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of bounds
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
 
@@ -511,6 +547,8 @@ constexpr const char* toString(NANDErrorCode error) {
         case NANDErrorCode::HARDWARE_FAILURE: return "Hardware failure";
         case NANDErrorCode::BAD_PARAMETER_PAGE: return "Bad parameter page";
         case NANDErrorCode::UNSUPPORTED_OPERATION: return "Unsupported operation";
+        case NANDErrorCode::ECC_UNCORRECTABLE: return "ECC uncorrectable errors";
+        case NANDErrorCode::ECC_ALGORITHM_ERROR: return "ECC algorithm error";
         default: return "Unknown error";
     }
 }

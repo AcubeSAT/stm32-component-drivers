@@ -1,4 +1,5 @@
 #include "NANDFlash.h"
+#include "BCH_ECC.h"
 #include <cstring>
 #include <Logger.hpp>
 #include "FreeRTOS.h"
@@ -15,21 +16,15 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     }
     
     etl::array<uint8_t, 5> deviceId;
-    auto idResult = readDeviceID(deviceId);
-    if (!idResult) {
-        return idResult;
-    }
-    
+    readDeviceID(deviceId);
+
     if (!std::equal(EXPECTED_DEVICE_ID.begin(), EXPECTED_DEVICE_ID.end(), deviceId.begin())) {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
     
     etl::array<uint8_t, 4> onfiSignature;
-    auto onfiResult = readONFISignature(onfiSignature);
-    if (!onfiResult) {
-        return onfiResult;
-    }
-    
+    readONFISignature(onfiSignature);
+
     const char* expectedOnfi = "ONFI";
     if (std::memcmp(onfiSignature.data(), expectedOnfi, 4) != 0) {
         LOG_WARNING << "NAND: Device is not ONFI compliant";
@@ -49,8 +44,6 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return scanResult;
     }
 
-    LOG_DEBUG << "NAND initialized successfully";
-
     return {};
 }
 
@@ -65,7 +58,7 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
+void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::MANUFACTURER_ID));
     
@@ -74,11 +67,9 @@ etl::expected<void, NANDErrorCode> MT29F::readDeviceID(etl::span<uint8_t, 5> id)
     for (size_t i = 0; i < 5; ++i) {
         id[i] = readData();
     }
-    
-    return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
+void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::ONFI_SIGNATURE));
     
@@ -87,10 +78,7 @@ etl::expected<void, NANDErrorCode> MT29F::readONFISignature(etl::span<uint8_t, 4
     for (size_t i = 0; i < 4; ++i) {
         signature[i] = readData();
     }
-    
-    return {};
 }
-
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_PARAM_PAGE);
@@ -117,8 +105,6 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
         }
     
         if (validateParameterPageCRC(paramPageData)) {
-            // LOG_DEBUG << "NAND: Valid parameter page found (copy " << copy << "), validating geometry";
-    
             // Validate ONFI signature
             if (std::memcmp(paramPageData.data(), "ONFI", 4) != 0) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
@@ -139,35 +125,24 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
             uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
             uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
     
-            // Validate against hardcoded constants
             if (readDataBytesPerPage != DATA_BYTES_PER_PAGE) {
-                LOG_ERROR << "NAND: Data bytes per page mismatch: expected " << DATA_BYTES_PER_PAGE << ", got " << readDataBytesPerPage;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
             if (readSpareBytesPerPage != SPARE_BYTES_PER_PAGE) {
-                LOG_ERROR << "NAND: Spare bytes per page mismatch: expected " << SPARE_BYTES_PER_PAGE << ", got " << readSpareBytesPerPage;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
             if (readPagesPerBlock != PAGES_PER_BLOCK) {
-                LOG_ERROR << "NAND: Pages per block mismatch: expected " << PAGES_PER_BLOCK << ", got " << readPagesPerBlock;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
             if (readBlocksPerLUN != BLOCKS_PER_LUN) {
-                LOG_ERROR << "NAND: Blocks per LUN mismatch: expected " << BLOCKS_PER_LUN << ", got " << readBlocksPerLUN;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
     
-            LOG_DEBUG << "NAND: Device geometry validated successfully";
-            // Parameter page goes out of scope here - stack space reclaimed!
             return {};
-        } else {
-            LOG_WARNING << "NAND: Parameter page copy " << copy << " has invalid CRC";
         }
     }
     
-    LOG_ERROR << "NAND: All parameter page copies have invalid CRC";
     return etl::unexpected(NANDErrorCode::BAD_PARAMETER_PAGE);
-    // return {};
 }
 
 
@@ -179,14 +154,23 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((addr.column + data.size()) > TOTAL_BYTES_PER_PAGE || (data.size() > TOTAL_BYTES_PER_PAGE)) {
-        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    if (performECC) {
+        if (addr.column != 0 || data.size() != DATA_BYTES_PER_PAGE) {
+            return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+        }
+    } else {
+        if (addr.column < DATA_BYTES_PER_PAGE) {
+            if ((addr.column + data.size()) > DATA_BYTES_PER_PAGE) {
+                return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+            }
+        } else {
+            uint32_t spareOffset = addr.column - DATA_BYTES_PER_PAGE;
+            if ((spareOffset + data.size()) > SPARE_BYTES_PER_PAGE) {
+                return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+            }
+        }
     }
-
-    if (performECC && (data.size() < DATA_BYTES_PER_PAGE)) {
-        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
-    }
-
+    
     auto validateResult = validateAddress(addr);
     if (!validateResult) {
         return validateResult;
@@ -227,20 +211,17 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     }
 
     if (performECC) {
-
         sendCommand(Commands::CHANGE_READ_COLUMN);
-        sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
-        sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
+        sendAddress((DATA_BYTES_PER_PAGE + 1) & 0xFF);
+        sendAddress(((DATA_BYTES_PER_PAGE + 1) >> 8) & 0x3F);
         sendCommand(Commands::CHANGE_READ_COLUMN_CONFIRM);
-
-        uint8_t goodBlockMarker = readData();
 
         etl::array<uint8_t, ECC_BYTES> eccCodes;
         for (size_t i = 0; i < ECC_BYTES; ++i) {
             eccCodes[i] = readData();
         }
 
-        auto eccResult = validateAndCorrectECC(data.subspan(0, DATA_BYTES_PER_PAGE), eccCodes);
+        auto eccResult = validateAndCorrectECC(data, eccCodes);
         if (!eccResult) {
             return etl::unexpected(eccResult.error());
         }
@@ -254,17 +235,13 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((addr.column  + data.size() > DATA_BYTES_PER_PAGE) || (data.size() > DATA_BYTES_PER_PAGE)) {
+    if ((addr.column + data.size() > DATA_BYTES_PER_PAGE) || (data.size() < DATA_BYTES_PER_PAGE) || (addr.column > 0)) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
     auto validateResult = validateAddress(addr);
     if (!validateResult) {
         return validateResult;
-    }
-
-    if (isWriteProtected()) {
-        return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
     }
 
     auto status = readStatusRegister();
@@ -286,17 +263,22 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         sendData(data[i]);
     }
 
+
     sendCommand(Commands::CHANGE_WRITE_COLUMN);
     sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
     sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
+
+    sendData(GOOD_BLOCK_MARKER);
+
+    sendCommand(Commands::CHANGE_WRITE_COLUMN);
+    sendAddress((DATA_BYTES_PER_PAGE + 1) & 0xFF);
+    sendAddress(((DATA_BYTES_PER_PAGE + 1) >> 8) & 0x3F);
 
     etl::array<uint8_t, ECC_BYTES> eccData;
     auto eccResult = calculateECC(data, eccData);
     if (!eccResult) {
         return eccResult;
     }
-
-    sendData(GOOD_BLOCK_MARKER);
 
     for (size_t i = 0; i < ECC_BYTES; ++i) {
         sendData(eccData[i]);
@@ -324,10 +306,6 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
 etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun) {
     if (!isInitialized) {
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
-    }
-    
-    if (isWriteProtected()) {
-        return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
     }
     
     if (block >= BLOCKS_PER_LUN || lun >= LUNS_PER_CE) {
@@ -499,11 +477,6 @@ void MT29F::disableWrites() {
     vTaskDelay(1);
 }
 
-bool MT29F::isWriteProtected() {
-    auto status = readStatusRegister();
-    return (status & STATUS_WP) == 0;
-}
-
 etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     if (lun >= LUNS_PER_CE) {
@@ -539,8 +512,6 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         }
     }
 
-    LOG_INFO << "NAND: Factory bad block scan complete - " << badBlockCount << " bad blocks found";
-
     return {};
 }
 
@@ -554,8 +525,27 @@ etl::expected<void, NANDErrorCode> MT29F::calculateECC(etl::span<const uint8_t> 
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    for (size_t i = 0; i < eccOutput.size(); ++i) {
-        eccOutput[i] = 0xFF;
+    auto bchInit = BCH_ECC::initialize();
+    if (!bchInit) {
+        return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
+    }
+
+    for (uint8_t codeword = 0; codeword < BCH_ECC::CODEWORDS_PER_PAGE; ++codeword) {
+        const size_t dataOffset = codeword * BCH_ECC::DATA_BYTES_PER_CODEWORD;
+        const size_t parityOffset = codeword * BCH_ECC::PARITY_BYTES_PER_CODEWORD;
+
+        if (dataOffset >= pageData.size()) break;
+
+        const size_t dataSize = (dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size()) ?
+                                 BCH_ECC::DATA_BYTES_PER_CODEWORD : pageData.size() - dataOffset;
+
+        auto codewordData = pageData.subspan(dataOffset, dataSize);
+        auto codewordParity = eccOutput.subspan(parityOffset, BCH_ECC::PARITY_BYTES_PER_CODEWORD);
+
+        auto encodeResult = BCH_ECC::encode(codewordData, codewordParity);
+        if (!encodeResult) {
+            return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
+        }
     }
 
     return {};
@@ -571,5 +561,39 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::validateAndCorrectECC(etl::span<uin
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    return 0;
+    auto bchInit = BCH_ECC::initialize();
+    if (!bchInit) {
+        return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
+    }
+
+    uint8_t totalCorrectedErrors = 0;
+
+    for (uint8_t codeword = 0; codeword < BCH_ECC::CODEWORDS_PER_PAGE; ++codeword) {
+        const size_t dataOffset = codeword * BCH_ECC::DATA_BYTES_PER_CODEWORD;
+        const size_t parityOffset = codeword * BCH_ECC::PARITY_BYTES_PER_CODEWORD;
+
+        if (dataOffset >= pageData.size()) break;
+
+        const size_t dataSize = (dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size()) ?
+                                 BCH_ECC::DATA_BYTES_PER_CODEWORD : pageData.size() - dataOffset;
+
+        auto codewordData = pageData.subspan(dataOffset, dataSize);
+        auto codewordParity = eccCodes.subspan(parityOffset, BCH_ECC::PARITY_BYTES_PER_CODEWORD);
+
+        auto decodeResult = BCH_ECC::decode(codewordData, codewordParity);
+        if (!decodeResult) {
+            if (decodeResult.error() == BCH_ECC::BCHError::TOO_MANY_ERRORS) {
+                return etl::unexpected(NANDErrorCode::ECC_UNCORRECTABLE);
+            }
+            return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
+        }
+
+        totalCorrectedErrors += decodeResult.value();
+
+        if (totalCorrectedErrors > 255) {
+            return etl::unexpected(NANDErrorCode::ECC_UNCORRECTABLE);
+        }
+    }
+
+    return totalCorrectedErrors;
 }
