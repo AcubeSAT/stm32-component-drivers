@@ -10,7 +10,6 @@
 /**
  * todo (#32): Remove FreeRTOS functions.
  * todo (#33): Add WriteFloat wrapper function.
- * todo (#34): Investigate if we need class instacnes.
  * todo (#35): Protect written data.
  * todo (#36): General Memory class.
  * todo (#37): Multi-variable write.
@@ -18,13 +17,13 @@
  */
 
 /**
- * Class to interact with the Internal FLASH Memory of the MCU.
+ * Namespace to interact with the Internal FLASH Memory of the MCU.
  *
  * @brief This class provides functions with a generic implementation based on
  * the EFC peripheral library for easy integration into any code.
  */
-class FlashDriver {
-public:
+namespace FlashDriver {
+
     using FlashAddress_t = uint32_t;
     using FlashReadLength_t = uint32_t;
 
@@ -74,10 +73,7 @@ public:
      */
     static constexpr uint8_t WordsPerPage = 128;
 
-    /**
-     * Constructor to create an instance of the class.
-     */
-    FlashDriver() = default;
+
 
     /**
      * Write function for writing 128 bits (QuadWord). Only ‘0’ values can be
@@ -104,36 +100,9 @@ public:
     [[nodiscard]] EFCError writePage(etl::array<uint32_t, WordsPerPage> &data,
                                      FlashAddress_t address);
 
-    /**
-     * Reads a specified length of bytes from a given address in FLASH memory
-     * into the user-provided buffer.
-     * @tparam N The number of elements in the user-provided array.
-     * @param data A reference to an array to store the read data. The size of
-     * the array must be large enough to accommodate the specified length in
-     * bytes.
-     * @param length The number of bytes to read from the flash memory. Must be
-     * less than or equal to the total size of the array in bytes.
-     * @param address FLASH address to be read from.
-     * @return Member of the EFCError enum indicating success or an error.
-     */
-    template <size_t N>
-    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N> &data,
-                                          FlashReadLength_t length,
-                                          FlashAddress_t address) {
-        if (not isAddressSafe(address)) {
-            return EFCError::ADDRESS_UNSAFE;
-        }
 
-        EFC_Read(data.data(), length, address);
 
-        if (waitForResponse() == EFCError::TIMEOUT) {
-            return EFCError::TIMEOUT;
-        }
 
-        return getEFCError();
-    }
-
-  private:
     /**
      * Ensure Flash addressed used is within defined limits.
      * @param address FLASH address to be modified.
@@ -162,4 +131,32 @@ public:
      * @return Timeout if the transaction got stuck, None otherwise.
      */
     [[nodiscard]] static EFCError waitForResponse();
+    /**
+     * Reads a specified length of bytes from a given address in FLASH memory
+     * into the user-provided buffer.
+     * @tparam N The number of elements in the user-provided array.
+     * @param data A reference to an array to store the read data. The size of
+     * the array must be large enough to accommodate the specified length in
+     * bytes.
+     * @param length The number of bytes to read from the flash memory. Must be
+     * less than or equal to the total size of the array in bytes.
+     * @param address FLASH address to be read from.
+     * @return Member of the EFCError enum indicating success or an error.
+     */
+    template <size_t N>
+    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N> &data,
+                                          FlashReadLength_t length,
+                                          FlashAddress_t address) {
+        if (not isAddressSafe(address)) {
+            return EFCError::ADDRESS_UNSAFE;
+        }
+
+        EFC_Read(data.data(), length, address);
+
+        if (waitForResponse() == EFCError::TIMEOUT) {
+            return EFCError::TIMEOUT;
+        }
+
+        return getEFCError();
+    }
 };
