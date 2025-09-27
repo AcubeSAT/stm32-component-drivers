@@ -46,32 +46,32 @@ namespace FlashDriver {
     /**
      * Number of bits in a single byte, used for calculations.
      */
-    static constexpr uint8_t NumOfBitsinByte = 8;
+    constexpr uint8_t NumOfBitsinByte = 8;
 
     /**
      * Wait period before an EFC transaction is skipped.
      */
-    static constexpr TickType_t TimeoutTicks = 1000;
+    constexpr TickType_t TimeoutTicks = 1000;
 
     /**
      * Starting adress of available Flash memory.
      */
-    static constexpr uint32_t StartAddress = 0x5F0000;
+    constexpr uint32_t StartAddress = 0x5F0000;
 
     /**
      * End limit of available Flash memory.
      */
-    static constexpr uint32_t EndAddress = 0x600000;
+    constexpr uint32_t EndAddress = 0x600000;
 
     /**
      * Number of 32-bit words in a quad word (128 bits).
      */
-    static constexpr uint8_t WordsPerQuadWord = 4;
+    constexpr uint8_t WordsPerQuadWord = 4;
 
     /**
      * Number of 32-bit words in a flash page.
      */
-    static constexpr uint8_t WordsPerPage = 128;
+    constexpr uint8_t WordsPerPage = 128;
 
 
 
@@ -108,7 +108,7 @@ namespace FlashDriver {
      * @param address FLASH address to be modified.
      * @return True if the address is within the limits defined.
      */
-    [[nodiscard]] static bool isAddressSafe(FlashAddress_t address) {
+    [[nodiscard]] inline bool isAddressSafe(FlashAddress_t address) {
         return address >= StartAddress && address < EndAddress;
     }
 
@@ -116,21 +116,21 @@ namespace FlashDriver {
      * Function to get match internal EFC errors to the EFCError enum.
      * @return the error returned from EFC_ErrorGet as a EFCError.
      */
-    [[nodiscard]] static EFCError getEFCError();
+    [[nodiscard]] EFCError getEFCError();
 
     /**
      * This function is used to erase a sector.
      * @param address FLASH address to be Erased.
      * @return member of the EFC_ERROR enum.
      */
-    [[nodiscard]] static EFCError eraseSector(FlashAddress_t address);
+    [[nodiscard]] EFCError eraseSector(FlashAddress_t address);
 
     /**
      * Function to ensure that no calls to EFC are made while a transaction is
      * happening and to ensure the transaction doesn't get stuck.
      * @return Timeout if the transaction got stuck, None otherwise.
      */
-    [[nodiscard]] static EFCError waitForResponse();
+    [[nodiscard]] EFCError waitForResponse();
     /**
      * Reads a specified length of bytes from a given address in FLASH memory
      * into the user-provided buffer.
@@ -144,7 +144,7 @@ namespace FlashDriver {
      * @return Member of the EFCError enum indicating success or an error.
      */
     template <size_t N>
-    [[nodiscard]] EFCError readFromMemory(etl::array<uint32_t, N> &data,
+    [[nodiscard]] inline EFCError readFromMemory(etl::array<uint32_t, N> &data,
                                           FlashReadLength_t length,
                                           FlashAddress_t address) {
         if (not isAddressSafe(address)) {
