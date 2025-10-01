@@ -205,7 +205,24 @@ private:
 
     /* ========= Internal helper functions for NAND operations ========= */
 
-            /**
+    /**
+     * @brief Simple busy wait loop for nanosecond delays
+     *
+     * @details Based on 150MHz CPU clock (6.67ns per cycle).
+     * Uses simple for loop with NOP instructions.
+     *
+     * @param nanoseconds Delay duration in nanoseconds
+     */
+    static inline void busyWaitNanoseconds(uint32_t nanoseconds) {
+
+        const uint32_t cycles = (nanoseconds * 15UL) / 100UL;
+
+        for (volatile uint32_t i = 0; i < cycles; ++i) {
+            __asm__ volatile ("nop");
+        }
+    }
+
+    /**
      * @brief Read device manufacturer and device ID
      *
      * @param[out] id Buffer to store 5-byte device ID
@@ -426,7 +443,7 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not responding
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
-    
+
     /**
      * @brief Reset the NAND flash device
      *
