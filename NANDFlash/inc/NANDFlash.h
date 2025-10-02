@@ -487,6 +487,7 @@ public:
      *
      * @param addr NAND address to write to
      * @param data Data to write (max page size)
+     * @param addECC Control if ECC will be added at the spare area of the page (default: false)
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
@@ -497,7 +498,7 @@ public:
      * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH algorithm failure
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data, bool addECC = false);
      
     /**
      * @brief Erase a block

@@ -39,10 +39,10 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     isInitialized = true;
 
-    // auto scanResult = scanFactoryBadBlocks(0); // Scan LUN 0
-    // if (!scanResult) {
-    //     return scanResult;
-    // }
+    auto scanResult = scanFactoryBadBlocks(0); // Scan LUN 0
+    if (!scanResult) {
+        return scanResult;
+    }
 
     return {};
 }
@@ -176,10 +176,10 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return validateResult;
     }
 
-    // auto status = readStatusRegister();
-    // if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
-    //     return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
-    // }
+    auto status = readStatusRegister();
+    if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
+        return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
+    }
 
     AddressCycles cycles;
     buildAddressCycles(addr, cycles);
@@ -200,9 +200,9 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return waitResult;
     }
 
-    //CRITICAL: waitForReady() calls readStatusRegister() which puts device in status mode
-    //Send READ_MODE (0x00) with NO address cycles to return to data output mode
-    //This resumes data output from the previously set column position
+    // CRITICAL: waitForReady() calls readStatusRegister() which puts device in status mode
+    // Send READ_MODE (0x00) with NO address cycles to return to data output mode
+    // This resumes data output from the previously set column position
     sendCommand(Commands::READ_MODE);
     vTaskDelay(1); // Wait tWHR
 
@@ -215,28 +215,29 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     vTaskDelay(1); // Wait tRHW
 
     if (performECC) {
-        // sendCommand(Commands::CHANGE_READ_COLUMN);
-        // sendAddress((DATA_BYTES_PER_PAGE + 1) & 0xFF);
-        // sendAddress(((DATA_BYTES_PER_PAGE + 1) >> 8) & 0x3F);
-        // sendCommand(Commands::CHANGE_READ_COLUMN_CONFIRM);
+        // Change read column to skip good block marker
+        sendCommand(Commands::CHANGE_READ_COLUMN);
+        sendAddress((DATA_BYTES_PER_PAGE + 1) & 0xFF);       
+        sendAddress(((DATA_BYTES_PER_PAGE + 1) >> 8) & 0x3F); 
+        sendCommand(Commands::CHANGE_READ_COLUMN_CONFIRM);
 
-        // vTaskDelay(1); // Wait tCCS
+        vTaskDelay(1); // Wait tCCS
 
-        // etl::array<uint8_t, ECC_BYTES> eccCodes;
-        // for (size_t i = 0; i < ECC_BYTES; ++i) {
-        //     eccCodes[i] = readData();
-        // }
+        etl::array<uint8_t, ECC_BYTES> eccCodes;
+        for (size_t i = 0; i < ECC_BYTES; ++i) {
+            eccCodes[i] = readData();
+        }
 
-        // auto eccResult = validateAndCorrectECC(data, eccCodes);
-        // if (!eccResult) {
-        //     return etl::unexpected(eccResult.error());
-        // }
+        auto eccResult = validateAndCorrectECC(data, eccCodes);
+        if (!eccResult) {
+            return etl::unexpected(eccResult.error());
+        }
     }
 
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, etl::span<const uint8_t> data) {
+etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, etl::span<const uint8_t> data, bool addECC) {
     if (!isInitialized) {
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
@@ -271,7 +272,6 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         sendData(data[i]);
     }
 
-
     sendCommand(Commands::CHANGE_WRITE_COLUMN);
     sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
     sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
@@ -282,15 +282,17 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
 
     vTaskDelay(1); // Wait tCCS
 
-    // etl::array<uint8_t, ECC_BYTES> eccData;
-    // auto eccResult = calculateECC(data, eccData);
-    // if (!eccResult) {
-    //     return eccResult;
-    // }
+    if (addECC) {
+        etl::array<uint8_t, ECC_BYTES> eccData;
+        auto eccResult = calculateECC(data, eccData);
+        if (!eccResult) {
+            return eccResult;
+        }
 
-    // for (size_t i = 0; i < ECC_BYTES; ++i) {
-    //     sendData(eccData[i]);
-    // }
+        for (size_t i = 0; i < ECC_BYTES; ++i) {
+            sendData(eccData[i]);
+        }
+    }
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
 
@@ -321,7 +323,6 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     if (block >= BLOCKS_PER_LUN || lun >= LUNS_PER_CE) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
-    
     
     enableWrites();
 
@@ -500,7 +501,6 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     for (uint16_t block = 0; block < BLOCKS_PER_LUN; ++block) {
 
-        // Yield every 5 blocks to prevent watchdog timeout
         if ((block % 5) == 0) {
             vTaskDelay(1);
         }
@@ -512,7 +512,6 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
             // If we can't read the marker, assume block is bad for safety
             isBlockBad = true;
         } else if (markerResult.value() == BAD_BLOCK_MARKER) {
-            // Found a factory bad block marker
             isBlockBad = true;
         }
 
@@ -543,25 +542,38 @@ etl::expected<void, NANDErrorCode> MT29F::calculateECC(etl::span<const uint8_t> 
         return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
     }
 
+    etl::array<uint8_t, BCH_ECC::DATA_BYTES_PER_CODEWORD> codewordBuffer;
+
     for (uint8_t codeword = 0; codeword < BCH_ECC::CODEWORDS_PER_PAGE; ++codeword) {
         const size_t dataOffset = codeword * BCH_ECC::DATA_BYTES_PER_CODEWORD;
         const size_t parityOffset = codeword * BCH_ECC::PARITY_BYTES_PER_CODEWORD;
 
-        if (dataOffset >= pageData.size()) break;
+        const size_t bytesAvailable = (dataOffset < pageData.size())
+                                      ? ((dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size())
+                                         ? BCH_ECC::DATA_BYTES_PER_CODEWORD
+                                         : (pageData.size() - dataOffset))
+                                      : 0;
 
-        const size_t dataSize = (dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size()) ?
-                                 BCH_ECC::DATA_BYTES_PER_CODEWORD : pageData.size() - dataOffset;
+        if (bytesAvailable == 0) {
+            break;
+        }
 
-        auto codewordData = pageData.subspan(dataOffset, dataSize);
+        std::memcpy(codewordBuffer.data(), pageData.data() + dataOffset, bytesAvailable);
+
+        // Zero-pad if this is a partial codeword
+        if (bytesAvailable < BCH_ECC::DATA_BYTES_PER_CODEWORD) {
+            std::memset(codewordBuffer.data() + bytesAvailable, 0,
+                        BCH_ECC::DATA_BYTES_PER_CODEWORD - bytesAvailable);
+        }
+
         auto codewordParity = eccOutput.subspan(parityOffset, BCH_ECC::PARITY_BYTES_PER_CODEWORD);
 
-        auto encodeResult = BCH_ECC::encode(codewordData, codewordParity);
+        auto encodeResult = BCH_ECC::encode(etl::span<const uint8_t>(codewordBuffer), codewordParity);
         if (!encodeResult) {
             return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
         }
 
-        // Yield every 8 codewords to prevent task starvation
-        if ((codeword & 0x07) == 0x07) {
+        if ((codeword & 0x0F) == 0x0F) {
             vTaskDelay(1);
         }
     }
@@ -586,25 +598,42 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::validateAndCorrectECC(etl::span<uin
 
     uint8_t totalCorrectedErrors = 0;
 
+    etl::array<uint8_t, BCH_ECC::DATA_BYTES_PER_CODEWORD> codewordBuffer;
+
     for (uint8_t codeword = 0; codeword < BCH_ECC::CODEWORDS_PER_PAGE; ++codeword) {
         const size_t dataOffset = codeword * BCH_ECC::DATA_BYTES_PER_CODEWORD;
         const size_t parityOffset = codeword * BCH_ECC::PARITY_BYTES_PER_CODEWORD;
 
-        if (dataOffset >= pageData.size()) break;
+        const size_t bytesAvailable = (dataOffset < pageData.size())
+                                      ? ((dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size())
+                                         ? BCH_ECC::DATA_BYTES_PER_CODEWORD
+                                         : (pageData.size() - dataOffset))
+                                      : 0;
 
-        const size_t dataSize = (dataOffset + BCH_ECC::DATA_BYTES_PER_CODEWORD <= pageData.size()) ?
-                                 BCH_ECC::DATA_BYTES_PER_CODEWORD : pageData.size() - dataOffset;
+        if (bytesAvailable == 0) {
+            break;
+        }
 
-        auto codewordData = pageData.subspan(dataOffset, dataSize);
+        std::memcpy(codewordBuffer.data(), pageData.data() + dataOffset, bytesAvailable);
+
+        // Zero-pad if this is a partial codeword
+        if (bytesAvailable < BCH_ECC::DATA_BYTES_PER_CODEWORD) {
+            std::memset(codewordBuffer.data() + bytesAvailable, 0,
+                        BCH_ECC::DATA_BYTES_PER_CODEWORD - bytesAvailable);
+        }
+
         auto codewordParity = eccCodes.subspan(parityOffset, BCH_ECC::PARITY_BYTES_PER_CODEWORD);
 
-        auto decodeResult = BCH_ECC::decode(codewordData, codewordParity);
+        auto decodeResult = BCH_ECC::decode(etl::span<uint8_t>(codewordBuffer), codewordParity);
         if (!decodeResult) {
-            if (decodeResult.error() == BCH_ECC::BCHError::TOO_MANY_ERRORS) {
+            if (decodeResult.error() == BCH_ECC::BCHError::TOO_MANY_ERRORS ||
+                decodeResult.error() == BCH_ECC::BCHError::LOCATOR_ERROR) {
                 return etl::unexpected(NANDErrorCode::ECC_UNCORRECTABLE);
             }
             return etl::unexpected(NANDErrorCode::ECC_ALGORITHM_ERROR);
         }
+
+        std::memcpy(pageData.data() + dataOffset, codewordBuffer.data(), bytesAvailable);
 
         totalCorrectedErrors += decodeResult.value();
 
@@ -612,8 +641,7 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::validateAndCorrectECC(etl::span<uin
             return etl::unexpected(NANDErrorCode::ECC_UNCORRECTABLE);
         }
 
-        // Yield every 8 codewords to prevent task starvation
-        if ((codeword & 0x07) == 0x07) {
+        if ((codeword & 0x0F) == 0x0F) {
             vTaskDelay(1);
         }
     }
