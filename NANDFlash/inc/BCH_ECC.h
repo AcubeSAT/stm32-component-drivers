@@ -3,6 +3,7 @@
 #include <etl/array.h>
 #include <etl/span.h>
 #include <etl/expected.h>
+#include <etl/bitset.h>
 #include <cstdint>
 
 /**
@@ -148,104 +149,84 @@ private:
     static void buildGeneratorPoly();
 
     /**
-     * @brief Polynomial division with remainder for systematic encoding
-     * 
-     * @param data Input data polynomial (983 bits zero-padded)
-     * @param remainder Output remainder polynomial (40 bits parity)
-     */
-    static void polyDivMod(etl::span<const uint8_t> data, etl::span<uint8_t> remainder);
-
-    /**
-     * @brief Get bit value at specified position in byte array
-     * 
-     * @param data Byte array
-     * @param bitPos Bit position (MSB first indexing)
-     * 
-     * @return Bit value (0 or 1)
-     */
-    static inline uint8_t getBit(etl::span<const uint8_t> data, uint16_t bitPos) {
-        return (data[bitPos / 8] >> (7 - bitPos % 8)) & 1;
-    }
-
-    /**
-     * @brief Set bit to 1 at specified position in byte array
-     * 
-     * @param data Byte array
-     * @param bitPos Bit position (MSB first indexing)
-     */
-    static inline void setBit(etl::span<uint8_t> data, uint16_t bitPos) {
-        data[bitPos / 8] |= (1 << (7 - bitPos % 8));
-    }
-
-    /**
-     * @brief Clear bit to 0 at specified position in byte array
-     * 
-     * @param data Byte array
-     * @param bitPos Bit position (MSB first indexing)
-     */
-    static inline void clearBit(etl::span<uint8_t> data, uint16_t bitPos) {
-        data[bitPos / 8] &= ~(1 << (7 - bitPos % 8));
-    }
-
-    /**
-     * @brief Toggle bit at specified position in byte array
-     * 
-     * @param data Byte array
-     * @param bitPos Bit position (MSB first indexing)
-     */
-    static inline void toggleBit(etl::span<uint8_t> data, uint16_t bitPos) {
-        data[bitPos / 8] ^= (1 << (7 - bitPos % 8));
-    }
-
-    /**
-     * @brief Calculate syndrome polynomial for error detection
+     * @brief Calculate parity bits using systematic BCH encoding
      *
-     * @details Evaluates the received polynomial (data + parity) at the roots
-     *          α^1, α^2, ..., α^8 to generate syndrome components. Non-zero
-     *          syndrome indicates presence of errors.
+     * @details Computes P(x) = D(x) * x^40 mod g(x) where g(x) is the generator polynomial
      *
-     * @param data Received data (122 bytes)
-     * @param parity Received parity (5 bytes)
-     * @param syndrome Output syndrome array (8 elements)
+     * @param dataBits Input data as bitset (983 bits)
+     * @return Parity bits as bitset (40 bits)
      */
-    static void calculateSyndrome(etl::span<const uint8_t> data,
-                                  etl::span<const uint8_t> parity,
-                                  etl::span<uint16_t> syndrome);
+    static etl::bitset<PARITY_BITS> calculateParity(const etl::bitset<DATA_BITS>& dataBits);
+
+    /**
+     * @brief Convert byte array to bitset
+     *
+     * @param bytes Input byte array
+     * @param bits Output bitset (983 bits)
+     */
+    static void bytesToBitset(etl::span<const uint8_t> bytes, etl::bitset<DATA_BITS>& bits);
+
+    /**
+     * @brief Convert bitset to byte array
+     *
+     * @param bits Input bitset (40 bits)
+     * @param bytes Output byte array
+     */
+    static void bitsetToBytes(const etl::bitset<PARITY_BITS>& bits, etl::span<uint8_t> bytes);
+
+    /**
+     * @brief Convert parity and data byte arrays to complete codeword bitset
+     *
+     * @param parity Parity bytes (5 bytes)
+     * @param data Data bytes (122 bytes)
+     * @param codeword Output codeword bitset [parity | data] (1023 bits)
+     */
+    static void bytesToCodeword(etl::span<const uint8_t> parity, etl::span<const uint8_t> data,
+                                etl::bitset<CODEWORD_BITS>& codeword);
+
+    /**
+     * @brief Extract data portion from codeword bitset to byte array
+     *
+     * @param codeword Input codeword bitset (1023 bits)
+     * @param data Output data bytes (122 bytes)
+     */
+    static void codewordToBytes(const etl::bitset<CODEWORD_BITS>& codeword, etl::span<uint8_t> data);
+
+    /**
+     * @brief Calculate syndromes for error detection
+     *
+     * @details Evaluates the received codeword at roots α^1, α^2, ..., α^8.
+     *          Non-zero syndromes indicate presence of errors.
+     *
+     * @param receivedCodeword Complete codeword (1023 bits)
+     * @param syndromes Output syndrome array (8 elements)
+     */
+    static void calculateSyndromes(const etl::bitset<CODEWORD_BITS>& receivedCodeword,
+                                   etl::span<uint16_t> syndromes);
 
     /**
      * @brief Compute error locator polynomial using Berlekamp-Massey algorithm
      *
-     * @param syndrome Input syndrome array (8 elements)
+     * @param syndromes Input syndrome array (8 elements)
      * @param errorLocator Output error locator polynomial coefficients
-     * 
+     *
      * @return Degree of error locator polynomial (number of errors detected)
      */
-    static uint8_t berlekampMassey(etl::span<const uint16_t> syndrome,
+    static uint8_t berlekampMassey(etl::span<const uint16_t> syndromes,
                                    etl::span<uint16_t> errorLocator);
 
     /**
      * @brief Find error positions using Chien search
      *
      * @param errorLocator Error locator polynomial coefficients
-     * @param degree Degree of error locator polynomial
+     * @param errorCount Expected number of errors
      * @param errorPositions Output array of error positions
-     * 
+     *
      * @return Number of error positions found
      */
     static uint8_t chienSearch(etl::span<const uint16_t> errorLocator,
-                              uint8_t degree,
+                              uint8_t errorCount,
                               etl::span<uint16_t> errorPositions);
-
-    /**
-     * @brief Correct errors at specified positions
-     *
-     * @param data Data to be corrected (modified in-place)
-     * @param positions Array of error positions to correct
-     * @param numErrors Number of errors to correct
-     */
-    static void correctErrors(etl::span<uint8_t> data,
-                              etl::span<const uint16_t> positions,
-                              uint8_t numErrors);
 
     static etl::array<uint16_t, GF_SIZE + 1> logTable; /*!<  Logarithm lookup table for GF(2^10) multiplication */
 
