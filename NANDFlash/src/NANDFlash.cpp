@@ -39,7 +39,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     isInitialized = true;
 
-    auto scanResult = scanFactoryBadBlocks(0); // Scan LUN 0
+    auto scanResult = scanFactoryBadBlocks(0);
     if (!scanResult) {
         return scanResult;
     }
@@ -61,40 +61,46 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
 void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::MANUFACTURER_ID));
-    
-    vTaskDelay(1); // Wait tWHR
-    
+
+    busyWaitNanoseconds(120); // tWHR: command/address to data read
+
     for (size_t i = 0; i < 5; ++i) {
         id[i] = readData();
     }
+
+    busyWaitNanoseconds(200); // tRHW/tRHZ: read->write turnaround before next command
 }
 
 void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::ONFI_SIGNATURE));
-    
-    vTaskDelay(1); // Wait tWHR
-    
+
+    busyWaitNanoseconds(120); // tWHR: command/address to data read
+
     for (size_t i = 0; i < 4; ++i) {
         signature[i] = readData();
     }
+
+    busyWaitNanoseconds(200); // tRHW/tRHZ: read->write turnaround before next command
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_PARAM_PAGE);
-    sendAddress(0x00);  // Parameter page address
-    
-    vTaskDelay(1); // Wait tWHR
-    
+    sendAddress(0x00);
+
+    busyWaitNanoseconds(120); // tWHR: command/address to data read
+
     auto waitResult = waitForReady(TIMEOUT_READ_MS);
     if (!waitResult) {
         return etl::unexpected(waitResult.error());
     }
-    
+
+    busyWaitNanoseconds(40); // tRR: R/B# ready to first read access
+
     // CRITICAL: After waitForReady(), device is in status mode
     // Send READ_MODE command to return to data output mode
     sendCommand(Commands::READ_MODE);
-    vTaskDelay(1); // Wait tWHR
+    busyWaitNanoseconds(120); // tWHR: command to data read
     
     // ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one
     for (uint8_t copy = 0; copy < 3; copy++) {
@@ -105,7 +111,6 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
         }
     
         if (validateParameterPageCRC(paramPageData)) {
-            // Validate ONFI signature
             if (std::memcmp(paramPageData.data(), "ONFI", 4) != 0) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
@@ -185,48 +190,47 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     buildAddressCycles(addr, cycles);
 
     sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(60); // tWHR
+    busyWaitNanoseconds(120); // tWHR: command to address phase completion
     for (int i = 0; i < 5; ++i) {
         sendAddress(cycles.cycle[i]);
-        busyWaitNanoseconds(60); // tWHR
     }
-    busyWaitNanoseconds(70); // tADL
     sendCommand(Commands::READ_CONFIRM);
 
-    vTaskDelay(1); // Wait tWB
-    
+    busyWaitNanoseconds(200); // tWB: command to busy transition
+
     auto waitResult = waitForReady(TIMEOUT_READ_MS);
     if (!waitResult) {
         return waitResult;
     }
 
+    busyWaitNanoseconds(40); // tRR: R/B# ready to first data read
+
     // CRITICAL: waitForReady() calls readStatusRegister() which puts device in status mode
     // Send READ_MODE (0x00) with NO address cycles to return to data output mode
-    // This resumes data output from the previously set column position
     sendCommand(Commands::READ_MODE);
-    vTaskDelay(1); // Wait tWHR
+    busyWaitNanoseconds(120); // tWHR: command to first data read
 
     for (uint32_t i = 0; i < data.size(); ++i) {
         data[i] = readData();
-
-        busyWaitNanoseconds(200); // tADL
     }
 
-    vTaskDelay(1); // Wait tRHW
+    busyWaitNanoseconds(200); // tRHW/tRHZ: read->write turnaround before issuing new commands
 
     if (performECC) {
         // Change read column to skip good block marker
         sendCommand(Commands::CHANGE_READ_COLUMN);
         sendAddress((DATA_BYTES_PER_PAGE + 1) & 0xFF);       
         sendAddress(((DATA_BYTES_PER_PAGE + 1) >> 8) & 0x3F); 
+        busyWaitNanoseconds(500); // tCCS: change column setup time before confirm
         sendCommand(Commands::CHANGE_READ_COLUMN_CONFIRM);
-
-        vTaskDelay(1); // Wait tCCS
+        busyWaitNanoseconds(120); // tWHR: confirm to data read
 
         etl::array<uint8_t, ECC_BYTES> eccCodes;
         for (size_t i = 0; i < ECC_BYTES; ++i) {
             eccCodes[i] = readData();
         }
+
+        busyWaitNanoseconds(200); // tRHW/tRHZ: ensure bus is idle after spare area read
 
         auto eccResult = validateAndCorrectECC(data, eccCodes);
         if (!eccResult) {
@@ -266,7 +270,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         sendAddress(cycles.cycle[i]);
     }
 
-    vTaskDelay(1); // Wait tADL
+    busyWaitNanoseconds(200); // tADL: address phase to data input
 
     for (size_t i = 0; i < data.size(); ++i) {
         sendData(data[i]);
@@ -276,11 +280,9 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
     sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
     sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
 
-    vTaskDelay(1); // Wait tCCS
+    busyWaitNanoseconds(500); // tCCS: change column setup time before spare writes
 
     sendData(GOOD_BLOCK_MARKER);
-
-    vTaskDelay(1); // Wait tCCS
 
     if (addECC) {
         etl::array<uint8_t, ECC_BYTES> eccData;
@@ -296,7 +298,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
 
-    vTaskDelay(1); // Wait tWB
+    busyWaitNanoseconds(200); // tWB: command to busy transition
 
     auto waitResult = waitForReady(TIMEOUT_PROGRAM_MS);
     if (!waitResult) {
@@ -336,13 +338,13 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     buildAddressCycles(addr, cycles);
     
     sendCommand(Commands::ERASE_BLOCK);
-    sendAddress(cycles.cycle[2]);  // Row 1
-    sendAddress(cycles.cycle[3]);  // Row 2  
-    sendAddress(cycles.cycle[4]);  // Row 3
+    sendAddress(cycles.cycle[2]);
+    sendAddress(cycles.cycle[3]);
+    sendAddress(cycles.cycle[4]);
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
 
-    vTaskDelay(1); // Wait tWB
-    
+    busyWaitNanoseconds(200); // tWB: command to busy transition
+
     auto waitResult = waitForReady(TIMEOUT_ERASE_MS);
     if (!waitResult) {
         return waitResult;
@@ -397,15 +399,19 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
         
         vTaskDelay(1);
     }
-    // return {};
+    return {};
 }
 
 uint8_t MT29F::readStatusRegister() {
     sendCommand(Commands::READ_STATUS);
-    
-    vTaskDelay(1); // Wait tWHR
-    
-    return readData();
+
+    busyWaitNanoseconds(120); // tWHR: command to status read
+
+    uint8_t status = readData();
+
+    busyWaitNanoseconds(200); // tRHW/tRHZ: read->write turnaround before next command
+
+    return status;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& addr) {
