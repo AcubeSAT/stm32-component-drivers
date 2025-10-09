@@ -107,3 +107,19 @@ protected:
         }
     }
 };
+
+inline void configureShareableDeviceRegionSized(uint32_t regionNumber,
+                                                uint32_t baseAddress,
+                                                uint32_t sizeField)
+{
+    MPU->RNR  = regionNumber;
+    MPU->RBAR = baseAddress & MPU_RBAR_ADDR_Msk;
+    MPU->RASR = MPU_RASR_XN_Msk |
+                (3UL << MPU_RASR_AP_Pos) |      // full access
+                (0UL << MPU_RASR_TEX_Pos) |     // TEX=0
+                MPU_RASR_S_Msk |                // Shareable
+                (0UL << MPU_RASR_C_Pos) |       // not cacheable
+                (1UL << MPU_RASR_B_Pos) |       // Device memory (vs strongly-ordered)
+                (sizeField << MPU_RASR_SIZE_Pos)|
+                MPU_RASR_ENABLE_Msk;
+}

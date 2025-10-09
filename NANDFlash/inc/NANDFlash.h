@@ -5,6 +5,23 @@
 #include <etl/expected.h>
 #include <etl/span.h>
 #include <etl/array.h>
+#include "samv71q21b.h"
+
+constexpr static uint32_t kSize16MiB = 0x17U; // 16 MiB = 2^(23+1)
+
+static void mpuConfigNand()
+{
+    __DMB();
+    MPU->CTRL = 0;
+
+    configureShareableDeviceRegionSized(0U, EBI_CS3_ADDR, kSize16MiB);
+    configureShareableDeviceRegionSized(1U, EBI_CS1_ADDR, kSize16MiB);
+
+    __DMB();
+    MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;
+    __DSB(); 
+    __ISB();
+}
 
 /**
  * @brief Error codes for NAND flash operations
@@ -395,6 +412,7 @@ public:
           badBlockCount(0)
           {
         selectNandConfiguration(chipSelect);
+        mpuConfigNand();
     }
     
     /* Disable copy constructor and copy assignment operator */

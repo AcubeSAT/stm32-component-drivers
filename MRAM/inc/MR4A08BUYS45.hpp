@@ -3,6 +3,22 @@
 #include "SMC.hpp"
 #include "etl/span.h"
 #include "etl/array.h"
+#include "samv71q21b.h"
+
+constexpr static uint32_t kSize2MiB  = 0x14U;
+
+static void mpuConfigMram()
+{
+    __DMB();
+    MPU->CTRL = 0;
+
+    configureShareableDeviceRegionSized(2U, EBI_CS0_ADDR, kSize2MiB);
+
+    __DMB();
+    MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;
+    __DSB(); 
+    __ISB();
+}
 
 /**
  * Error codes for MRAM operations
@@ -33,6 +49,7 @@ public:
      * @param chipSelect Chip Select signal used for this device
      */
     explicit MRAM(ChipSelect chipSelect) : SMC(chipSelect) {
+        mpuConfigMram();
     }
 
     /**
