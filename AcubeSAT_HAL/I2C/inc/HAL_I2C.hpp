@@ -24,11 +24,24 @@ namespace HAL_I2C {
     * @brief Enumeration to represent various I2C error states.
     */
     enum class I2CError {
-        None,
-        WriteError,
-        ReadError,
-        InvalidParams,
-        Timeout
+        NONE,
+        /**
+         * Internal error during I2C write or read
+         */
+        OPERATION_ERROR,
+        /**
+         * Provided parameters were invalid
+         */
+        INVALID_PARAMS,
+        /**
+         * The operation took to long to complete
+         */
+        TIMEOUT,
+        /**
+         * A previous operation is still ongoing
+         */
+        BUSY
+
     };
 
     /**
@@ -44,180 +57,181 @@ namespace HAL_I2C {
     /**
      * Timeout duration in ticks for I2C operations.
      * */
-    static constexpr uint8_t TIMEOUT_TICKS = 100;
+    static constexpr TickType_t TimeoutTicks = 100;
 
-    /**
-     * @brief Helper functions to map PeripheralNumber enum to specific TWIHS functions
-     * @tparam peripheralNumber The I2C peripheral to check, specified by the PeripheralNumber enum.
-     * @return true if the operation was sucessful; false otherwise.
-     * */
-    template<PeripheralNumber peripheralNumber>
-    inline bool isBusy() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+    namespace Internal {
+        /**
+         * @brief Helper functions to map PeripheralNumber enum to specific TWIHS functions
+         * @tparam peripheralNumber The I2C peripheral to check, specified by the PeripheralNumber enum.
+         * @return true if the operation was sucessful; false otherwise.
+         * */
+        template<PeripheralNumber peripheralNumber>
+        inline bool isBusy() {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
 #ifdef TWIHS0_ENABLED
-            return TWIHS0_IsBusy();
+                return TWIHS0_IsBusy();
 #else
-            return false;
+                return false;
 #endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
 #ifdef TWIHS1_ENABLED
-            return TWIHS1_IsBusy();
+                return TWIHS1_IsBusy();
 #else
-            return false;
+                return false;
 #endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
 #ifdef TWIHS2_ENABLED
-            return TWIHS2_IsBusy();
+                return TWIHS2_IsBusy();
 #else
-            return false;
+                return false;
 #endif
-        }
-    }
-
-    template<PeripheralNumber peripheralNumber>
-    inline void initialize() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
-#ifdef TWIHS0_ENABLED
-            TWIHS0_Initialize();
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
-#ifdef TWIHS1_ENABLED
-            TWIHS1_Initialize();
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
-#ifdef TWIHS2_ENABLED
-            TWIHS2_Initialize();
-#endif
-        }
-    }
-
-    template<PeripheralNumber peripheralNumber>
-    inline bool writeRegister(uint16_t deviceAddress, uint8_t *data, size_t size) {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
-#ifdef TWIHS0_ENABLED
-            return TWIHS0_Write(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
-#ifdef TWIHS1_ENABLED
-            return TWIHS1_Write(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
-#ifdef TWIHS2_ENABLED
-            return TWIHS2_Write(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-    }
-
-    template<PeripheralNumber peripheralNumber>
-    inline bool writeReadRegister(uint16_t deviceAddress, uint8_t *data, size_t size) {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
-#ifdef TWIHS0_ENABLED
-            return TWIHS0_WriteRead(deviceAddress, data, size);
-
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
-#ifdef TWIHS1_ENABLED
-            return TWIHS1_WriteRead(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
-#ifdef TWIHS2_ENABLED
-            return TWIHS2_WriteRead(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-    }
-
-    template<PeripheralNumber peripheralNumber>
-    inline bool readRegister(uint8_t deviceAddress, uint8_t *data, size_t size) {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
-#ifdef TWIHS0_ENABLED
-            return TWIHS0_Read(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
-#ifdef TWIHS1_ENABLED
-            return TWIHS1_Read(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
-#ifdef TWIHS2_ENABLED
-            return TWIHS2_Read(deviceAddress, data, size);
-#else
-            return false;
-#endif
-        }
-    }
-
-    template<PeripheralNumber peripheralNumber>
-    inline uint32_t errorGet() {
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
-#ifdef TWIHS0_ENABLED
-            return TWIHS0_ErrorGet();
-#else
-            return 0;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
-#ifdef TWIHS1_ENABLED
-            return TWIHS1_ErrorGet();
-#else
-            return 0;
-#endif
-        }
-        if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
-#ifdef TWIHS2_ENABLED
-            return TWIHS2_ErrorGet();
-#else
-            return 0;
-#endif
-        }
-    }
-
-    /**
-     * @brief Waits for the I2C bus to become available, with a timeout mechanism.
-     *
-     * @return I2CError Returns I2CError::Timeout if the bus is busy beyond the allowed timeout.
-     *
-     * This function checks the bus status to prevent the program from hanging if the I2C device
-     * is unresponsive. If the bus remains busy past the TIMEOUT_TICKS threshold, it resets
-     * the I2C hardware and returns a timeout error.
-     */
-    template<PeripheralNumber peripheralNumber>
-    inline I2CError waitForResponse() {
-        auto start = SYSTICK_TimerCounterGet();
-        while (isBusy<peripheralNumber>()) {
-            if (SYSTICK_TimerCounterGet() - start > TIMEOUT_TICKS) {
-                LOG_ERROR << "I2C timed out";
-                initialize<peripheralNumber>();
-                return I2CError::Timeout;
             }
         }
-        return I2CError::None;
-    }
 
+        template<PeripheralNumber peripheralNumber>
+        inline void initialize() {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+                TWIHS0_Initialize();
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+                TWIHS1_Initialize();
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+                TWIHS2_Initialize();
+#endif
+            }
+        }
+
+        template<PeripheralNumber peripheralNumber>
+        inline bool writeRegister(uint16_t deviceAddress, uint8_t *data, size_t size) {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+                return TWIHS0_Write(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+                return TWIHS1_Write(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+                return TWIHS2_Write(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+        }
+
+        template<PeripheralNumber peripheralNumber>
+        inline bool writeReadRegister(uint16_t deviceAddress, uint8_t * writeData, size_t writeSize, uint8_t readData, size_t readSize) {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+                return TWIHS0_WriteRead(deviceAddress, writeData, writeSize, readData, readSize);
+
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+                return TWIHS1_WriteRead(deviceAddress,  writeData, writeSize, readData, readSize);
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+                return TWIHS2_WriteRead(deviceAddress,  writeData, writeSize, readData, readSize);
+#else
+                return false;
+#endif
+            }
+        }
+
+        template<PeripheralNumber peripheralNumber>
+        inline bool readRegister(uint8_t deviceAddress, uint8_t *data, size_t size) {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+                return TWIHS0_Read(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+                return TWIHS1_Read(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+                return TWIHS2_Read(deviceAddress, data, size);
+#else
+                return false;
+#endif
+            }
+        }
+
+        template<PeripheralNumber peripheralNumber>
+        inline uint32_t errorGet() {
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
+#ifdef TWIHS0_ENABLED
+                return TWIHS0_ErrorGet();
+#else
+                return 0;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS1) {
+#ifdef TWIHS1_ENABLED
+                return TWIHS1_ErrorGet();
+#else
+                return 0;
+#endif
+            }
+            if constexpr (peripheralNumber == PeripheralNumber::TWIHS2) {
+#ifdef TWIHS2_ENABLED
+                return TWIHS2_ErrorGet();
+#else
+                return 0;
+#endif
+            }
+        }
+
+        /**
+         * @brief Waits for the I2C bus to become available, with a timeout mechanism.
+         *
+         * @return Returns false in case of timeout
+         *
+         * This function checks the bus status to prevent the program from hanging if the I2C device
+         * is unresponsive. If the bus remains busy past the TIMEOUT_TICKS threshold, it resets
+         * the I2C hardware and returns a timeout error.
+         */
+        template<PeripheralNumber peripheralNumber>
+        inline bool waitForResponse() {
+            auto start = xTaskGetTickCount();
+            while (isBusy<peripheralNumber>()) {
+                if (xTaskGetTickCount() - start > TimeoutTicks) {
+                    LOG_ERROR << "I2C timed out";
+                    initialize<peripheralNumber>();
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
     /**
     * @brief Writes data to a specific I2C device register.
     *
@@ -233,84 +247,89 @@ namespace HAL_I2C {
     inline I2CError writeRegister(uint8_t deviceAddress, etl::span<uint8_t> i2cData) {
         if (i2cData.empty()) {
             LOG_ERROR << "I2C data cannot be empty";
-            return I2CError::InvalidParams;
+            return I2CError::INVALID_PARAMS;
+        }
+
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::BUSY;
         }
         if (!writeRegister<peripheralNumber>(deviceAddress, i2cData.data(), i2cData.size())) {
-            auto error = errorGet<peripheralNumber>();
+            auto error = Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
-            return I2CError::WriteError;
+            return I2CError::OPERATION_ERROR;
         }
-        return I2CError::None;
+
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::TIMEOUT;
+        }
+        return I2CError::NONE;
     }
 
     /**
      * @brief Reads data from a specific I2C device register.
      *
-     * @tparam BUFFER_SIZE The size of the buffer to hold the data.
      * @param deviceAddress The I2C address of the target device.
-     * @param data A reference to an array to hold the read data.
+     * @param data A span for the buffer that will be populated with the read data.
      * @return I2CError Returns an I2CError indicating success or failure of the read operation.
      *
      * This function initiates a read transaction on the I2C bus. If the bus is busy, it waits
      * for the read operation to complete. In case of a failure during the read, it retrieves and logs
      * the error code and returns I2CError::ReadError.
      */
-    template<PeripheralNumber peripheralNumber, uint8_t BUFFER_SIZE>
-    inline I2CError readRegister(uint8_t deviceAddress, etl::array<uint8_t, BUFFER_SIZE> &data) {
-        static_assert(BUFFER_SIZE > 0, "Buffer size must be greater than zero");
-        if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
-            return I2CError::Timeout;
+    template<PeripheralNumber peripheralNumber>
+    inline I2CError readRegister(uint8_t deviceAddress, etl::span<uint8_t> data) {
+        if (data.size() == 0) {
+            LOG_ERROR << "I2C data cannot be empty";
+            return I2CError::INVALID_PARAMS;
+        }
+
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::BUSY;
         }
         if (!readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
-            auto error = errorGet<peripheralNumber>();
+            auto error = Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
-            return I2CError::ReadError;
+            return I2CError::OPERATION_ERROR;
         }
-        return I2CError::None;
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::TIMEOUT;
+        }
+        return I2CError::NONE;
     }
 
     /**
-     * @brief Performs a combined I2C write followed by a read operation.
+     * @brief Performs a combined I2C write/read operation
      *
-     * @tparam peripheralNumber The I2C peripheral to use.
-     * @tparam WRITE_BUFFER_SIZE The size of the write buffer.
-     * @tparam READ_BUFFER_SIZE The size of the read buffer.
      * @param deviceAddress The I2C address of the target device.
-     * @param writeData A reference to an array containing the data to write.
-     * @param readData A reference to an array to hold the read data.
+     * @param writeData A span to a buffer containing the data to write.
+     * @param readData A span to a buffer that will be populated with the read data.
      * @return I2CError Returns an I2CError indicating success or failure of the operation.
      *
-     * This function performs a write operation followed immediately by a read operation
-     * on the I2C bus. It waits for the bus to be ready before initiating each transaction
+     * This function performs a combined I2C write/read operation. It waits for the bus to be ready before initiating each transaction
      * and handles timeouts and errors appropriately.
      */
-    template<PeripheralNumber peripheralNumber, uint8_t WRITE_BUFFER_SIZE, uint8_t READ_BUFFER_SIZE>
-    inline I2CError writeRead(uint8_t deviceAddress,
-                              const etl::array<uint8_t, WRITE_BUFFER_SIZE>& writeData,
-                              etl::array<uint8_t, READ_BUFFER_SIZE>& readData) {
-        static_assert(WRITE_BUFFER_SIZE > 0, "Write buffer size must be greater than zero");
-        static_assert(READ_BUFFER_SIZE > 0, "Read buffer size must be greater than zero");
-
-        if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
-            return I2CError::Timeout;
+    template<PeripheralNumber peripheralNumber>
+    inline I2CError writeReadRegister(uint8_t deviceAddress,
+                              const etl::span<uint8_t> writeData,
+                              etl::span<uint8_t> readData) {
+        if (writeData.size() == 0 || readData.size() == 0) {
+            LOG_ERROR << "I2C data cannot be empty";
+            return I2CError::INVALID_PARAMS;
         }
-        if (!writeRegister<peripheralNumber>(deviceAddress, writeData.data(), writeData.size())) {
-            auto error = errorGet<peripheralNumber>();
-            LOG_INFO << "I2C write transaction failed with error code: " << error;
-            return I2CError::WriteError;
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::BUSY;
         }
-
-        if (waitForResponse<peripheralNumber>() == I2CError::Timeout) {
-            return I2CError::Timeout;
+        if (!writeReadRegister<peripheralNumber>(deviceAddress, writeData.data(), writeData.size(), readData.data(), readData.size())) {
+            auto error =Internal::errorGet<peripheralNumber>();
+            LOG_INFO << "I2C write/read transaction failed with error code: " << error;
+            return I2CError::OPERATION_ERROR;
         }
 
-        if (!readRegister<peripheralNumber>(deviceAddress, readData.data(), readData.size())) {
-            auto error = errorGet<peripheralNumber>();
-            LOG_INFO << "I2C read transaction failed with error code: " << error;
-            return I2CError::ReadError;
+        if (not Internal::waitForResponse<peripheralNumber>()) {
+            return I2CError::TIMEOUT;
         }
 
-        return I2CError::None;
+        return I2CError::NONE;
     }
 }
 
