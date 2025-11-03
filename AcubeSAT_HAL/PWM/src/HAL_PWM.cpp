@@ -26,7 +26,9 @@ namespace HAL_PWM {
     }
 
     template<PeripheralNumber peripheral>
-    uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {}
+    uint16_t PWM_ChannelPeriodGet(PWM_CHANNEL_NUM pwmChannel) {
+        return 0;
+    }
 
     template<>
     uint16_t PWM_ChannelPeriodGet<PeripheralNumber::Peripheral_0>(PWM_CHANNEL_NUM pwmChannel) {
