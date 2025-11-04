@@ -286,7 +286,7 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::BUSY;
         }
-        if (!readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
+        if (not readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
             auto error = Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
             return I2CError::OPERATION_ERROR;
