@@ -26,7 +26,7 @@
 
 *******************************************************************************/
 
-#include "common.hpp"
+#include "common.h"
 
 /******************************************************************************
  * 								USER SETTINGS AREA
@@ -57,7 +57,7 @@ typedef MT_uint16 bus_t;
 	This function is called during driver initialization.
 */
 
-void PLATFORM_Init(void);
+void PLATFORM_Init();
 
 /**
  	Open NAND device.
@@ -75,13 +75,13 @@ void PLATFORM_SendCmd(bus_t ubCommand);
 	NAND Address input.
 	This function is used to send an address to NAND.
 */
-void PLATFORM_SendAddr(int ubAddress);
+void PLATFORM_SendAddr(bus_t ubAddress);
 
 /**
 	NAND Data input.
 	This function is used to send data to NAND.
 */
-void PLATFORM_SendData(bus_t ubData);
+void PLATFORM_SendData(bus_t data);
 
 /**
 	NAND Data output.
@@ -105,7 +105,7 @@ void PLATFORM_UnsetWriteProtect(void);
 	Wait for microseconds.
 	This function should call a platform or OS wait() function.
 */
-void PLATFORM_Wait(int nanoseconds);
+void PLATFORM_Wait(int microseconds);
 
 /**
 	Close HW NAND Controller.

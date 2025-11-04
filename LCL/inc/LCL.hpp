@@ -33,13 +33,16 @@ protected:
      */
     LCL(PIO_PIN resetPin, PIO_PIN setPin) : resetPin(resetPin), setPin(setPin) {}
 
+public:
     /**
      * Enable the LCL
+     * @return  false on failure
      */
-    virtual void enableLCL() = 0;
+    virtual bool enableLCL() = 0;
 
     /**
      * Disable the LCL
+     * @return false on failure
      */
-    virtual void disableLCL() = 0;
+    virtual bool disableLCL() = 0;
 };
