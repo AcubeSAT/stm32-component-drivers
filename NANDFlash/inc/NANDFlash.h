@@ -24,9 +24,7 @@ enum class NANDErrorCode : uint8_t {
     NOT_INITIALIZED,
     HARDWARE_FAILURE,
     BAD_PARAMETER_PAGE,
-    UNSUPPORTED_OPERATION,
-    ECC_UNCORRECTABLE,
-    ECC_ALGORITHM_ERROR
+    UNSUPPORTED_OPERATION
 };
 
 /**
@@ -155,7 +153,7 @@ private:
      * @brief Structure for 5-cycle NAND addressing 
      */
     struct AddressCycles {
-        uint8_t cycle[5];  ///< Address cycles: [CA1, CA2, RA1, RA2, RA3]
+        uint8_t cycle[5];  /*!< Address cycles: [CA1, CA2, RA1, RA2, RA3] */
     };
 
     /* Calculated based on 1000Hz tick rate and the datasheet. For safety reasons they have a 10x margin. */ 
@@ -209,7 +207,6 @@ private:
      * @brief Simple busy wait loop for nanosecond delays
      *
      * @details Based on 150MHz CPU clock (6.67ns per cycle).
-     * Uses simple for loop with NOP instructions.
      *
      * @param nanoseconds Delay duration in nanoseconds
      */
@@ -277,34 +274,6 @@ private:
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
      */
     etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr);
-
-    /**
-     * @brief Calculate ECC codes for page data
-     *
-     * @param pageData Page data to calculate ECC for
-     * @param[out] eccOutput Buffer to store calculated ECC (335 bytes)
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::INVALID_PARAMETER Invalid buffer size (must be 8192 bytes data, 335 bytes ECC)
-     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH initialization or encoding failure
-     */
-    etl::expected<void, NANDErrorCode> calculateECC(etl::span<const uint8_t> pageData,
-                                                    etl::span<uint8_t> eccOutput);
-
-    /**
-     * @brief Validate and correct page data using ECC codes
-     *
-     * @param pageData Page data to validate and correct (modified in-place)
-     * @param eccCodes ECC codes read from spare area (335 bytes)
-     *
-     * @return Number of corrected errors, or specific error code
-     * @retval NANDErrorCode::INVALID_PARAMETER Invalid buffer size (must be 8192 bytes data, 335 bytes ECC)
-     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH initialization or decoding failure
-     * @retval NANDErrorCode::ECC_UNCORRECTABLE Too many errors (>4 per codeword or >255 total)
-     */
-    etl::expected<uint8_t, NANDErrorCode> validateAndCorrectECC(etl::span<uint8_t> pageData,
-                                                               etl::span<const uint8_t> eccCodes);
-
 
     /* ============= Write protection management functions ============= */
     
@@ -456,13 +425,10 @@ public:
     /* ================== Data Operations ================== */
     
     /**
-     * @brief Read data from NAND flash with optional ECC validation
+     * @brief Read data from NAND flash page
      *
-     * @note If you need ECC check for the data then a whole page must be read.
-     * 
      * @param addr NAND address to read from
      * @param[out] data Buffer to store read data (size determines bytes to read)
-     * @param performECC Whether to read spare area and perform ECC validation (default: false)
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
@@ -471,10 +437,8 @@ public:
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
-     * @retval NANDErrorCode::ECC_UNCORRECTABLE Too many bit errors to correct
-     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH algorithm failure
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data, bool performECC = false);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data);
     
     /**
      * @brief Program (write) data to NAND flash page
@@ -482,12 +446,9 @@ public:
      * @note Page must be in erased state before programming. Also a whole page must be written everytime. If you need to write  data that are
      *       lesss than a page, then you need to manually add 0xFF to the rest of the data. The function always expects a buffer that is 
      *       DATA_BYTES_PER_PAGE in length.
-     * 
-     * @details The function adds ECC data for the data to be written.
      *
      * @param addr NAND address to write to
      * @param data Data to write (max page size)
-     * @param addECC Control if ECC will be added at the spare area of the page (default: false)
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
@@ -495,10 +456,9 @@ public:
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::ECC_ALGORITHM_ERROR BCH algorithm failure
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data, bool addECC = false);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
      
     /**
      * @brief Erase a block
@@ -565,8 +525,6 @@ constexpr const char* toString(NANDErrorCode error) {
         case NANDErrorCode::HARDWARE_FAILURE: return "Hardware failure";
         case NANDErrorCode::BAD_PARAMETER_PAGE: return "Bad parameter page";
         case NANDErrorCode::UNSUPPORTED_OPERATION: return "Unsupported operation";
-        case NANDErrorCode::ECC_UNCORRECTABLE: return "ECC uncorrectable errors";
-        case NANDErrorCode::ECC_ALGORITHM_ERROR: return "ECC algorithm error";
         default: return "Unknown error";
     }
 }
