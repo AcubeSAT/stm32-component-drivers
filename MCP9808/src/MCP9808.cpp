@@ -3,7 +3,10 @@
 MCP9808::Error MCP9808::writeRegister(etl::span<uint8_t> data) {
 
     if (MCP9808_TWIHS_Write(I2CBusAddress, data.data(), data.size())) {
-        waitForResponse();
+        if (auto responseError = waitForResponse(); responseError != Error::ERROR_NONE) {
+            return responseError;
+        }
+
         error = MCP9808_TWIHS_ErrorGet();
         if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
             return static_cast<Error>(error);
@@ -20,15 +23,17 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
             static_cast<std::underlying_type_t<Register>>(address)};
     const auto WriteError = writeRegister(addr);
-    if (WriteError != Error::ERROR_NONE)
+    if (WriteError != Error::ERROR_NONE) {
         return etl::unexpected(WriteError);
-
+    }
     if (MCP9808_TWIHS_Read(I2CBusAddress, buffer.data(), buffer.size())) {
-        waitForResponse();
+        if (auto responseError = waitForResponse(); responseError != Error::ERROR_NONE) {
+            return etl::unexpected{responseError};
+        }
         error = MCP9808_TWIHS_ErrorGet();
-        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
+        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE)) {
             return etl::unexpected(static_cast<Error>(error));
-
+        }
         return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(buffer[0]) & 0x00FF : (
                 (static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));;
     }

@@ -60,14 +60,10 @@ class MCP9808 {
 public:
     /**
      * Set the I2C address depending on the pin configuration of the physical device
-     * @see I2C_USER_ADDRESS
+     * @see I2cAddress
      * @param i2cUserAddress user selectable address
      */
-    explicit MCP9808(uint8_t i2cUserAddress) : I2CUserAddress(i2cUserAddress) {}
-
-    /**
-     * Configuration constants used only for configuration operations to avoid overwriting critical data, refer to datasheet section 5.1.1.
-     */
+    explicit MCP9808(uint8_t i2cUserAddress) : I2cUserAddress(i2cUserAddress) {}
 
     /**
      * Hysteresis temperature options.
@@ -90,9 +86,9 @@ public:
     };
 
     /**
-     * Specifies the type of error occured in reading and writing operations
+     * Specifies the type of error occurred in reading and writing operations
      *
-     * note : ID_READ_WAS_WRONG reffers to when the Manufacturer ID was read but instead of 0x54,
+     * note : ID_READ_WAS_WRONG refers to when the Manufacturer ID was read but instead of 0x54,
      * a random non zero value is read, possibly due to a bit flip
      */
     enum class Error : uint8_t {
@@ -101,88 +97,105 @@ public:
         READ_REQUEST_FAILED,
         WRITE_REQUEST_FAILED,
         ID_READ_WAS_WRONG,
-        ID_READ_FAILED
+        ID_READ_FAILED,
+        TIMEOUT
     };
 
     /**
      * Enter low power mode (SHDN - shutdown mode)
+     * @return an error code
      */
     Error enableLowPowerMode();
 
     /**
      * Exit low power mode (SHDN - shutdown mode)
+     * @return an error code
      */
     Error disableLowPowerMode();
 
     /**
      * Enable locking of the critical temperature (TCRIT) register
+     * @return an error code
      */
     Error enableCriticalTemperatureLock();
 
     /**
      * Disable locking of the critical temperature (TCRIT) register
+     * @return an error code
      */
     Error disableCriticalTemperatureLock();
 
     /**
      * Enable locking of the temperature window (T_UPPER, T_LOWER) registers
+     * @return an error code
      */
     Error enableTemperatureWindowLock();
 
     /**
      * Disable locking of the temperature window (T_UPPER, T_LOWER) registers
+     * @return an error code
      */
     Error disableTemperatureWindowLock();
 
     /**
      * Enable temperature alerts.
      * Alert output is asserted as a comparator/interrupt or critical temperature
+     * @return an error code
      */
     Error enableAlertStatus();
 
     /**
      * Disable temperature alerts.
      * Alert output is not asserted by the device (power-up default)
+     * @return an error code
      */
     Error disableAlertStatus();
 
     /**
      * Enable alert control mode.
+     * @return an error code
      */
     Error enableAlertControl();
 
     /**
      * Disable alert control mode.
+     * @return an error code
      */
     Error disableAlertControl();
 
     /**
      * An alert is emitted only when T_ambient > T_crit (T_UPPER and T_LOWER temperature boundaries are disabled)
+     * @return an error code
      */
     Error setAlertSelectionOnCriticalTemperature();
 
     /**
      * Alert output for T_UPPER, T_LOWER and T_CRIT (power-up default)
+     * @return an error code
      */
     Error setAlertSelectionOnAll();
 
     /**
      * Set the polarity of the emitted alert active-high
+     * @return an error code
      */
     Error setAlertPolarityActiveHigh();
 
     /**
      * Set the polarity of the emitted alert active-low
+     * @return an error code
      */
     Error setAlertPolarityActiveLow();
 
     /**
      * Set the alert mode to comparator output
+     * @return an error code
      */
     Error setAlertModeComparator();
 
     /**
      * Set the alert mode to interrupt output
+     * @return an error code
      */
     Error setAlertModeInterrupt();
 
@@ -190,61 +203,67 @@ public:
      * Set the hysteresis temperature (THYST)
      * Available options are: 0, 1.5, 3, 6 degrees Celsius
      * @param option desired hysteresis temperature option
+     * @return an error code
      */
     Error setHysteresisTemperature(HysteresisTemperatureOptions option);
 
     /**
      * Set the interrupts to be cleared on the next read attempt (namely, a temperature
      * reading or a command in general)
+     * @return an error code
      */
     Error clearInterrupts();
 
     /**
      * Set the measurement resolution. Since the bits of interest in are located in the less significant byte, and
-     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits, t
-     * he input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
+     * the High-Speed Two-Wired Interface (TWIHS) protocol reads MSB-first, while the register fits only 8 bits,
+     * the input is shifted by 8 bits to transfer the data bits to the MSB part and thus store them.
      * @param setting the desired measurement resolution option
+     * @return an error code
      */
     Error setResolution(MeasurementResolution setting);
 
     /**
      * Set upper temperature limit
      * @param temp the desired upper temperature limit with format as specified at page 21 of the datasheet
+     * @return an error code
      */
     Error setUpperTemperatureLimit(float temp);
 
     /**
      * Set lower temperature limit
      * @param temp the desired lower temperature limit with format as specified at page 21 of the datasheet
+     * @return an error code
      */
     Error setLowerTemperatureLimit(float temp);
 
     /**
      * Set critical temperature limit
      * @param temp the desired critical temperature limit with format as specified at page 21 of the datasheet
+     * @return an error code
      */
     Error setCriticalTemperatureLimit(float temp);
 
     /**
     * Get the current ambient temperature (in Celsius)
-    * @returns the current ambient temperature
+    * @return the current ambient temperature or an error
     */
     etl::expected<float, Error> getTemperature();
     /**
      * Returns the Critical Temperature (in Celsius)
-     * @return the Critical Temperature
+     * @return the Critical Temperature or an error
      */
     etl::expected<float, MCP9808::Error> getCriticalTemperatureLimit();
 
     /**
      * Returns the Upper Temperature Limit (in Celsius)
-     * @return the Upper Temperature Limit
+     * @return the Upper Temperature Limit or an error
      */
     etl::expected<float, MCP9808::Error> getUpperTemperatureLimit();
 
     /**
      * Returns the Lower Temperature Limit (in Celsius)
-     * @return the Lower Temperature Limit
+     * @return the Lower Temperature Limit or an error
      */
     etl::expected<float, MCP9808::Error> getLowerTemperatureLimit();
 
@@ -259,11 +278,11 @@ public:
      * @return the I2C_USER_ADDRESS private variable
      */
     inline uint8_t getI2CUserAddress() const {
-        return I2CUserAddress;
+        return I2cUserAddress;
     }
 
 private:
-    /**
+/**
  * Low-power mode (SHDN) options.
  */
     enum class LowPowerMode : uint16_t {
@@ -280,7 +299,7 @@ private:
     };
 
     /**
-     * WINLOCK T_upper and T_lower temperature window locking options.
+     * T_upper and T_lower temperature window locking options.
      */
     enum class TemperatureWindowLock : uint16_t {
         WINLOCK_ENABLE = 0x40,
@@ -339,7 +358,7 @@ private:
     /**
      * Wait period before a sensor read is skipped
      */
-    static constexpr uint8_t TimeoutTicks = 100;
+    static constexpr TickType_t TimeoutTicks = 100;
 
     /**
      * User constants - FOR USE IN FUNCTION CALLS AND CONFIGURATION
@@ -368,11 +387,7 @@ private:
     /**
      * User defined I2C address bits A2-A1-A0, see datasheet for acceptable values
      */
-    const uint8_t I2CUserAddress = 0x00;
-
-    /**
-     * System constants - INTERNAL USE ONLY!
-     */
+    const uint8_t I2cUserAddress = 0x00;
 
     /**
      * Configuration masks
@@ -399,7 +414,7 @@ private:
     static constexpr uint8_t I2CBaseAddress = 0x18u;
 
     /**
-     * Bit mask to enable changes only to addresses bits 2-4 which are user-settable.
+     * Bit mask to enable changes only to addresses of bits 2-4 which are user-settable.
      */
     static constexpr uint8_t I2CUserAddressMask = 0x78u;
 
@@ -407,7 +422,7 @@ private:
      * Custom bus address for usage in read-write requests.
      */
     const uint8_t I2CBusAddress = static_cast<uint16_t>(I2CBaseAddress & I2CUserAddressMask |
-                                                          I2CUserAddress);
+                                                          I2cUserAddress);
 
     /**
      * Manufacturer's ID.
@@ -451,18 +466,21 @@ private:
     /**
      * Enter/exit low power mode (SHDN - shutdown mode)
      * @param setting the desired low power mode option
+     * @return an error code
      */
     Error setLowPowerMode(LowPowerMode setting);
 
     /**
      * Set locking status of the critical temperature (TCRIT) register
      * @param setting the desired critical temperature locking option
+     * @return an error code
      */
     Error setCriticalTemperatureLock(CriticalTemperatureRegisterLock setting);
 
     /**
      * Set locking status of the temperature window (T_UPPER, T_LOWER) registers
      * @param setting the desired locking status option
+     * @return an error code
      */
     Error setTemperatureWindowLock(TemperatureWindowLock setting);
 
@@ -470,12 +488,14 @@ private:
      * Enable or disable temperature alerts.
      * If enabled, alert output is asserted as a comparator/interrupt or critical temperature
      * @param setting the desired alert status option
+     * @return an error code
      */
     Error setAlertStatus(AlertStatus setting);
 
     /**
      * Enable or disable alert control mode.
      * @param setting the desired alert control option
+     * @return an error code
      */
     Error setAlertControl(AlertControl setting);
 
@@ -484,18 +504,21 @@ private:
      * If set to CONFIG_ALERT_SELECT_CRITONLY, then an alert is emitted only when
      * T_ambient > T_crit.
      * @param setting the desired alert selection option
+     * @return an error code
      */
     Error setAlertSelection(AlertSelection setting);
 
     /**
      * Set the polarity of the emitted alert (active-low or active-high)
      * @param setting desired alert polarity option
+     * @return an error code
      */
     Error setAlertPolarity(AlertPolarity setting);
 
     /**
      * Set the alert mode (comparator or interrupt output)
      * @param setting the desired alert mode option
+     * @return an error code
      */
     Error setAlertMode(AlertMode setting);
 
@@ -504,7 +527,7 @@ private:
      * NOTE: this writes data as they are, so be careful!
      *
      * @param data the data octets to be written
-     * @param numOfBytes the number of bytes to be written
+     * @return an error code
      */
     Error writeRegister(etl::span<uint8_t> data);
 
@@ -512,7 +535,7 @@ private:
      * Read a value from a register. About register reading operations
      * in MCP9808, refer to documentation page 21, figure 5.3. Microchip-specific functions are used.
      * @param address the address of the desired register
-     * @param data a variable to save the data from the desired register
+     * @return the result or an error
      */
     etl::expected<uint16_t, Error> readRegister(Register address);
 
@@ -526,29 +549,32 @@ private:
      * setting bit or group of bits
      * @param setting the new value of the setting to be changed
      * (also found in mcp9808-constants.hpp)
+     * @return an error code
      */
     Error setRegister(Register address, Mask mask, uint16_t setting);
 
     /**
-     * Function that prevents hanging when a I2C device is not responding.
+     * Function that waits for the I2C operation to complete
+     * @return NO_ERROR or error TIMEOUT
      */
-    inline void waitForResponse() const {
+    [[nodiscard]] inline Error waitForResponse() const {
         const auto Start = xTaskGetTickCount();
         while (MCP9808_TWIHS_IsBusy()) {
             if (xTaskGetTickCount() - Start > TimeoutTicks) {
-                LOG_ERROR << "Temperature sensor with address " << I2CUserAddress
+                LOG_ERROR << "Temperature sensor with address " << I2cUserAddress
                           << " has timed out";
                 MCP9808_TWIHS_Initialize();
+                return Error::TIMEOUT;
             }
-            taskYIELD()
         }
+        return Error::ERROR_NONE;
     };
 
     /**
      * Converts floating point number to the binary representation
      * specified at page 22 of the datasheet.
      *
-     * @param f the floating point number to be converted
+     * @param value the floating point number to be converted
      * @return the binary representation
      */
     static uint16_t floatToCustomFormat(float value);
