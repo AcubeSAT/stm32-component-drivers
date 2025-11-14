@@ -36,9 +36,13 @@ struct BadBlockInfo {
 };
 
 /**
- * @brief Driver for MT29F32G09ABAAA NAND Flash
- * 
- * 
+ * @brief Driver for MT29F64G08AFAAAWP NAND Flash
+ *
+ * @note Bad Block Management:
+ *       - Driver maintains bad block table (factory + runtime discovered)
+ *       - Query via isBlockBad() before operations
+ *       - Driver does NOT enforce checks on read/program/erase (caller responsibility)
+ *
  * @ingroup drivers
  * @see http://ww1.microchip.com/downloads/en/DeviceDoc/NAND-Flash-Interface-with-EBI-on-Cortex-M-Based-MCUs-DS90003184A.pdf
  * @see https://gr.mouser.com/datasheet/2/671/micron_technology_micts05995-1-1759202.pdf
@@ -46,7 +50,7 @@ struct BadBlockInfo {
  */
 class MT29F : public SMC {
 public:
-    /* ============== MT29F32G09ABAAA device constants =============== */
+    /* ============== MT29F64G08AFAAAWP device constants =============== */
     static constexpr uint32_t DATA_BYTES_PER_PAGE = 8192;
     static constexpr uint16_t SPARE_BYTES_PER_PAGE = 448;
     static constexpr uint16_t TOTAL_BYTES_PER_PAGE = DATA_BYTES_PER_PAGE + SPARE_BYTES_PER_PAGE;
@@ -85,10 +89,10 @@ private:
 
 
     /* ================= Driver state variables ================== */
-  
+
     bool isInitialized = false; /*!< Driver initialization status */
 
-    
+
     /* ================= Bad block management  ================== */
     
     static constexpr size_t MAX_BAD_BLOCKS = 256;  /*!< Maximum number of bad blocks to track */
@@ -156,11 +160,12 @@ private:
         uint8_t cycle[5];  /*!< Address cycles: [CA1, CA2, RA1, RA2, RA3] */
     };
 
-    /* Calculated based on 1000Hz tick rate and the datasheet. For safety reasons they have a 10x margin. */ 
-    static constexpr uint32_t TIMEOUT_READ_MS = 1;        /*!< Timeout constant for READ operation (60μs max + margin) */
-    static constexpr uint32_t TIMEOUT_PROGRAM_MS = 6;     /*!< Timeout constant for RPROGRAM operation (600μs max + margin) */ 
-    static constexpr uint32_t TIMEOUT_ERASE_MS = 60;      /*!< Timeout constant for ERASE operation (6ms max + margin) */
-    static constexpr uint32_t TIMEOUT_RESET_MS = 10;      /*!< Timeout constant for RESET operation (1ms max + margin) */
+    /* Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says. 
+       Also for practical reasons (easier calculations) the read timeout was put to 1ms. */ 
+    static constexpr uint32_t TIMEOUT_READ_MS = 1;        /*!< Timeout constant for READ operation (35μs max from datasheet) */
+    static constexpr uint32_t TIMEOUT_PROGRAM_MS = 3;     /*!< Timeout constant for RPROGRAM operation (560μs max from datasheet) */ 
+    static constexpr uint32_t TIMEOUT_ERASE_MS = 35;      /*!< Timeout constant for ERASE operation (7ms max from datasheet) */
+    static constexpr uint32_t TIMEOUT_RESET_MS = 5;      /*!< Timeout constant for RESET operation (1ms max from datasheet) */
 
 
     /* ======== Low-level hardware interface functions (SMC) ======== */
@@ -204,15 +209,50 @@ private:
     /* ========= Internal helper functions for NAND operations ========= */
 
     /**
-     * @brief Simple busy wait loop for nanosecond delays
+     * @brief RAII guard for write-enable state
+     */
+    class WriteEnableGuard {
+    private:
+        MT29F& nand;
+    public:
+        explicit WriteEnableGuard(MT29F& n) : nand(n) {
+            nand.enableWrites();
+        }
+
+        ~WriteEnableGuard() {
+            nand.disableWrites();
+        }
+
+        // Non-copyable, non-movable
+        WriteEnableGuard(const WriteEnableGuard&) = delete;
+        WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
+        WriteEnableGuard(WriteEnableGuard&&) = delete;
+        WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
+    };
+
+    /**
+     * @brief Execute NAND read command sequence without initialization check
      *
-     * @details Based on 150MHz CPU clock (6.67ns per cycle).
+     * @param addr NAND address to read from
      *
+     * @return Success or error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     */
+    etl::expected<void, NANDErrorCode>
+    executeReadCommandSequence(const NANDAddress& addr);
+
+    /**
+     * @brief Busy-wait delay for nanosecond-precision timing
+     * 
      * @param nanoseconds Delay duration in nanoseconds
+     *
+     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
+     *       It is used for the timing requirements (tWHR, tADL, tRHW, etc.)
+     *       that are in nanoseconds.
      */
     static inline void busyWaitNanoseconds(uint32_t nanoseconds) {
-
-        const uint32_t cycles = (nanoseconds * 15UL) / 100UL;
+        constexpr uint32_t CPU_MHZ = CPU_CLOCK_FREQUENCY / 1000000UL;
+        const uint32_t cycles = (nanoseconds * CPU_MHZ) / 1000UL;
 
         for (volatile uint32_t i = 0; i < cycles; ++i) {
             __asm__ volatile ("nop");
@@ -437,6 +477,13 @@ public:
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
+     *
+     * @warning Caller MUST check isBlockBad() before calling this function.
+     *          Reading from bad blocks may return corrupted data.
+     *
+     * @pre isBlockBad(addr.block, addr.lun) == false
+     * @pre isInitialized == true
+     * @pre data.size() <= DATA_BYTES_PER_PAGE
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data);
     
@@ -444,7 +491,7 @@ public:
      * @brief Program (write) data to NAND flash page
      *
      * @note Page must be in erased state before programming. Also a whole page must be written everytime. If you need to write  data that are
-     *       lesss than a page, then you need to manually add 0xFF to the rest of the data. The function always expects a buffer that is 
+     *       less than a page, then you need to manually add 0xFF to the rest of the data. The function always expects a buffer that is
      *       DATA_BYTES_PER_PAGE in length.
      *
      * @param addr NAND address to write to
@@ -457,6 +504,14 @@ public:
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
+     *
+     * @warning Caller MUST check isBlockBad() before calling this function.
+     *          Programming to bad blocks may fail or cause data corruption.
+     *
+     * @pre isBlockBad(addr.block, addr.lun) == false
+     * @pre isInitialized == true
+     * @pre data.size() == DATA_BYTES_PER_PAGE
+     * @pre addr.column == 0
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
      
@@ -472,6 +527,13 @@ public:
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
+     *
+     * @warning Caller MUST check isBlockBad() before calling this function.
+     *          Erasing bad blocks may fail. If erase fails, the block is
+     *          automatically marked as bad in the runtime table.
+     *
+     * @pre !isBlockBad(block, lun) == false
+     * @pre isInitialized == true
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
 
