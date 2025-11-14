@@ -2,6 +2,9 @@
 
 #include "SMC.hpp"
 #include "definitions.h"
+#include "FreeRTOSConfig.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 #include <etl/expected.h>
 #include <etl/span.h>
 #include <etl/array.h>
@@ -38,7 +41,10 @@ struct BadBlockInfo {
 /**
  * @brief Driver for MT29F64G08AFAAAWP NAND Flash
  *
- * @note Bad Block Management:
+ * @note Thread Safety:
+ *       - Driver is thread-safe via internal mutex
+ * 
+ *       Bad Block Management:
  *       - Driver maintains bad block table (factory + runtime discovered)
  *       - Query via isBlockBad() before operations
  *       - Driver does NOT enforce checks on read/program/erase (caller responsibility)
@@ -92,6 +98,9 @@ private:
 
     bool isInitialized = false; /*!< Driver initialization status */
 
+    StaticSemaphore_t mutexBuffer; /*!< Static buffer for mutex */
+    
+    SemaphoreHandle_t mutex; /*!< Mutex handle for thread safety */
 
     /* ================= Bad block management  ================== */
     
@@ -206,7 +215,7 @@ private:
         return smcReadByte(moduleBaseAddress);
     }
 
-    /* ========= Internal helper functions for NAND operations ========= */
+    /* ========= Internal guards for write protection/thread safety  ========= */
 
     /**
      * @brief RAII guard for write-enable state
@@ -229,6 +238,30 @@ private:
         WriteEnableGuard(WriteEnableGuard&&) = delete;
         WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
     };
+
+    /**
+     * @brief RAII guard for mutex acquisition
+     */
+    class MutexGuard {
+    private:
+        SemaphoreHandle_t& sem;
+    public:
+        explicit MutexGuard(SemaphoreHandle_t& s) : sem(s) {
+            xSemaphoreTake(sem, portMAX_DELAY);
+        }
+
+        ~MutexGuard() {
+            xSemaphoreGive(sem);
+        }
+
+        // Non-copyable, non-movable
+        MutexGuard(const MutexGuard&) = delete;
+        MutexGuard& operator=(const MutexGuard&) = delete;
+        MutexGuard(MutexGuard&&) = delete;
+        MutexGuard& operator=(MutexGuard&&) = delete;
+    };
+
+    /* ========= Internal helper functions for NAND operations ========= */
 
     /**
      * @brief Execute NAND read command sequence without initialization check

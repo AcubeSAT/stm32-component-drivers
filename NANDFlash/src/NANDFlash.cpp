@@ -7,6 +7,12 @@
 /* ================= Driver Initialization and Basic Info ================= */
 
 etl::expected<void, NANDErrorCode> MT29F::initialize() {
+    // Create mutex (before any operations)
+    mutex = xSemaphoreCreateMutexStatic(&mutexBuffer);
+    if (mutex == nullptr) {
+        LOG_ERROR << "NAND: Failed to create mutex";
+        return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+    }
 
     auto resetResult = reset();
     if (!resetResult) {
@@ -198,6 +204,8 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return validateResult;
     }
 
+    MutexGuard lock(mutex);
+
     auto status = readStatusRegister();
     if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
@@ -250,12 +258,14 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         return validateResult;
     }
 
+    MutexGuard lock(mutex);
+
     auto status = readStatusRegister();
     if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    WriteEnableGuard guard(*this);  // RAII - auto cleanup on any return
+    WriteEnableGuard guard(*this); 
 
     AddressCycles cycles;
     buildAddressCycles(addr, cycles);
@@ -306,12 +316,14 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
-    WriteEnableGuard guard(*this);
+    MutexGuard lock(mutex);
 
     auto status = readStatusRegister();
     if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
+
+    WriteEnableGuard guard(*this);
 
     NANDAddress addr(lun, block, 0, 0);
     AddressCycles cycles;
