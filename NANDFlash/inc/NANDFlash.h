@@ -26,8 +26,7 @@ enum class NANDErrorCode : uint8_t {
     INVALID_PARAMETER,
     NOT_INITIALIZED,
     HARDWARE_FAILURE,
-    BAD_PARAMETER_PAGE,
-    UNSUPPORTED_OPERATION
+    BAD_PARAMETER_PAGE
 };
 
 /**
@@ -110,7 +109,7 @@ private:
 
     size_t badBlockCount = 0; /*!< Current number of bad blocks in table */
     
-    static constexpr uint16_t BAD_BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
+    static constexpr uint16_t BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
     
     static constexpr uint8_t GOOD_BLOCK_MARKER = 0xFF; /*!< Marker value for good blocks */
     
@@ -157,6 +156,30 @@ private:
     
     static constexpr uint8_t STATUS_WP = 0x80; /*!< Write protected (1 = not protected, 0 = protected) */
 
+
+    /* ============= Timing Parameters ============= */
+    
+    static constexpr uint32_t GPIO_SETTLE_TIME_NS = 100; /*!< WP# GPIO settling time */
+
+    /* 
+        Calculated based on the datasheet.
+    */
+    static constexpr uint32_t TWHR_NS = 120;   /*!< tWHR: Command/address to data read */
+    static constexpr uint32_t TADL_NS = 200;   /*!< tADL: Address to data input */
+    static constexpr uint32_t TRHW_NS = 200;   /*!< tRHW/tRHZ: Read to write turnaround */
+    static constexpr uint32_t TRR_NS = 40;     /*!< tRR: R/B# ready to first read access */
+    static constexpr uint32_t TWB_NS = 200;    /*!< tWB: Command to busy transition */
+    static constexpr uint32_t TCCS_NS = 200;   /*!< tCCS: Change column setup time */
+    
+    /* 
+        Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says. 
+        Also for practical reasons (easier calculations) the read timeout was put to 1ms.
+    */ 
+    static constexpr uint32_t TIMEOUT_READ_MS = 1;       /*!< Timeout for READ operation (35us max from datasheet) */
+    static constexpr uint32_t TIMEOUT_PROGRAM_MS = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */ 
+    static constexpr uint32_t TIMEOUT_ERASE_MS = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
+    static constexpr uint32_t TIMEOUT_RESET_MS = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */
+   
     
     /* ============= Device identification constants ============ */
 
@@ -169,12 +192,6 @@ private:
         uint8_t cycle[5];  /*!< Address cycles: [CA1, CA2, RA1, RA2, RA3] */
     };
 
-    /* Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says. 
-       Also for practical reasons (easier calculations) the read timeout was put to 1ms. */ 
-    static constexpr uint32_t TIMEOUT_READ_MS = 1;        /*!< Timeout constant for READ operation (35μs max from datasheet) */
-    static constexpr uint32_t TIMEOUT_PROGRAM_MS = 3;     /*!< Timeout constant for RPROGRAM operation (560μs max from datasheet) */ 
-    static constexpr uint32_t TIMEOUT_ERASE_MS = 35;      /*!< Timeout constant for ERASE operation (7ms max from datasheet) */
-    static constexpr uint32_t TIMEOUT_RESET_MS = 5;      /*!< Timeout constant for RESET operation (1ms max from datasheet) */
 
 
     /* ======== Low-level hardware interface functions (SMC) ======== */
@@ -513,19 +530,11 @@ public:
      *
      * @warning Caller MUST check isBlockBad() before calling this function.
      *          Reading from bad blocks may return corrupted data.
-     *
-     * @pre isBlockBad(addr.block, addr.lun) == false
-     * @pre isInitialized == true
-     * @pre data.size() <= DATA_BYTES_PER_PAGE
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data);
     
     /**
      * @brief Program (write) data to NAND flash page
-     *
-     * @note Page must be in erased state before programming. Also a whole page must be written everytime. If you need to write  data that are
-     *       less than a page, then you need to manually add 0xFF to the rest of the data. The function always expects a buffer that is
-     *       DATA_BYTES_PER_PAGE in length.
      *
      * @param addr NAND address to write to
      * @param data Data to write (max page size)
@@ -538,13 +547,9 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      *
-     * @warning Caller MUST check isBlockBad() before calling this function.
+     * @warning 1) Page must be in erased state before programming.
+     *          2) Caller MUST check isBlockBad() before calling this function.
      *          Programming to bad blocks may fail or cause data corruption.
-     *
-     * @pre isBlockBad(addr.block, addr.lun) == false
-     * @pre isInitialized == true
-     * @pre data.size() == DATA_BYTES_PER_PAGE
-     * @pre addr.column == 0
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
      
@@ -564,9 +569,6 @@ public:
      * @warning Caller MUST check isBlockBad() before calling this function.
      *          Erasing bad blocks may fail. If erase fails, the block is
      *          automatically marked as bad in the runtime table.
-     *
-     * @pre !isBlockBad(block, lun) == false
-     * @pre isInitialized == true
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
 
@@ -588,7 +590,6 @@ public:
      * 
      * @param block Block number to mark as bad
      * @param lun LUN number (typically 0)
-     * 
      */
     void markBadBlock(uint16_t block, uint8_t lun = 0);
         
@@ -599,6 +600,7 @@ public:
  * @brief Convert error code to human-readable string
  * 
  * @note Used for logging
+ * 
  * @param error Error code to convert
  * 
  * @return String description of error
@@ -619,7 +621,6 @@ constexpr const char* toString(NANDErrorCode error) {
         case NANDErrorCode::NOT_INITIALIZED: return "Driver not initialized";
         case NANDErrorCode::HARDWARE_FAILURE: return "Hardware failure";
         case NANDErrorCode::BAD_PARAMETER_PAGE: return "Bad parameter page";
-        case NANDErrorCode::UNSUPPORTED_OPERATION: return "Unsupported operation";
         default: return "Unknown error";
     }
 }
