@@ -171,7 +171,7 @@ private:
         Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says. 
         Also for practical reasons (easier calculations) the read timeout was put to 1ms.
     */ 
-    static constexpr uint32_t TIMEOUT_READ_MS = 2;       /*!< Timeout for READ operation (35us max from datasheet) */
+    static constexpr uint32_t TIMEOUT_READ_MS = 1;       /*!< Timeout for READ operation (35us max from datasheet) */
     static constexpr uint32_t TIMEOUT_PROGRAM_MS = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */ 
     static constexpr uint32_t TIMEOUT_ERASE_MS = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
     static constexpr uint32_t TIMEOUT_RESET_MS = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */

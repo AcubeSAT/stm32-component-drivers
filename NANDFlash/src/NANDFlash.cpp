@@ -390,26 +390,28 @@ void MT29F::buildAddressCycles(const NANDAddress& addr, AddressCycles& cycles) {
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
     const TickType_t startTick = xTaskGetTickCount();
     const TickType_t timeoutTicks = pdMS_TO_TICKS(timeoutMs);
-    const TickType_t busyWaitEndTick = startTick + 1; // 1 tick is 1ms
+
+    if (nandReadyBusyPin != PIO_PIN_NONE) {
+        while (PIO_PinRead(nandReadyBusyPin) == 0) {
+            if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
+                return etl::unexpected(NANDErrorCode::TIMEOUT);
+            }
+            vTaskDelay(1);
+        }
+    }
 
     while (true) {
-        bool rbPinReady = (nandReadyBusyPin == PIO_PIN_NONE) || (PIO_PinRead(nandReadyBusyPin) != 0);
+        auto status = readStatusRegister();
 
-        if (rbPinReady) {
-            auto status = readStatusRegister();
-            if ((status & STATUS_RDY) != 0 && (status & STATUS_ARDY) != 0) {
-                return {};  // Ready
-            }
+        if ((status & STATUS_RDY) != 0 && (status & STATUS_ARDY) != 0) {
+            return {};  // Ready
         }
 
-        if ((xTaskGetTickCount() - startTick) >= timeoutTicks) {
+        if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
             return etl::unexpected(NANDErrorCode::TIMEOUT);
         }
 
-        if (xTaskGetTickCount() >= busyWaitEndTick) {
-            vTaskDelay(1);  // After ~1ms delay via the scheduler
-        }
-        // Before ~1ms continue immediately (busy-wait)
+        vTaskDelay(1);
     }
 }
 
