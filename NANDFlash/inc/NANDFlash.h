@@ -2,12 +2,9 @@
 
 #include "SMC.hpp"
 #include "definitions.h"
-#include "FreeRTOS.h"
-#include "semphr.h"
 #include <etl/expected.h>
 #include <etl/span.h>
 #include <etl/array.h>
-#include <atomic>
 
 /**
  * @brief Error codes for NAND flash operations
@@ -33,8 +30,9 @@ enum class NANDErrorCode : uint8_t {
  * @brief Driver for MT29F64G08AFAAAWP NAND Flash
  *
  * @note Thread Safety:
- *       - Driver is thread-safe via internal mutex
- * 
+ *       - Driver requires external synchronization
+ *       - Caller must hold external mutex during all operations
+ *
  *       Bad Block Management:
  *       - Driver maintains bad block table (factory + runtime discovered)
  *       - Query via isBlockBad() before operations
@@ -84,10 +82,6 @@ private:
 
     bool isInitialized = false; /*!< Driver initialization status */
 
-    StaticSemaphore_t mutexBuffer; /*!< Static buffer for mutex */
-
-    SemaphoreHandle_t mutex = nullptr; /*!< Mutex handle for thread safety */
-
 
     /* ================= Bad block management  ================== */
 
@@ -103,7 +97,7 @@ private:
 
     etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable{}; /*!< Table of known bad blocks */
 
-    std::atomic<size_t> badBlockCount{0}; /*!< Current number of bad blocks in table (atomic for thread safety) */
+    size_t badBlockCount{0}; /*!< Current number of bad blocks in table */
     
     static constexpr uint16_t BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
     
@@ -228,7 +222,7 @@ private:
     }
 
 
-    /* ========= Internal guards for write protection/thread safety  ========= */
+    /* ========= Internal guard for write protection  ========= */
 
     /**
      * @brief RAII guard for write-enable state
@@ -250,28 +244,6 @@ private:
         WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
         WriteEnableGuard(WriteEnableGuard&&) = delete;
         WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
-    };
-
-    /**
-     * @brief RAII guard for mutex acquisition
-     */
-    class MutexGuard {
-    private:
-        SemaphoreHandle_t& sem;
-    public:
-        explicit MutexGuard(SemaphoreHandle_t& s) : sem(s) {
-            xSemaphoreTake(sem, portMAX_DELAY);
-        }
-
-        ~MutexGuard() {
-            xSemaphoreGive(sem);
-        }
-
-        // Non-copyable, non-movable
-        MutexGuard(const MutexGuard&) = delete;
-        MutexGuard& operator=(const MutexGuard&) = delete;
-        MutexGuard(MutexGuard&&) = delete;
-        MutexGuard& operator=(MutexGuard&&) = delete;
     };
 
 
@@ -433,8 +405,6 @@ private:
      *
      * @param block Block number to mark as bad
      * @param lun LUN number (typically 0)
-     *
-     * @note Caller must hold mutex
      */
     void markBadBlock(uint16_t block, uint8_t lun = 0);
     
