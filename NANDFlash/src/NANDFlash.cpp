@@ -54,6 +54,14 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         }
     }
 
+    if (nandWriteProtect == PIO_PIN_NONE) {
+        LOG_INFO << "NAND: Write protection pin not provided. Hardware write protection disabled";
+    }
+
+    if (nandReadyBusyPin == PIO_PIN_NONE) {
+        LOG_INFO << "NAND: Ready/busy pin not provided. Using status register polling";
+    }
+
     auto resetResult = reset();
     if (!resetResult) {
         LOG_ERROR << "NAND: Reset failed";

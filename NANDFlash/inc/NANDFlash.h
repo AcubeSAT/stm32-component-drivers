@@ -100,8 +100,8 @@ private:
     };
 
     static constexpr size_t MAX_BAD_BLOCKS = 256;  /*!< Maximum number of bad blocks to track */
-    
-    etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable; /*!< Table of known bad blocks */
+
+    etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable{}; /*!< Table of known bad blocks */
 
     std::atomic<size_t> badBlockCount{0}; /*!< Current number of bad blocks in table (atomic for thread safety) */
     
@@ -446,13 +446,11 @@ public:
      * @param readyBusyPin GPIO pin for R/B# signal monitoring
      * @param writeProtectPin GPIO pin for write protect control
      */
-    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin) 
-        : SMC(chipSelect),
-          nandReadyBusyPin(readyBusyPin),
-          nandWriteProtect(writeProtectPin),
-          badBlockTable{},
-          badBlockCount(0)
-          {
+    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin)
+        : SMC{chipSelect},
+          nandReadyBusyPin{readyBusyPin},
+          nandWriteProtect{writeProtectPin}
+    {
         selectNandConfiguration(chipSelect);
     }
     
