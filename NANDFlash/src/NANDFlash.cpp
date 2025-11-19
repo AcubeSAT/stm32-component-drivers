@@ -33,7 +33,7 @@ void MT29F::busyWaitNanoseconds(uint32_t nanoseconds) {
 
     const uint32_t cycles = (nanoseconds * CPU_MHZ) / 1000UL;
 
-    for (volatile uint32_t i = 0; i < cycles; ++i) {
+    for (volatile uint32_t i = 0; i < cycles; i++) {
         __asm__ volatile ("nop");
     }
 }
@@ -82,7 +82,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     disableWrites();
 
-    auto scanResult = scanFactoryBadBlocks(0);
+    auto scanResult = scanFactoryBadBlocks();
     if (!scanResult) {
         return scanResult;
     }
@@ -93,6 +93,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
 etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
+    busyWaitNanoseconds(TWB_NS);
     
     auto waitResult = waitForReady(TIMEOUT_RESET_MS);
     if (!waitResult) {
@@ -107,8 +108,8 @@ void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     sendAddress(static_cast<uint8_t>(ReadIDAddress::MANUFACTURER_ID));
     busyWaitNanoseconds(TWHR_NS);
 
-    for (size_t i = 0; i < 5; ++i) {
-        id[i] = readData();
+    for (auto& byte : id) {
+        byte = readData();
     }
 
     busyWaitNanoseconds(TRHW_NS);
@@ -119,8 +120,8 @@ void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     sendAddress(static_cast<uint8_t>(ReadIDAddress::ONFI_SIGNATURE));
     busyWaitNanoseconds(TWHR_NS);
 
-    for (size_t i = 0; i < 4; ++i) {
-        signature[i] = readData();
+    for (auto& byte : signature) {
+        byte = readData();
     }
 
     busyWaitNanoseconds(TRHW_NS);
@@ -138,8 +139,6 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 
     busyWaitNanoseconds(TRR_NS);
 
-    // after waitForReady(), device is in status mode
-    // Send READ_MODE command to return to data output mode
     sendCommand(Commands::READ_MODE);
     busyWaitNanoseconds(TWHR_NS);
     
@@ -147,8 +146,8 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     for (uint8_t copy = 0; copy < 3; copy++) {
         etl::array<uint8_t, 256> paramPageData;
 
-        for (size_t i = 0; i < 256; ++i) {
-            paramPageData[i] = readData();
+        for (auto& byte : paramPageData) {
+            byte = readData();
         }
 
         if (validateParameterPageCRC(paramPageData)) {
@@ -162,10 +161,10 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
                        (static_cast<uint32_t>(b2) << 16) | (static_cast<uint32_t>(b3) << 24);
             };
 
-            uint32_t readDataBytesPerPage = asUint32(paramPageData[80], paramPageData[81], paramPageData[82], paramPageData[83]);
-            uint16_t readSpareBytesPerPage = asUint16(paramPageData[84], paramPageData[85]);
-            uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
-            uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
+            const uint32_t readDataBytesPerPage = asUint32(paramPageData[80], paramPageData[81], paramPageData[82], paramPageData[83]);
+            const uint16_t readSpareBytesPerPage = asUint16(paramPageData[84], paramPageData[85]);
+            const uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
+            const uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
     
             if (readDataBytesPerPage != DATA_BYTES_PER_PAGE) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
@@ -195,14 +194,13 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     buildAddressCycles(addr, cycles);
 
     sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(TWHR_NS);
 
     for (const auto& addressByte : cycles.cycle) {
         sendAddress(addressByte);
     }
 
     sendCommand(Commands::READ_CONFIRM);
-    busyWaitNanoseconds(TADL_NS);
+    busyWaitNanoseconds(TWB_NS);
 
     auto waitResult = waitForReady(TIMEOUT_READ_MS);
     if (!waitResult) {
@@ -210,6 +208,7 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     }
 
     busyWaitNanoseconds(TRR_NS);
+    
     sendCommand(Commands::READ_MODE);
     busyWaitNanoseconds(TWHR_NS);
 
@@ -237,33 +236,13 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    AddressCycles cycles;
-    buildAddressCycles(addr, cycles);
-
-    sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(TWHR_NS);
-
-    for (const auto& addressByte : cycles.cycle) {
-        sendAddress(addressByte);
+    auto cmdResult = executeReadCommandSequence(addr);
+    if (!cmdResult) {
+        return etl::unexpected(cmdResult.error());
     }
 
-    sendCommand(Commands::READ_CONFIRM);
-    busyWaitNanoseconds(TWB_NS);
-
-    auto waitResult = waitForReady(TIMEOUT_READ_MS);
-    if (!waitResult) {
-        return waitResult;
-    }
-
-    busyWaitNanoseconds(TRR_NS);
-
-    // waitForReady() calls readStatusRegister() which puts device in status mode
-    // Send READ_MODE (0x00) with NO address cycles to return to data output mode
-    sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(TWHR_NS);
-
-    for (uint32_t i = 0; i < data.size(); ++i) {
-        data[i] = readData();
+    for (auto& byte : data) {
+        byte = readData();
     }
 
     busyWaitNanoseconds(TRHW_NS);
@@ -305,8 +284,8 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
 
     busyWaitNanoseconds(TADL_NS);
 
-    for (size_t i = 0; i < data.size(); ++i) {
-        sendData(data[i]);
+    for (const auto& byte : data) {
+        sendData(byte);
     }
 
     sendCommand(Commands::CHANGE_WRITE_COLUMN);
@@ -351,7 +330,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
     WriteEnableGuard guard(*this);
 
-    NANDAddress addr(lun, block, 0, 0);
+    const NANDAddress addr{lun, block, 0, 0};
     AddressCycles cycles;
     buildAddressCycles(addr, cycles);
 
@@ -425,7 +404,7 @@ uint8_t MT29F::readStatusRegister() {
     return status;
 }
 
-etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& addr) const {
+etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& addr) {
     if (addr.lun >= LUNS_PER_CE ||
         addr.block >= BLOCKS_PER_LUN ||
         addr.page >= PAGES_PER_BLOCK ||
@@ -439,10 +418,10 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
     constexpr uint16_t CRC_POLYNOMIAL = 0x8005;
     uint16_t crc = 0x4F4E;
     
-    for (size_t i = 0; i < 254; ++i) {
+    for (size_t i = 0; i < 254; i++) {
         crc ^= static_cast<uint16_t>(paramPage[i]) << 8;
         
-        for (uint8_t bit = 0; bit < 8; ++bit) {
+        for (uint8_t bit = 0; bit < 8; bit++) {
             if (crc & 0x8000) {
                 crc = (crc << 1) ^ CRC_POLYNOMIAL;
             } else {
@@ -451,7 +430,7 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
         }
     }
     
-    uint16_t storedCrc = static_cast<uint16_t>(paramPage[254]) | (static_cast<uint16_t>(paramPage[255]) << 8);
+    const uint16_t storedCrc = static_cast<uint16_t>(paramPage[254]) | (static_cast<uint16_t>(paramPage[255]) << 8);
     
     return (crc == storedCrc);
 }
@@ -459,8 +438,8 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
 /* ================== Bad Block Management ================== */
 
 bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
-    size_t count = badBlockCount.load(std::memory_order_acquire);
-    for (size_t i = 0; i < count; ++i) {
+    const size_t count = badBlockCount.load(std::memory_order_acquire);
+    for (size_t i = 0; i < count; i++) {
         if ((badBlockTable[i].blockNumber == block) && (badBlockTable[i].lun == lun)) {
             return true;
         }
@@ -469,7 +448,7 @@ bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
 }
 
 void MT29F::markBadBlock(uint16_t block, uint8_t lun) {
-    size_t count = badBlockCount;
+    const size_t count = badBlockCount;
     if (count >= MAX_BAD_BLOCKS) {
         // For now it's ok just returning. It will be reworked with the integration of littlefs.
         return;
@@ -489,7 +468,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     badBlockCount.store(0, std::memory_order_release);
 
-    for (uint16_t block = 0; block < BLOCKS_PER_LUN; ++block) {
+    for (uint16_t block = 0; block < BLOCKS_PER_LUN; block++) {
 
         if ((block % 5) == 0) {
             vTaskDelay(1);
@@ -498,10 +477,8 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         auto markerResult = readBlockMarker(block, lun);
         bool isBlockBad = false;
 
-        if (!markerResult) {
+        if (!markerResult || (markerResult.value() == BAD_BLOCK_MARKER)) {
             // If we can't read the marker, assume block is bad for safety
-            isBlockBad = true;
-        } else if (markerResult.value() == BAD_BLOCK_MARKER) {
             isBlockBad = true;
         }
 
@@ -520,29 +497,31 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     // Based on the datasheet the bad block marker is stored in the first page only
     // in byte 0 of the spare area
-    NANDAddress addr(lun, block, 0, BLOCK_MARKER_OFFSET);
+    const NANDAddress addr{lun, block, 0, BLOCK_MARKER_OFFSET};
 
     auto cmdResult = executeReadCommandSequence(addr);
     if (!cmdResult) {
         return etl::unexpected(cmdResult.error());
     }
 
+    const uint8_t marker = readData();
+    busyWaitNanoseconds(TRHW_NS);
 
-    return readData();
+    return marker;
 }
 
 /* ================== Write Protection Management ======================= */
 
-void MT29F::enableWrites() {
+void MT29F::enableWrites() const {
     if (nandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtect, 1);
+        PIO_PinWrite(nandWriteProtect, true);
         busyWaitNanoseconds(GPIO_SETTLE_TIME_NS);  // GPIO settling time
     }
 }
 
-void MT29F::disableWrites() {
+void MT29F::disableWrites() const {
     if (nandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtect, 0);
+        PIO_PinWrite(nandWriteProtect, false);
         busyWaitNanoseconds(GPIO_SETTLE_TIME_NS);  // Ensure WP# propagates
     }
 }

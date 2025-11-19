@@ -64,7 +64,7 @@ public:
         uint32_t page;
         uint32_t column;
         
-        constexpr NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
+        constexpr explicit NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
             : lun(lun), block(block), page(page), column(column) {}
     };
 
@@ -196,7 +196,7 @@ private:
      * 
      * @param data Data byte to send
      */
-    inline void sendData(uint8_t data) {
+    void sendData(uint8_t data) {
         smcWriteByte(moduleBaseAddress, data);
     }
 
@@ -205,7 +205,7 @@ private:
      * 
      * @param address Address byte to send
      */
-    inline void sendAddress(uint8_t address) {
+    void sendAddress(uint8_t address) {
         smcWriteByte(triggerNANDALEAddress, address);
     }
 
@@ -214,7 +214,7 @@ private:
      * 
      * @param command NAND command to send
      */
-    inline void sendCommand(Commands command) {
+    void sendCommand(Commands command) {
         smcWriteByte(triggerNANDCLEAddress, static_cast<uint8_t>(command));
     }
 
@@ -223,7 +223,7 @@ private:
      * 
      * @return Data byte read from device
      */
-    inline uint8_t readData() {
+    uint8_t readData() {
         return smcReadByte(moduleBaseAddress);
     }
 
@@ -285,8 +285,7 @@ private:
      * @return Success or error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      */
-    etl::expected<void, NANDErrorCode>
-    executeReadCommandSequence(const NANDAddress& addr);
+    etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& addr);
 
     /**
      * @brief Busy-wait delay for nanosecond-precision timing
@@ -351,7 +350,7 @@ private:
      * @return Success or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
      */
-    etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr) const;
+    static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr);
 
     /**
      * @brief Validate parameter page CRC-16 checksum
@@ -381,7 +380,7 @@ private:
      *
      * @param chipSelect SMC chip select to configure
      */
-    void selectNandConfiguration(ChipSelect chipSelect);
+    static void selectNandConfiguration(ChipSelect chipSelect);
 
     
     /* ============= Write protection management functions ============= */
@@ -389,12 +388,12 @@ private:
     /**
      * @brief Enable writes by deasserting WP# pin
      */
-    void enableWrites();
+    void enableWrites() const;
     
     /**
      * @brief Disable writes by asserting WP# pin
      */
-    void disableWrites();
+    void disableWrites() const;
     
 
     /* ========== Bad block management helper functions ================ */
@@ -403,7 +402,7 @@ private:
      * @brief Read block marker from spare area
      *
      * @param block Block number to check
-     * @param lun LUN number
+     * @param lun LUN number (default 0)
      *
      * @return Block marker byte (0xFF = good, 0x00 = bad) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
@@ -413,7 +412,7 @@ private:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
      */
-    etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun);
+    etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun = 0);
 
     /**
      * @brief Scan all blocks in a LUN for factory bad block markers
@@ -554,7 +553,7 @@ public:
      * 
      * @return true if block is bad, false if good
      */
-    bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
+    [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
 };
 
