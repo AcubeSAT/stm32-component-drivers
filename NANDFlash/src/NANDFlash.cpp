@@ -189,9 +189,9 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 
 /* ===================== Data Operations ===================== */
 
-etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDAddress& addr) {
+etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDAddress& address) {
     AddressCycles cycles;
-    buildAddressCycles(addr, cycles);
+    buildAddressCycles(address, cycles);
 
     sendCommand(Commands::READ_MODE);
 
@@ -215,16 +215,16 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl::span<uint8_t> data) {
+etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, etl::span<uint8_t> data) {
     if (not isInitialized) {
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((addr.column + data.size()) > TotalBytesPerPage) {
+    if ((address.column + data.size()) > TotalBytesPerPage) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    auto validateResult = validateAddress(addr);
+    auto validateResult = validateAddress(address);
     if (not validateResult) {
         return validateResult;
     }
@@ -234,9 +234,9 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    auto cmdResult = executeReadCommandSequence(addr);
-    if (not cmdResult) {
-        return etl::unexpected(cmdResult.error());
+    auto commandResult = executeReadCommandSequence(address);
+    if (not commandResult) {
+        return etl::unexpected(commandResult.error());
     }
 
     for (auto& byte : data) {
@@ -248,16 +248,16 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, etl::span<const uint8_t> data) {
+etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address, etl::span<const uint8_t> data) {
     if (not isInitialized) {
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((addr.column + data.size()) > TotalBytesPerPage) {
+    if ((address.column + data.size()) > TotalBytesPerPage) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    auto validateResult = validateAddress(addr);
+    auto validateResult = validateAddress(address);
     if (not validateResult) {
         return validateResult;
     }
@@ -270,7 +270,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
     WriteEnableGuard guard(*this); 
 
     AddressCycles cycles;
-    buildAddressCycles(addr, cycles);
+    buildAddressCycles(address, cycles);
 
     sendCommand(Commands::PAGE_PROGRAM);
 
@@ -324,9 +324,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
     WriteEnableGuard guard(*this);
 
-    const NANDAddress addr{lun, block, 0, 0};
+    const NANDAddress address{lun, block, 0, 0};
     AddressCycles cycles;
-    buildAddressCycles(addr, cycles);
+    buildAddressCycles(address, cycles);
 
     sendCommand(Commands::ERASE_BLOCK);
     sendAddress(cycles.cycle[2]);
@@ -352,12 +352,12 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
 /* ================= Internal Helper Functions ================= */
 
-void MT29F::buildAddressCycles(const NANDAddress& addr, AddressCycles& cycles) {
-    cycles.cycle[0] = addr.column & 0xFF;                                       // CA1
-    cycles.cycle[1] = (addr.column >> 8) & 0x3F;                                // CA2
-    cycles.cycle[2] = (addr.page & 0x7F) | ((addr.block & 0x01) << 7);          // RA1
-    cycles.cycle[3] = (addr.block >> 1) & 0xFF;                                 // RA2
-    cycles.cycle[4] = ((addr.block >> 9) & 0x07) | ((addr.lun & 0x01) << 3);    // RA3
+void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles) {
+    cycles.cycle[0] = address.column & 0xFF;                                       // CA1
+    cycles.cycle[1] = (address.column >> 8) & 0x3F;                                // CA2
+    cycles.cycle[2] = (address.page & 0x7F) | ((address.block & 0x01) << 7);       // RA1
+    cycles.cycle[3] = (address.block >> 1) & 0xFF;                                 // RA2
+    cycles.cycle[4] = ((address.block >> 9) & 0x07) | ((address.lun & 0x01) << 3); // RA3
 }
 
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
@@ -398,11 +398,11 @@ uint8_t MT29F::readStatusRegister() {
     return status;
 }
 
-etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& addr) {
-    if ((addr.lun >= LunsPerCe)      ||
-        (addr.block >= BlocksPerLun) ||
-        (addr.page >= PagesPerBlock) ||
-        (addr.column >= TotalBytesPerPage)) {
+etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& address) {
+    if ((address.lun >= LunsPerCe)      ||
+        (address.block >= BlocksPerLun) ||
+        (address.page >= PagesPerBlock) ||
+        (address.column >= TotalBytesPerPage)) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
     return {};
@@ -485,11 +485,11 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     // Based on the datasheet the bad block marker is stored in the first page only
     // in byte 0 of the spare area
-    const NANDAddress addr{lun, block, 0, BlockMarkerOffset};
+    const NANDAddress address{lun, block, 0, BlockMarkerOffset};
 
-    auto cmdResult = executeReadCommandSequence(addr);
-    if (not cmdResult) {
-        return etl::unexpected(cmdResult.error());
+    auto commandResult = executeReadCommandSequence(address);
+    if (not commandResult) {
+        return etl::unexpected(commandResult.error());
     }
 
     const uint8_t marker = readData();

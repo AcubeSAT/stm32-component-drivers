@@ -252,12 +252,12 @@ private:
     /**
      * @brief Execute NAND read command sequence without initialization check
      *
-     * @param addr NAND address to read from
+     * @param address NAND address to read from
      *
      * @return Success or error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      */
-    etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& addr);
+    etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& address);
 
     /**
      * @brief Busy-wait delay for nanosecond-precision timing
@@ -292,10 +292,10 @@ private:
      *       - Cycle 4 (RA2): Block[8:1]
      *       - Cycle 5 (RA3): LUN[0] | Block[11:9]
      * 
-     * @param addr NAND address structure
+     * @param address NAND address structure
      * @param[out] cycles Generated address cycles
      */
-    static void buildAddressCycles(const NANDAddress& addr, AddressCycles& cycles);
+    static void buildAddressCycles(const NANDAddress& address, AddressCycles& cycles);
     
     /**
      * @brief Wait for NAND device to become ready
@@ -317,12 +317,12 @@ private:
     /**
      * @brief Validate NAND address bounds
      *
-     * @param addr Address to validate
+     * @param address Address to validate
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
      */
-    static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& addr);
+    static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& address);
 
     /**
      * @brief Validate parameter page CRC-16 checksum
@@ -461,7 +461,7 @@ public:
     /**
      * @brief Read data from NAND flash page
      *
-     * @param addr NAND address to read from
+     * @param address NAND address to read from
      * @param[out] data Buffer to store read data (size determines bytes to read)
      *
      * @return Success or specific error code
@@ -472,14 +472,14 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& addr, etl::span<uint8_t> data);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& address, etl::span<uint8_t> data);
     
     /**
      * @brief Program (write) data to NAND flash page
      * 
      * @note Page must be in erased state before programming.
      *
-     * @param addr NAND address to write to
+     * @param address NAND address to write to
      * @param data Data to write (max page size)
      *
      * @return Success or specific error code
@@ -491,7 +491,7 @@ public:
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      *
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& addr, etl::span<const uint8_t> data);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
      
     /**
      * @brief Erase a block
