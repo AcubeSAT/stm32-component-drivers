@@ -46,12 +46,12 @@ enum class NANDErrorCode : uint8_t {
 class MT29F : public SMC {
 public:
     /* ============== MT29F64G08AFAAAWP device constants =============== */
-    static constexpr uint32_t DATA_BYTES_PER_PAGE = 8192;
-    static constexpr uint16_t SPARE_BYTES_PER_PAGE = 448;
-    static constexpr uint16_t TOTAL_BYTES_PER_PAGE = DATA_BYTES_PER_PAGE + SPARE_BYTES_PER_PAGE;
-    static constexpr uint8_t PAGES_PER_BLOCK = 128;
-    static constexpr uint16_t BLOCKS_PER_LUN = 4096;
-    static constexpr uint8_t LUNS_PER_CE = 1;
+    static constexpr uint32_t DataBytesPerPage = 8192;
+    static constexpr uint16_t SpareBytesPerPage = 448;
+    static constexpr uint16_t TotalBytesPerPage = DataBytesPerPage + SpareBytesPerPage;
+    static constexpr uint8_t PagesPerBlock = 128;
+    static constexpr uint16_t BlocksPerLun = 4096;
+    static constexpr uint8_t LunsPerCe = 1;
 
     /**
      * @brief NAND address structure for 5-cycle addressing
@@ -68,19 +68,19 @@ public:
 
 private:
     /* =========== Hardware interface addresses and pins =========== */
- 
-    const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000; /*!< SMC address for triggering ALE (Address Latch Enable) */
-    
-    const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000; /*!< SMC address for triggering CLE (Command Latch Enable) */
+
+    const uint32_t triggerNANDALEAddress{moduleBaseAddress | 0x200000}; /*!< SMC address for triggering ALE (Address Latch Enable) */
+
+    const uint32_t triggerNANDCLEAddress{moduleBaseAddress | 0x400000}; /*!< SMC address for triggering CLE (Command Latch Enable) */
 
     const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
-    
+
     const PIO_PIN nandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
 
 
     /* ================= Driver state variables ================== */
 
-    bool isInitialized = false; /*!< Driver initialization status */
+    bool isInitialized{false}; /*!< Driver initialization status */
 
 
     /* ================= Bad block management  ================== */
@@ -93,17 +93,17 @@ private:
         uint8_t lun;
     };
 
-    static constexpr size_t MAX_BAD_BLOCKS = 256;  /*!< Maximum number of bad blocks to track */
+    static constexpr size_t MaxBadBlocks = 512;  /*!< Maximum number of bad blocks to track */
 
-    etl::array<BadBlockInfo, MAX_BAD_BLOCKS> badBlockTable{}; /*!< Table of known bad blocks */
+    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable{}; /*!< Table of known bad blocks */
 
     size_t badBlockCount{0}; /*!< Current number of bad blocks in table */
-    
-    static constexpr uint16_t BLOCK_MARKER_OFFSET = 8192; /*!< Offset to bad block marker in spare area */
-    
-    static constexpr uint8_t GOOD_BLOCK_MARKER = 0xFF; /*!< Marker value for good blocks */
-    
-    static constexpr uint8_t BAD_BLOCK_MARKER = 0x00; /*!< Marker value for bad blocks */
+
+    static constexpr uint16_t BlockMarkerOffset = 8192; /*!< Offset to bad block marker in spare area */
+
+    static constexpr uint8_t GoodBlockMarker = 0xFF; /*!< Marker value for good blocks */
+
+    static constexpr uint8_t BadBlockMarker = 0x00; /*!< Marker value for bad blocks */
 
 
     /* ================== ONFI standard ==================== */
@@ -136,44 +136,44 @@ private:
         ONFI_SIGNATURE = 0x20    
     };
 
-    static constexpr uint8_t STATUS_FAIL = 0x01; /*!< Program/Erase operation failed */
-    
-    static constexpr uint8_t STATUS_FAILC = 0x02; /*!< Command failed */
-    
-    static constexpr uint8_t STATUS_ARDY = 0x20; /*!< Array ready */
-    
-    static constexpr uint8_t STATUS_RDY = 0x40; /*!< Device ready */
-    
-    static constexpr uint8_t STATUS_WP = 0x80; /*!< Write protected (1 = not protected, 0 = protected) */
+    static constexpr uint8_t StatusFail = 0x01; /*!< Program/Erase operation failed */
+
+    static constexpr uint8_t StatusFailc = 0x02; /*!< Command failed */
+
+    static constexpr uint8_t StatusArdy = 0x20; /*!< Array ready */
+
+    static constexpr uint8_t StatusRdy = 0x40; /*!< Device ready */
+
+    static constexpr uint8_t StatusWp = 0x80; /*!< Write protected (1 = not protected, 0 = protected) */
 
 
     /* ============= Timing Parameters ============= */
-    
-    static constexpr uint32_t GPIO_SETTLE_TIME_NS = 100; /*!< WP# GPIO settling time */
 
-    /* 
+    static constexpr uint32_t GpioSettleTimeNs = 100; /*!< WP# GPIO settling time */
+
+    /*
         Calculated based on the datasheet.
     */
-    static constexpr uint32_t TWHR_NS = 120;   /*!< tWHR: Command/address to data read */
-    static constexpr uint32_t TADL_NS = 200;   /*!< tADL: Address to data input */
-    static constexpr uint32_t TRHW_NS = 200;   /*!< tRHW/tRHZ: Read to write turnaround */
-    static constexpr uint32_t TRR_NS = 40;     /*!< tRR: R/B# ready to first read access */
-    static constexpr uint32_t TWB_NS = 200;    /*!< tWB: Command to busy transition */
-    static constexpr uint32_t TCCS_NS = 200;   /*!< tCCS: Change column setup time */
+    static constexpr uint32_t TwhrNs = 120;   /*!< tWHR: Command/address to data read */
+    static constexpr uint32_t TadlNs = 200;   /*!< tADL: Address to data input */
+    static constexpr uint32_t TrhwNs = 200;   /*!< tRHW/tRHZ: Read to write turnaround */
+    static constexpr uint32_t TrrNs = 40;     /*!< tRR: R/B# ready to first read access */
+    static constexpr uint32_t TwbNs = 200;    /*!< tWB: Command to busy transition */
+    static constexpr uint32_t TccsNs = 200;   /*!< tCCS: Change column setup time */
     
-    /* 
-        Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says. 
+    /*
+        Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says.
         Also for practical reasons (easier calculations) the read timeout was put to 1ms.
-    */ 
-    static constexpr uint32_t TIMEOUT_READ_MS = 1;       /*!< Timeout for READ operation (35us max from datasheet) */
-    static constexpr uint32_t TIMEOUT_PROGRAM_MS = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */ 
-    static constexpr uint32_t TIMEOUT_ERASE_MS = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
-    static constexpr uint32_t TIMEOUT_RESET_MS = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */
+    */
+    static constexpr uint32_t TimeoutReadMs = 1;       /*!< Timeout for READ operation (35us max from datasheet) */
+    static constexpr uint32_t TimeoutProgramMs = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */
+    static constexpr uint32_t TimeoutEraseMs = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
+    static constexpr uint32_t TimeoutResetMs = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */
    
     
     /* ============= Device identification constants ============ */
 
-    static constexpr etl::array<uint8_t, 5> EXPECTED_DEVICE_ID = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F32G09ABAAA */
+    static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F64G08AFAAAWP */
     
     /** 
      * @brief Structure for 5-cycle NAND addressing 

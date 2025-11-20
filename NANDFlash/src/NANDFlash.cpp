@@ -63,7 +63,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     etl::array<uint8_t, 5> deviceId;
     readDeviceID(deviceId);
 
-    if (not etl::equal(EXPECTED_DEVICE_ID.begin(), EXPECTED_DEVICE_ID.end(), deviceId.begin())) {
+    if (not etl::equal(ExpectedDeviceId.begin(), ExpectedDeviceId.end(), deviceId.begin())) {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
     
@@ -93,9 +93,9 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
 etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
-    busyWaitNanoseconds(TWB_NS);
+    busyWaitNanoseconds(TwbNs);
     
-    auto waitResult = waitForReady(TIMEOUT_RESET_MS);
+    auto waitResult = waitForReady(TimeoutResetMs);
     if (not waitResult) {
         return waitResult;
     }
@@ -106,41 +106,41 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
 void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::MANUFACTURER_ID));
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
 
     for (auto& byte : id) {
         byte = readData();
     }
 
-    busyWaitNanoseconds(TRHW_NS);
+    busyWaitNanoseconds(TrhwNs);
 }
 
 void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     sendCommand(Commands::READID);
     sendAddress(static_cast<uint8_t>(ReadIDAddress::ONFI_SIGNATURE));
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
 
     for (auto& byte : signature) {
         byte = readData();
     }
 
-    busyWaitNanoseconds(TRHW_NS);
+    busyWaitNanoseconds(TrhwNs);
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_PARAM_PAGE);
     sendAddress(0x00);
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
 
-    auto waitResult = waitForReady(TIMEOUT_READ_MS);
+    auto waitResult = waitForReady(TimeoutReadMs);
     if (not waitResult) {
         return etl::unexpected(waitResult.error());
     }
 
-    busyWaitNanoseconds(TRR_NS);
+    busyWaitNanoseconds(TrrNs);
 
     sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
     
     // ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one
     for (uint8_t copy = 0; copy < 3; copy++) {
@@ -166,16 +166,16 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
             const uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
             const uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
     
-            if (readDataBytesPerPage != DATA_BYTES_PER_PAGE) {
+            if (readDataBytesPerPage != DataBytesPerPage) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readSpareBytesPerPage != SPARE_BYTES_PER_PAGE) {
+            if (readSpareBytesPerPage != SpareBytesPerPage) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readPagesPerBlock != PAGES_PER_BLOCK) {
+            if (readPagesPerBlock != PagesPerBlock) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readBlocksPerLUN != BLOCKS_PER_LUN) {
+            if (readBlocksPerLUN != BlocksPerLun) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
@@ -200,17 +200,17 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     }
 
     sendCommand(Commands::READ_CONFIRM);
-    busyWaitNanoseconds(TWB_NS);
+    busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TIMEOUT_READ_MS);
+    auto waitResult = waitForReady(TimeoutReadMs);
     if (not waitResult) {
         return waitResult;
     }
 
-    busyWaitNanoseconds(TRR_NS);
+    busyWaitNanoseconds(TrrNs);
     
     sendCommand(Commands::READ_MODE);
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
 
     return {};
 }
@@ -220,7 +220,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((addr.column + data.size()) > TOTAL_BYTES_PER_PAGE) {
+    if ((addr.column + data.size()) > TotalBytesPerPage) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
@@ -230,7 +230,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
     }
 
     auto status = readStatusRegister();
-    if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
+    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -243,7 +243,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& addr, etl:
         byte = readData();
     }
 
-    busyWaitNanoseconds(TRHW_NS);
+    busyWaitNanoseconds(TrhwNs);
 
     return {};
 }
@@ -253,7 +253,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if (addr.column + data.size() > TOTAL_BYTES_PER_PAGE) {
+    if ((addr.column + data.size()) > TotalBytesPerPage) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
@@ -263,7 +263,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
     }
 
     auto status = readStatusRegister();
-    if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
+    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -278,30 +278,30 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& addr, e
         sendAddress(addressByte);
     }
 
-    busyWaitNanoseconds(TADL_NS);
+    busyWaitNanoseconds(TadlNs);
 
     for (const auto& byte : data) {
         sendData(byte);
     }
 
     sendCommand(Commands::CHANGE_WRITE_COLUMN);
-    sendAddress(DATA_BYTES_PER_PAGE & 0xFF);
-    sendAddress((DATA_BYTES_PER_PAGE >> 8) & 0x3F);
-    busyWaitNanoseconds(TCCS_NS);
+    sendAddress(DataBytesPerPage & 0xFF);
+    sendAddress((DataBytesPerPage >> 8) & 0x3F);
+    busyWaitNanoseconds(TccsNs);
 
-    sendData(GOOD_BLOCK_MARKER);
+    sendData(GoodBlockMarker);
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
-    busyWaitNanoseconds(TWB_NS);
+    busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TIMEOUT_PROGRAM_MS);
+    auto waitResult = waitForReady(TimeoutProgramMs);
     if (not waitResult) {
         return waitResult;
     }
 
     status = readStatusRegister();
 
-    if ((status & STATUS_FAIL) != 0) {
+    if ((status & StatusFail) != 0) {
         return etl::unexpected(NANDErrorCode::PROGRAM_FAILED);
     }
 
@@ -313,12 +313,12 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((block >= BLOCKS_PER_LUN) || (lun >= LUNS_PER_CE)) {
+    if ((block >= BlocksPerLun) || (lun >= LunsPerCe)) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
     auto status = readStatusRegister();
-    if ((status & STATUS_RDY) == 0 || (status & STATUS_ARDY) == 0) {
+    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -333,16 +333,16 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     sendAddress(cycles.cycle[3]);
     sendAddress(cycles.cycle[4]);
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
-    busyWaitNanoseconds(TWB_NS);
+    busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TIMEOUT_ERASE_MS);
+    auto waitResult = waitForReady(TimeoutEraseMs);
     if (not waitResult) {
         return waitResult;
     }
 
     status = readStatusRegister();
 
-    if ((status & STATUS_FAIL) != 0) {
+    if ((status & StatusFail) != 0) {
         markBadBlock(block, lun);
         return etl::unexpected(NANDErrorCode::ERASE_FAILED);
     }
@@ -376,7 +376,7 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
     while (true) {
         auto status = readStatusRegister();
 
-        if ((status & STATUS_RDY) != 0 && (status & STATUS_ARDY) != 0) {
+        if ((status & StatusRdy) != 0 && (status & StatusArdy) != 0) {
             return {};  // Ready
         }
 
@@ -390,26 +390,26 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
 
 uint8_t MT29F::readStatusRegister() {
     sendCommand(Commands::READ_STATUS);
-    busyWaitNanoseconds(TWHR_NS);
+    busyWaitNanoseconds(TwhrNs);
 
     uint8_t status = readData();
-    busyWaitNanoseconds(TRHW_NS);
+    busyWaitNanoseconds(TrhwNs);
 
     return status;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& addr) {
-    if ((addr.lun >= LUNS_PER_CE)      ||
-        (addr.block >= BLOCKS_PER_LUN) ||
-        (addr.page >= PAGES_PER_BLOCK) ||
-        (addr.column >= TOTAL_BYTES_PER_PAGE)) {
+    if ((addr.lun >= LunsPerCe)      ||
+        (addr.block >= BlocksPerLun) ||
+        (addr.page >= PagesPerBlock) ||
+        (addr.column >= TotalBytesPerPage)) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
     return {};
 }
 
 bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) {
-    constexpr uint16_t CRC_POLYNOMIAL = 0x8005;
+    constexpr uint16_t CrcPolynomial = 0x8005;
     uint16_t crc = 0x4F4E;
     
     for (size_t byte = 0; byte < 254; byte++) {
@@ -417,7 +417,7 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
         
         for (uint8_t bit = 0; bit < 8; bit++) {
             if (crc & 0x8000) {
-                crc = (crc << 1) ^ CRC_POLYNOMIAL;
+                crc = (crc << 1) ^ CrcPolynomial;
             } else {
                 crc <<= 1;
             }
@@ -441,7 +441,7 @@ bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
 }
 
 void MT29F::markBadBlock(uint16_t block, uint8_t lun) {
-    if (badBlockCount >= MAX_BAD_BLOCKS) {
+    if (badBlockCount >= MaxBadBlocks) {
         // For now it's ok just returning. It will be reworked with the integration of littlefs.
         return;
     }
@@ -452,11 +452,11 @@ void MT29F::markBadBlock(uint16_t block, uint8_t lun) {
 
 etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
-    if (lun >= LUNS_PER_CE) {
+    if (lun >= LunsPerCe) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
-    for (uint16_t block = 0; block < BLOCKS_PER_LUN; block++) {
+    for (uint16_t block = 0; block < BlocksPerLun; block++) {
 
         if ((block % 5) == 0) {
             vTaskDelay(1);
@@ -465,13 +465,13 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         auto markerResult = readBlockMarker(block, lun);
         bool isBlockBad = false;
 
-        if ((not markerResult) || (markerResult.value() == BAD_BLOCK_MARKER)) {
+        if ((not markerResult) || (markerResult.value() == BadBlockMarker)) {
             // If we can't read the marker, assume block is bad for safety
             isBlockBad = true;
         }
 
         if (isBlockBad) {
-            if (badBlockCount >= MAX_BAD_BLOCKS) {
+            if (badBlockCount >= MaxBadBlocks) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
@@ -485,7 +485,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     // Based on the datasheet the bad block marker is stored in the first page only
     // in byte 0 of the spare area
-    const NANDAddress addr{lun, block, 0, BLOCK_MARKER_OFFSET};
+    const NANDAddress addr{lun, block, 0, BlockMarkerOffset};
 
     auto cmdResult = executeReadCommandSequence(addr);
     if (not cmdResult) {
@@ -493,7 +493,7 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uin
     }
 
     const uint8_t marker = readData();
-    busyWaitNanoseconds(TRHW_NS);
+    busyWaitNanoseconds(TrhwNs);
 
     return marker;
 }
@@ -503,14 +503,14 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uin
 void MT29F::enableWrites() const {
     if (nandWriteProtect != PIO_PIN_NONE) {
         PIO_PinWrite(nandWriteProtect, true);
-        busyWaitNanoseconds(GPIO_SETTLE_TIME_NS);  // GPIO settling time
+        busyWaitNanoseconds(GpioSettleTimeNs);  // GPIO settling time
     }
 }
 
 void MT29F::disableWrites() const {
     if (nandWriteProtect != PIO_PIN_NONE) {
         PIO_PinWrite(nandWriteProtect, false);
-        busyWaitNanoseconds(GPIO_SETTLE_TIME_NS);  // Ensure WP# propagates
+        busyWaitNanoseconds(GpioSettleTimeNs);  // Ensure WP# propagates
     }
 }
 
