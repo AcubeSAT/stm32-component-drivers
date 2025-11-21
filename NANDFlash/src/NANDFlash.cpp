@@ -195,8 +195,8 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
 
     sendCommand(Commands::READ_MODE);
 
-    for (const auto& addressByte : cycles.cycle) {
-        sendAddress(addressByte);
+    for (const auto& cycle : cycles) {
+        sendAddress(cycle);
     }
 
     sendCommand(Commands::READ_CONFIRM);
@@ -267,15 +267,15 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    WriteEnableGuard guard(*this); 
+    WriteEnableGuard guard(*this);
 
     AddressCycles cycles;
     buildAddressCycles(address, cycles);
 
     sendCommand(Commands::PAGE_PROGRAM);
 
-    for (const auto& addressByte : cycles.cycle) {
-        sendAddress(addressByte);
+    for (const auto& cycle : cycles) {
+        sendAddress(cycle);
     }
 
     busyWaitNanoseconds(TadlNs);
@@ -329,9 +329,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     buildAddressCycles(address, cycles);
 
     sendCommand(Commands::ERASE_BLOCK);
-    sendAddress(cycles.cycle[2]);
-    sendAddress(cycles.cycle[3]);
-    sendAddress(cycles.cycle[4]);
+    sendAddress(cycles[AddressCycle::RA1]);
+    sendAddress(cycles[AddressCycle::RA2]);
+    sendAddress(cycles[AddressCycle::RA3]);
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
@@ -353,11 +353,11 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 /* ================= Internal Helper Functions ================= */
 
 void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles) {
-    cycles.cycle[0] = address.column & 0xFF;                                       // CA1
-    cycles.cycle[1] = (address.column >> 8) & 0x3F;                                // CA2
-    cycles.cycle[2] = (address.page & 0x7F) | ((address.block & 0x01) << 7);       // RA1
-    cycles.cycle[3] = (address.block >> 1) & 0xFF;                                 // RA2
-    cycles.cycle[4] = ((address.block >> 9) & 0x07) | ((address.lun & 0x01) << 3); // RA3
+    cycles[AddressCycle::CA1] = address.column & 0xFF;                                       // CA1
+    cycles[AddressCycle::CA2] = (address.column >> 8) & 0x3F;                                // CA2
+    cycles[AddressCycle::RA1] = (address.page & 0x7F) | ((address.block & 0x01) << 7);       // RA1
+    cycles[AddressCycle::RA2] = (address.block >> 1) & 0xFF;                                 // RA2
+    cycles[AddressCycle::RA3] = ((address.block >> 9) & 0x07) | ((address.lun & 0x01) << 3); // RA3
 }
 
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {

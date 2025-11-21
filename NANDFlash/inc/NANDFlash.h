@@ -175,11 +175,23 @@ private:
 
     static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F64G08AFAAAWP */
     
-    /** 
-     * @brief Structure for 5-cycle NAND addressing 
+    /**
+     * @brief Type alias for 5-cycle NAND addressing
+     *
+     * @note Represents the 5 address cycles required for NAND operations:
+     *       [CA1, CA2, RA1, RA2, RA3]
      */
-    struct AddressCycles {
-        etl::array<uint8_t, 5> cycle;  /*!< Address cycles: [CA1, CA2, RA1, RA2, RA3] */
+    using AddressCycles = etl::array<uint8_t, 5>;
+
+    /**
+     * @brief Address cycle indices for 5-cycle NAND addressing
+     */
+    enum AddressCycle : uint8_t {
+        CA1 = 0,  /*!< Column address byte 1 [CA1]: Column[7:0] */
+        CA2 = 1,  /*!< Column address byte 2 [CA2]: Column[15:8] */
+        RA1 = 2,  /*!< Row address byte 1 [RA1]: Page[6:0] | Block[0] */
+        RA2 = 3,  /*!< Row address byte 2 [RA2]: Block[8:1] */
+        RA3 = 4,  /*!< Row address byte 3 [RA3]: LUN[0] | Block[11:9] */
     };
 
 
