@@ -144,14 +144,14 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     
     // ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one
     for (uint8_t copy = 0; copy < 3; copy++) {
-        etl::array<uint8_t, 256> paramPageData;
+        etl::array<uint8_t, 256> parametersPageData;
 
-        for (auto& byte : paramPageData) {
+        for (auto& byte : parametersPageData) {
             byte = readData();
         }
 
-        if (validateParameterPageCRC(paramPageData)) {
-            // Extract geometry values from parameter page (little-endian)
+        if (validateParameterPageCRC(parametersPageData)) {
+            // Extract geometry values from parameters page (little-endian)
             auto asUint16 = [](uint8_t low, uint8_t high) -> uint16_t {
                 return low | (static_cast<uint16_t>(high) << 8);
             };
@@ -161,10 +161,10 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
                        (static_cast<uint32_t>(b2) << 16) | (static_cast<uint32_t>(b3) << 24);
             };
 
-            const uint32_t readDataBytesPerPage = asUint32(paramPageData[80], paramPageData[81], paramPageData[82], paramPageData[83]);
-            const uint16_t readSpareBytesPerPage = asUint16(paramPageData[84], paramPageData[85]);
-            const uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
-            const uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
+            const uint32_t readDataBytesPerPage = asUint32(parametersPageData[80], parametersPageData[81], parametersPageData[82], parametersPageData[83]);
+            const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[84], parametersPageData[85]);
+            const uint32_t readPagesPerBlock = asUint32(parametersPageData[92], parametersPageData[93], parametersPageData[94], parametersPageData[95]);
+            const uint32_t readBlocksPerLUN = asUint32(parametersPageData[96], parametersPageData[97], parametersPageData[98], parameterPageData[99]);
     
             if (readDataBytesPerPage != DataBytesPerPage) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
