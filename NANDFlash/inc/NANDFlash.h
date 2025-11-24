@@ -67,49 +67,10 @@ public:
     };
 
 private:
-    /* =========== Hardware interface addresses and pins =========== */
-
-    const uint32_t triggerNANDALEAddress{moduleBaseAddress | 0x200000}; /*!< SMC address for triggering ALE (Address Latch Enable) */
-
-    const uint32_t triggerNANDCLEAddress{moduleBaseAddress | 0x400000}; /*!< SMC address for triggering CLE (Command Latch Enable) */
-
-    const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
-
-    const PIO_PIN nandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
-
-
-    /* ================= Driver state variables ================== */
-
-    bool isInitialized{false}; /*!< Driver initialization status */
-
-
-    /* ================= Bad block management  ================== */
+    /* ============= ONFI Protocol Definitions ============= */
 
     /**
-     * @brief Internal bad block information structure
-     */
-    struct BadBlockInfo {
-        uint16_t blockNumber;
-        uint8_t lun;
-    };
-
-    static constexpr size_t MaxBadBlocks = 512;  /*!< Maximum number of bad blocks to track */
-
-    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable{}; /*!< Table of known bad blocks */
-
-    size_t badBlockCount{0}; /*!< Current number of bad blocks in table */
-
-    static constexpr uint16_t BlockMarkerOffset = 8192; /*!< Offset to bad block marker in spare area */
-
-    static constexpr uint8_t GoodBlockMarker = 0xFF; /*!< Marker value for good blocks */
-
-    static constexpr uint8_t BadBlockMarker = 0x00; /*!< Marker value for bad blocks */
-
-
-    /* ================== ONFI standard ==================== */
-
-    /** 
-     * @brief NAND Commands 
+     * @brief NAND Commands
      */
     enum class Commands : uint8_t {
         RESET = 0xFF,
@@ -127,13 +88,13 @@ private:
         CHANGE_READ_COLUMN = 0x05,
         CHANGE_READ_COLUMN_CONFIRM = 0xE0
     };
-    
-    /** 
-     * @brief Address parameters for Read ID command 
+
+    /**
+     * @brief Address parameters for Read ID command
      */
     enum class ReadIDAddress : uint8_t {
-        MANUFACTURER_ID = 0x00,  
-        ONFI_SIGNATURE = 0x20    
+        MANUFACTURER_ID = 0x00,
+        ONFI_SIGNATURE = 0x20
     };
 
     static constexpr uint8_t StatusFail = 0x01; /*!< Program/Erase operation failed */
@@ -147,7 +108,9 @@ private:
     static constexpr uint8_t StatusWp = 0x80; /*!< Write protected (1 = not protected, 0 = protected) */
 
 
-    /* ============= Timing Parameters ============= */
+    /* ============= Device Specifications ============= */
+
+    static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F64G08AFAAAWP */
 
     static constexpr uint32_t GpioSettleTimeNs = 100; /*!< WP# GPIO settling time */
 
@@ -160,7 +123,7 @@ private:
     static constexpr uint32_t TrrNs = 40;     /*!< tRR: R/B# ready to first read access */
     static constexpr uint32_t TwbNs = 200;    /*!< tWB: Command to busy transition */
     static constexpr uint32_t TccsNs = 200;   /*!< tCCS: Change column setup time */
-    
+
     /*
         Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says.
         Also for practical reasons (easier calculations) the read timeout was put to 1ms.
@@ -169,12 +132,7 @@ private:
     static constexpr uint32_t TimeoutProgramMs = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */
     static constexpr uint32_t TimeoutEraseMs = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
     static constexpr uint32_t TimeoutResetMs = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */
-   
-    
-    /* ============= Device identification constants ============ */
 
-    static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F64G08AFAAAWP */
-    
     /**
      * @brief Type alias for 5-cycle NAND addressing
      *
@@ -195,193 +153,28 @@ private:
     };
 
 
-    /* ======== Low-level hardware interface functions (SMC) ======== */
+    /* ============= Bad Block Management ============= */
 
     /**
-     * @brief Send data byte to NAND flash
-     * 
-     * @param data Data byte to send
+     * @brief Internal bad block information structure
      */
-    void sendData(uint8_t data) {
-        smcWriteByte(moduleBaseAddress, data);
-    }
-
-    /**
-     * @brief Send address byte to NAND flash (triggers ALE)
-     * 
-     * @param address Address byte to send
-     */
-    void sendAddress(uint8_t address) {
-        smcWriteByte(triggerNANDALEAddress, address);
-    }
-
-    /**
-     * @brief Send command to NAND flash (triggers CLE)
-     * 
-     * @param command NAND command to send
-     */
-    void sendCommand(Commands command) {
-        smcWriteByte(triggerNANDCLEAddress, static_cast<uint8_t>(command));
-    }
-
-    /**
-     * @brief Read data byte from NAND flash
-     * 
-     * @return Data byte read from device
-     */
-    uint8_t readData() {
-        return smcReadByte(moduleBaseAddress);
-    }
-
-
-    /* ========= Internal guard for write protection  ========= */
-
-    /**
-     * @brief RAII guard for write-enable state
-     */
-    class WriteEnableGuard {
-    private:
-        MT29F& nand;
-    public:
-        explicit WriteEnableGuard(MT29F& n) : nand(n) {
-            nand.enableWrites();
-        }
-
-        ~WriteEnableGuard() {
-            nand.disableWrites();
-        }
-
-        // Non-copyable, non-movable
-        WriteEnableGuard(const WriteEnableGuard&) = delete;
-        WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
-        WriteEnableGuard(WriteEnableGuard&&) = delete;
-        WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
+    struct BadBlockInfo {
+        uint16_t blockNumber;
+        uint8_t lun;
     };
 
+    static constexpr size_t MaxBadBlocks = 512;  /*!< Maximum number of bad blocks to track */
 
-    /* ========= Internal helper functions for NAND operations ========= */
+    static constexpr uint16_t BlockMarkerOffset = 8192; /*!< Offset to bad block marker in spare area */
 
-    /**
-     * @brief Execute NAND read command sequence without initialization check
-     *
-     * @param address NAND address to read from
-     *
-     * @return Success or error code
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     */
-    etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& address);
+    static constexpr uint8_t GoodBlockMarker = 0xFF; /*!< Marker value for good blocks */
 
-    /**
-     * @brief Busy-wait delay for nanosecond-precision timing
-     *
-     * @param nanoseconds Delay duration in nanoseconds
-     *
-     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
-     */
-    static void busyWaitNanoseconds(uint32_t nanoseconds);
+    static constexpr uint8_t BadBlockMarker = 0x00; /*!< Marker value for bad blocks */
 
-    /**
-     * @brief Read device manufacturer and device ID
-     *
-     * @param[out] id Buffer to store 5-byte device ID
-     */
-    void readDeviceID(etl::span<uint8_t, 5> id);
-    
-    /**
-     * @brief Read ONFI signature to verify ONFI compliance
-     *
-     * @param[out] signature Buffer to store 4-byte ONFI signature
-     */
-    void readONFISignature(etl::span<uint8_t, 4> signature);
+    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable{}; /*!< Table of known bad blocks */
 
-    /**
-     * @brief Build 5-cycle address sequence for NAND Device
-     * 
-     * @note Converts NAND address structure to hardware address cycles:
-     *       - Cycle 1 (CA1): Column[7:0]
-     *       - Cycle 2 (CA2): Column[15:8] (only bits [5:0] used)
-     *       - Cycle 3 (RA1): Page[6:0] | Block[0]
-     *       - Cycle 4 (RA2): Block[8:1]
-     *       - Cycle 5 (RA3): LUN[0] | Block[11:9]
-     * 
-     * @param address NAND address structure
-     * @param[out] cycles Generated address cycles
-     */
-    static void buildAddressCycles(const NANDAddress& address, AddressCycles& cycles);
-    
-    /**
-     * @brief Wait for NAND device to become ready
-     *
-     * @param timeoutMs Timeout in milliseconds
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout period
-     */
-    etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutMs);
-    
-    /**
-     * @brief Read NAND status register
-     * 
-     * @return Status register value or error code
-     */
-    uint8_t readStatusRegister();
-        
-    /**
-     * @brief Validate NAND address bounds
-     *
-     * @param address Address to validate
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
-     */
-    static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& address);
+    size_t badBlockCount{0}; /*!< Current number of bad blocks in table */
 
-    /**
-     * @brief Validate parameter page CRC-16 checksum
-     * 
-     * @details Implements ONFI CRC-16 algorithm with polynomial 0x8005.
-     * Initial value is 0x4F4E ("ON" in ASCII).
-     * Validates first 254 bytes against stored CRC in bytes 254-255.
-     * 
-     * @param paramPage 256-byte parameter page data
-     * 
-     * @return true if CRC matches, false if invalid
-     */
-    static bool validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage);
-
-    /**
-     * @brief Validate device parameters match expected geometry
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::HARDWARE_FAILURE Device geometry mismatch or ONFI signature invalid
-     * @retval NANDErrorCode::BAD_PARAMETER_PAGE All 3 parameter page copies have invalid CRC
-     */
-    etl::expected<void, NANDErrorCode> validateDeviceParameters();
-
-    /**
-     * @brief Configure SMC for NAND flash operation
-     *
-     * @param chipSelect SMC chip select to configure
-     */
-    static void selectNandConfiguration(ChipSelect chipSelect);
-
-    
-    /* ============= Write protection management functions ============= */
-    
-    /**
-     * @brief Enable writes by deasserting WP# pin
-     */
-    void enableWrites() const;
-    
-    /**
-     * @brief Disable writes by asserting WP# pin
-     */
-    void disableWrites() const;
-    
-
-    /* ========== Bad block management helper functions ================ */
-    
     /**
      * @brief Read block marker from spare area
      *
@@ -419,6 +212,213 @@ private:
      * @param lun LUN number (typically 0)
      */
     void markBadBlock(uint16_t block, uint8_t lun = 0);
+
+
+    /* ============= Write Protection ============= */
+
+    /**
+     * @brief RAII guard for write-enable state
+     */
+    class WriteEnableGuard {
+    private:
+        MT29F& nand;
+    public:
+        explicit WriteEnableGuard(MT29F& n) : nand(n) {
+            nand.enableWrites();
+        }
+
+        ~WriteEnableGuard() {
+            nand.disableWrites();
+        }
+
+        // Non-copyable, non-movable
+        WriteEnableGuard(const WriteEnableGuard&) = delete;
+        WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
+        WriteEnableGuard(WriteEnableGuard&&) = delete;
+        WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
+    };
+
+    /**
+     * @brief Enable writes by deasserting WP# pin
+     */
+    void enableWrites() const;
+
+    /**
+     * @brief Disable writes by asserting WP# pin
+     */
+    void disableWrites() const;
+
+
+    /* ============= Hardware Interface ============= */
+
+    const uint32_t triggerNANDALEAddress{moduleBaseAddress | 0x200000}; /*!< SMC address for triggering ALE (Address Latch Enable) */
+
+    const uint32_t triggerNANDCLEAddress{moduleBaseAddress | 0x400000}; /*!< SMC address for triggering CLE (Command Latch Enable) */
+
+    const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
+
+    const PIO_PIN nandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
+
+    /**
+     * @brief Send data byte to NAND flash
+     *
+     * @param data Data byte to send
+     */
+    void sendData(uint8_t data) {
+        smcWriteByte(moduleBaseAddress, data);
+    }
+
+    /**
+     * @brief Send address byte to NAND flash (triggers ALE)
+     *
+     * @param address Address byte to send
+     */
+    void sendAddress(uint8_t address) {
+        smcWriteByte(triggerNANDALEAddress, address);
+    }
+
+    /**
+     * @brief Send command to NAND flash (triggers CLE)
+     *
+     * @param command NAND command to send
+     */
+    void sendCommand(Commands command) {
+        smcWriteByte(triggerNANDCLEAddress, static_cast<uint8_t>(command));
+    }
+
+    /**
+     * @brief Read data byte from NAND flash
+     *
+     * @return Data byte read from device
+     */
+    uint8_t readData() {
+        return smcReadByte(moduleBaseAddress);
+    }
+
+
+    /* ============= State Management ============= */
+
+    bool isInitialized{false}; /*!< Driver initialization status */
+
+
+    /* ============= Command Sequences ============= */
+
+    /**
+     * @brief Execute NAND read command sequence without initialization check
+     *
+     * @param address NAND address to read from
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     */
+    etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& address);
+
+
+    /* ============= Device Identification and Validation ============= */
+
+    /**
+     * @brief Read device manufacturer and device ID
+     *
+     * @param[out] id Buffer to store 5-byte device ID
+     */
+    void readDeviceID(etl::span<uint8_t, 5> id);
+
+    /**
+     * @brief Read ONFI signature to verify ONFI compliance
+     *
+     * @param[out] signature Buffer to store 4-byte ONFI signature
+     */
+    void readONFISignature(etl::span<uint8_t, 4> signature);
+
+    /**
+     * @brief Validate parameter page CRC-16 checksum
+     *
+     * @details Implements ONFI CRC-16 algorithm with polynomial 0x8005.
+     * Initial value is 0x4F4E ("ON" in ASCII).
+     * Validates first 254 bytes against stored CRC in bytes 254-255.
+     *
+     * @param paramPage 256-byte parameter page data
+     *
+     * @return true if CRC matches, false if invalid
+     */
+    static bool validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage);
+
+    /**
+     * @brief Validate device parameters match expected geometry
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::HARDWARE_FAILURE Device geometry mismatch or ONFI signature invalid
+     * @retval NANDErrorCode::BAD_PARAMETER_PAGE All 3 parameter page copies have invalid CRC
+     */
+    etl::expected<void, NANDErrorCode> validateDeviceParameters();
+
+
+    /* ============= Address and Status Utilities ============= */
+
+    /**
+     * @brief Build 5-cycle address sequence for NAND Device
+     *
+     * @note Converts NAND address structure to hardware address cycles:
+     *       - Cycle 1 (CA1): Column[7:0]
+     *       - Cycle 2 (CA2): Column[15:8] (only bits [5:0] used)
+     *       - Cycle 3 (RA1): Page[6:0] | Block[0]
+     *       - Cycle 4 (RA2): Block[8:1]
+     *       - Cycle 5 (RA3): LUN[0] | Block[11:9]
+     *
+     * @param address NAND address structure
+     * @param[out] cycles Generated address cycles
+     */
+    static void buildAddressCycles(const NANDAddress& address, AddressCycles& cycles);
+
+    /**
+     * @brief Validate NAND address bounds
+     *
+     * @param address Address to validate
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN, block, page, or column out of bounds
+     */
+    static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& address);
+
+    /**
+     * @brief Read NAND status register
+     *
+     * @return Status register value or error code
+     */
+    uint8_t readStatusRegister();
+
+    /**
+     * @brief Wait for NAND device to become ready
+     *
+     * @param timeoutMs Timeout in milliseconds
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout period
+     */
+    etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutMs);
+
+
+    /* ============= Timing Utilities ============= */
+
+    /**
+     * @brief Busy-wait delay for nanosecond-precision timing
+     *
+     * @param nanoseconds Delay duration in nanoseconds
+     *
+     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
+     */
+    static void busyWaitNanoseconds(uint32_t nanoseconds);
+
+
+    /* ============= Hardware Configuration ============= */
+
+    /**
+     * @brief Configure SMC for NAND flash operation
+     *
+     * @param chipSelect SMC chip select to configure
+     */
+    static void selectNandConfiguration(ChipSelect chipSelect);
     
 public:
     /**
