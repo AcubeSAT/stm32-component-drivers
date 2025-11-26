@@ -37,7 +37,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         auto markerResult = readBlockMarker(block, lun);
         bool isBlockBad = false;
 
-        if ((not markerResult) || (markerResult.value() == BadBlockMarker)) {
+        if ((not markerResult) or (markerResult.value() == BadBlockMarker)) {
             // If we can't read the marker, assume block is bad for safety
             isBlockBad = true;
         }
@@ -252,10 +252,10 @@ void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& address) {
-    if ((address.lun >= LunsPerCe)      ||
-        (address.block >= BlocksPerLun) ||
-        (address.page >= PagesPerBlock) ||
-        (address.column >= TotalBytesPerPage)) {
+    if ((address.lun >= LunsPerCe)
+     or (address.block >= BlocksPerLun)
+     or (address.page >= PagesPerBlock)
+     or (address.column >= TotalBytesPerPage)) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
     return {};
@@ -287,7 +287,7 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
     while (true) {
         auto status = readStatusRegister();
 
-        if ((status & StatusRdy) != 0 && (status & StatusArdy) != 0) {
+        if ((status & StatusRdy) != 0 and (status & StatusArdy) != 0) {
             return {};  // Ready
         }
 
@@ -386,7 +386,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((address.column + data.size()) > TotalBytesPerPage) {
+    if (data.size() > (TotalBytesPerPage - address.column)) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
@@ -396,7 +396,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
     }
 
     auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
+    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -419,7 +419,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((address.column + data.size()) > TotalBytesPerPage) {
+    if (data.size() > (TotalBytesPerPage - address.column)) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
@@ -429,7 +429,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     }
 
     auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
+    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -479,12 +479,12 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
     }
 
-    if ((block >= BlocksPerLun) || (lun >= LunsPerCe)) {
+    if ((block >= BlocksPerLun) or (lun >= LunsPerCe)) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
     auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 || (status & StatusArdy) == 0) {
+    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
