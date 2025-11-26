@@ -10,7 +10,7 @@
  * @brief Error codes for NAND flash operations
  */
 enum class NANDErrorCode : uint8_t {
-    TIMEOUT = 1,
+    TIMEOUT = 1U,
     ADDRESS_OUT_OF_BOUNDS,
     BUSY_IO,
     BUSY_ARRAY,
@@ -23,7 +23,7 @@ enum class NANDErrorCode : uint8_t {
     INVALID_PARAMETER,
     NOT_INITIALIZED,
     HARDWARE_FAILURE,
-    BAD_PARAMETER_PAGE
+    BAD_PARAMETER_PAGE,
 };
 
 /**
@@ -46,15 +46,15 @@ enum class NANDErrorCode : uint8_t {
 class MT29F : public SMC {
 public:
     /* ============== MT29F64G08AFAAAWP device constants =============== */
-    static constexpr uint32_t DataBytesPerPage = 8192;
-    static constexpr uint16_t SpareBytesPerPage = 448;
+    static constexpr uint32_t DataBytesPerPage = 8192U;
+    static constexpr uint16_t SpareBytesPerPage = 448U;
     static constexpr uint16_t TotalBytesPerPage = DataBytesPerPage + SpareBytesPerPage;
-    static constexpr uint8_t PagesPerBlock = 128;
-    static constexpr uint16_t BlocksPerLun = 4096;
-    static constexpr uint8_t LunsPerCe = 1;
+    static constexpr uint8_t PagesPerBlock = 128U;
+    static constexpr uint16_t BlocksPerLun = 4096U;
+    static constexpr uint8_t LunsPerCe = 1U;
 
     /**
-     * @brief NAND address structure for 5-cycle addressing
+     * @brief NAND address structure
      */
     struct NANDAddress {
         uint32_t lun;
@@ -63,7 +63,7 @@ public:
         uint32_t column;
         
         constexpr explicit NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
-            : lun(lun), block(block), page(page), column(column) {}
+            : lun {lun}, block {block}, page {page}, column {column} {}
     };
 
 private:
@@ -73,65 +73,65 @@ private:
      * @brief NAND Commands
      */
     enum class Commands : uint8_t {
-        RESET = 0xFF,
-        READID = 0x90,
-        READ_PARAM_PAGE = 0xEC,
-        READ_UNIQ_ID = 0xED,
-        READ_STATUS = 0x70,
-        ERASE_BLOCK = 0x60,
-        ERASE_BLOCK_CONFIRM = 0xD0,
-        READ_MODE = 0x00,
-        READ_CONFIRM = 0x30,
-        PAGE_PROGRAM = 0x80,
-        PAGE_PROGRAM_CONFIRM = 0x10,
-        CHANGE_WRITE_COLUMN = 0x85,
-        CHANGE_READ_COLUMN = 0x05,
-        CHANGE_READ_COLUMN_CONFIRM = 0xE0
+        RESET = 0xFFU,
+        READID = 0x90U,
+        READ_PARAM_PAGE = 0xECU,
+        READ_UNIQ_ID = 0xEDU,
+        READ_STATUS = 0x70U,
+        ERASE_BLOCK = 0x60U,
+        ERASE_BLOCK_CONFIRM = 0xD0U,
+        READ_MODE = 0x00U,
+        READ_CONFIRM = 0x30U,
+        PAGE_PROGRAM = 0x80U,
+        PAGE_PROGRAM_CONFIRM = 0x10U,
+        CHANGE_WRITE_COLUMN = 0x85U,
+        CHANGE_READ_COLUMN = 0x05U,
+        CHANGE_READ_COLUMN_CONFIRM = 0xE0U,
     };
 
     /**
      * @brief Address parameters for Read ID command
      */
     enum class ReadIDAddress : uint8_t {
-        MANUFACTURER_ID = 0x00,
-        ONFI_SIGNATURE = 0x20
+        MANUFACTURER_ID = 0x00U,
+        ONFI_SIGNATURE = 0x20U,
     };
 
-    static constexpr uint8_t StatusFail = 0x01; /*!< Program/Erase operation failed */
+    static constexpr uint8_t StatusFail = 0x01U;    /*!< Program/Erase operation failed */
 
-    static constexpr uint8_t StatusFailc = 0x02; /*!< Command failed */
+    static constexpr uint8_t StatusFailc = 0x02U;   /*!< Command failed */
 
-    static constexpr uint8_t StatusArdy = 0x20; /*!< Array ready */
+    static constexpr uint8_t StatusArdy = 0x20U;    /*!< Array ready */
 
-    static constexpr uint8_t StatusRdy = 0x40; /*!< Device ready */
+    static constexpr uint8_t StatusRdy = 0x40U;     /*!< Device ready */
 
-    static constexpr uint8_t StatusWp = 0x80; /*!< Write protected (1 = not protected, 0 = protected) */
+    static constexpr uint8_t StatusWp = 0x80U;      /*!< Write protected (1 = not protected, 0 = protected) */
 
 
     /* ============= Device Specifications ============= */
 
-    static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = {0x2C, 0x68, 0x00, 0x27, 0xA9}; /*!< Expected device ID for MT29F64G08AFAAAWP */
+    static constexpr etl::array<uint8_t, 5> ExpectedDeviceId = { 0x2CU, 0x68U, 0x00U, 0x27U, 0xA9U }; /*!< Expected device ID for MT29F64G08AFAAAWP */
 
-    static constexpr uint32_t GpioSettleTimeNs = 100; /*!< WP# GPIO settling time */
+    static constexpr uint32_t GpioSettleTimeNs = 100U; /*!< WP# GPIO settling time */
 
     /*
         Calculated based on the datasheet.
     */
-    static constexpr uint32_t TwhrNs = 120;   /*!< tWHR: Command/address to data read */
-    static constexpr uint32_t TadlNs = 200;   /*!< tADL: Address to data input */
-    static constexpr uint32_t TrhwNs = 200;   /*!< tRHW/tRHZ: Read to write turnaround */
-    static constexpr uint32_t TrrNs = 40;     /*!< tRR: R/B# ready to first read access */
-    static constexpr uint32_t TwbNs = 200;    /*!< tWB: Command to busy transition */
-    static constexpr uint32_t TccsNs = 200;   /*!< tCCS: Change column setup time */
+    static constexpr uint32_t TwhrNs = 120U;   /*!< tWHR: Command/address to data read */
+    static constexpr uint32_t TadlNs = 200U;   /*!< tADL: Address to data input */
+    static constexpr uint32_t TrhwNs = 200U;   /*!< tRHW/tRHZ: Read to write turnaround */
+    static constexpr uint32_t TrrNs = 40U;     /*!< tRR: R/B# ready to first read access */
+    static constexpr uint32_t TwbNs = 200U;    /*!< tWB: Command to busy transition */
+    static constexpr uint32_t TccsNs = 200U;   /*!< tCCS: Change column setup time */
 
     /*
         Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says.
         Also for practical reasons (easier calculations) the read timeout was put to 1ms.
     */
-    static constexpr uint32_t TimeoutReadMs = 1;       /*!< Timeout for READ operation (35us max from datasheet) */
-    static constexpr uint32_t TimeoutProgramMs = 3;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */
-    static constexpr uint32_t TimeoutEraseMs = 35;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
-    static constexpr uint32_t TimeoutResetMs = 5;      /*!< Timeout for RESET operation (1ms max from datasheet) */
+    static constexpr uint32_t TimeoutReadMs = 1U;       /*!< Timeout for READ operation (35us max from datasheet) */
+    static constexpr uint32_t TimeoutProgramMs = 3U;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */
+    static constexpr uint32_t TimeoutEraseMs = 35U;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
+    static constexpr uint32_t TimeoutResetMs = 5U;      /*!< Timeout for RESET operation (1ms max from datasheet) */
 
     /**
      * @brief Type alias for 5-cycle NAND addressing
@@ -145,11 +145,11 @@ private:
      * @brief Address cycle indices for 5-cycle NAND addressing
      */
     enum AddressCycle : uint8_t {
-        CA1 = 0,  /*!< Column address byte 1 [CA1]: Column[7:0] */
-        CA2 = 1,  /*!< Column address byte 2 [CA2]: Column[15:8] */
-        RA1 = 2,  /*!< Row address byte 1 [RA1]: Page[6:0] | Block[0] */
-        RA2 = 3,  /*!< Row address byte 2 [RA2]: Block[8:1] */
-        RA3 = 4,  /*!< Row address byte 3 [RA3]: LUN[0] | Block[11:9] */
+        CA1,    /*!< Column address byte 1 [CA1]: Column[7:0] */
+        CA2,    /*!< Column address byte 2 [CA2]: Column[15:8] */
+        RA1,    /*!< Row address byte 1 [RA1]: Page[6:0] | Block[0] */
+        RA2,    /*!< Row address byte 2 [RA2]: Block[8:1] */
+        RA3,    /*!< Row address byte 3 [RA3]: LUN[0] | Block[11:9] */
     };
 
 
@@ -163,17 +163,18 @@ private:
         uint8_t lun;
     };
 
-    static constexpr size_t MaxBadBlocks = 512;  /*!< Maximum number of bad blocks to track */
+    size_t badBlockCount = 0;   /*!< Current number of bad blocks in table */
 
-    static constexpr uint16_t BlockMarkerOffset = 8192; /*!< Offset to bad block marker in spare area */
+    static constexpr size_t MaxBadBlocks = 512U;                /*!< Maximum number of bad blocks to track */
 
-    static constexpr uint8_t GoodBlockMarker = 0xFF; /*!< Marker value for good blocks */
+    static constexpr uint16_t BlockMarkerOffset = 8192U;        /*!< Offset to bad block marker in spare area */
 
-    static constexpr uint8_t BadBlockMarker = 0x00; /*!< Marker value for bad blocks */
+    static constexpr uint8_t GoodBlockMarker = 0xFFU;           /*!< Marker value for good blocks */
 
-    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable{}; /*!< Table of known bad blocks */
+    static constexpr uint8_t BadBlockMarker = 0x00U;            /*!< Marker value for bad blocks */
 
-    size_t badBlockCount{0}; /*!< Current number of bad blocks in table */
+    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable = {};  /*!< Table of known bad blocks */
+
 
     /**
      * @brief Read block marker from spare area
@@ -251,9 +252,9 @@ private:
 
     /* ============= Hardware Interface ============= */
 
-    const uint32_t triggerNANDALEAddress{moduleBaseAddress | 0x200000}; /*!< SMC address for triggering ALE (Address Latch Enable) */
+    const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000U; /*!< SMC address for triggering ALE (Address Latch Enable) */
 
-    const uint32_t triggerNANDCLEAddress{moduleBaseAddress | 0x400000}; /*!< SMC address for triggering CLE (Command Latch Enable) */
+    const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000U; /*!< SMC address for triggering CLE (Command Latch Enable) */
 
     const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
 
@@ -298,7 +299,7 @@ private:
 
     /* ============= State Management ============= */
 
-    bool isInitialized{false}; /*!< Driver initialization status */
+    bool isInitialized = false; /*!< Driver initialization status */
 
 
     /* ============= Command Sequences ============= */
@@ -429,17 +430,12 @@ public:
      * @param writeProtectPin GPIO pin for write protect control
      */
     MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin)
-        : SMC{chipSelect},
-          nandReadyBusyPin{readyBusyPin},
-          nandWriteProtect{writeProtectPin}
+        : SMC { chipSelect },
+          nandReadyBusyPin { readyBusyPin },
+          nandWriteProtect { writeProtectPin }
     {
         selectNandConfiguration(chipSelect);
     }
-    
-    /* Disable copy constructor and copy assignment operator */
-    MT29F(const MT29F&) = delete;
-    MT29F& operator=(const MT29F&) = delete;
-    
 
     /* ========= Driver Initialization and Basic Info ========= */
     

@@ -1,4 +1,4 @@
-#include "NANDFlash.h"
+#include "NANDFlash.hpp"
 #include <etl/algorithm.h>
 #include <Logger.hpp>
 #include "FreeRTOS.h"
@@ -9,7 +9,7 @@
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     // Based on the datasheet the bad block marker is stored in the first page only
     // in byte 0 of the spare area
-    const NANDAddress address{lun, block, 0, BlockMarkerOffset};
+    const NANDAddress address { lun, block, 0, BlockMarkerOffset };
 
     auto commandResult = executeReadCommandSequence(address);
     if (not commandResult) {
@@ -90,7 +90,7 @@ void MT29F::selectNandConfiguration(ChipSelect chipSelect) {
             MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(1);
             break;
         case NCS1:
-            MATRIX_REGS->CCFG_SMCNFCS &= 0xF;
+            MATRIX_REGS->CCFG_SMCNFCS &= 0xFU;
             MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(1);
             break;
         case NCS2:
@@ -161,14 +161,14 @@ void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
 }
 
 bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) {
-    constexpr uint16_t CrcPolynomial = 0x8005;
-    uint16_t crc = 0x4F4E;
+    constexpr uint16_t CrcPolynomial = 0x8005U;
+    uint16_t crc = 0x4F4EU;
 
     for (size_t byte = 0; byte < 254; byte++) {
         crc ^= static_cast<uint16_t>(paramPage[byte]) << 8;
 
         for (uint8_t bit = 0; bit < 8; bit++) {
-            if (crc & 0x8000) {
+            if (crc & 0x8000U) {
                 crc = (crc << 1) ^ CrcPolynomial;
             } else {
                 crc <<= 1;
@@ -183,7 +183,7 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_PARAM_PAGE);
-    sendAddress(0x00);
+    sendAddress(0x00U);
     busyWaitNanoseconds(TwhrNs);
 
     auto waitResult = waitForReady(TimeoutReadMs);
@@ -244,11 +244,11 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 /* ============= Address and Status Utilities ============= */
 
 void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles) {
-    cycles[AddressCycle::CA1] = address.column & 0xFF;                                       // CA1
-    cycles[AddressCycle::CA2] = (address.column >> 8) & 0x3F;                                // CA2
-    cycles[AddressCycle::RA1] = (address.page & 0x7F) | ((address.block & 0x01) << 7);       // RA1
-    cycles[AddressCycle::RA2] = (address.block >> 1) & 0xFF;                                 // RA2
-    cycles[AddressCycle::RA3] = ((address.block >> 9) & 0x07) | ((address.lun & 0x01) << 3); // RA3
+    cycles[AddressCycle::CA1] = address.column & 0xFFU;
+    cycles[AddressCycle::CA2] = (address.column >> 8) & 0x3FU;
+    cycles[AddressCycle::RA1] = (address.page & 0x7FU) | ((address.block & 0x01U) << 7);
+    cycles[AddressCycle::RA2] = (address.block >> 1) & 0xFFU;
+    cycles[AddressCycle::RA3] = ((address.block >> 9) & 0x07U) | ((address.lun & 0x01U) << 3);
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& address) {
@@ -345,7 +345,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     etl::array<uint8_t, 4> onfiSignature;
     readONFISignature(onfiSignature);
 
-    constexpr etl::array<uint8_t, 4> expectedOnfi = {'O', 'N', 'F', 'I'};
+    constexpr etl::array<uint8_t, 4> expectedOnfi {'O', 'N', 'F', 'I'};
     if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), expectedOnfi.begin())) {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
@@ -451,8 +451,8 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     }
 
     sendCommand(Commands::CHANGE_WRITE_COLUMN);
-    sendAddress(DataBytesPerPage & 0xFF);
-    sendAddress((DataBytesPerPage >> 8) & 0x3F);
+    sendAddress(DataBytesPerPage & 0xFFU);
+    sendAddress((DataBytesPerPage >> 8) & 0x3FU);
     busyWaitNanoseconds(TccsNs);
 
     sendData(GoodBlockMarker);
@@ -490,7 +490,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
     WriteEnableGuard guard(*this);
 
-    const NANDAddress address{lun, block, 0, 0};
+    const NANDAddress address { lun, block, 0, 0 };
     AddressCycles cycles;
     buildAddressCycles(address, cycles);
 
