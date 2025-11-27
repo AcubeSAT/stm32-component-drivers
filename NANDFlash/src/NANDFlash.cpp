@@ -7,12 +7,9 @@
 /* ============= Bad Block Management ============= */
 
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
-    // Based on the datasheet the bad block marker is stored in the first page only
-    // in byte 0 of the spare area
     const NANDAddress address { lun, block, 0, BlockMarkerOffset };
 
-    auto commandResult = executeReadCommandSequence(address);
-    if (not commandResult) {
+    if (auto commandResult = executeReadCommandSequence(address); not commandResult) {
         return etl::unexpected(commandResult.error());
     }
 
@@ -68,15 +65,15 @@ void MT29F::markBadBlock(uint16_t block, uint8_t lun) {
 /* ============= Write Protection ============= */
 
 void MT29F::enableWrites() const {
-    if (nandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtect, true);
+    if (NandWriteProtect != PIO_PIN_NONE) {
+        PIO_PinWrite(NandWriteProtect, true);
         busyWaitNanoseconds(GpioSettleTimeNs);  // GPIO settling time
     }
 }
 
 void MT29F::disableWrites() const {
-    if (nandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtect, false);
+    if (NandWriteProtect != PIO_PIN_NONE) {
+        PIO_PinWrite(NandWriteProtect, false);
         busyWaitNanoseconds(GpioSettleTimeNs);  // Ensure WP# propagates
     }
 }
@@ -275,8 +272,8 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
     const TickType_t startTick = xTaskGetTickCount();
     const TickType_t timeoutTicks = pdMS_TO_TICKS(timeoutMs);
 
-    if (nandReadyBusyPin != PIO_PIN_NONE) {
-        while (PIO_PinRead(nandReadyBusyPin) == 0) {
+    if (NandReadyBusyPin != PIO_PIN_NONE) {
+        while (PIO_PinRead(NandReadyBusyPin) == 0) {
             if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
@@ -321,16 +318,15 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return {};
     }
 
-    if (nandWriteProtect == PIO_PIN_NONE) {
+    if (NandWriteProtect == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Write protection pin not provided. Hardware write protection disabled";
     }
 
-    if (nandReadyBusyPin == PIO_PIN_NONE) {
+    if (NandReadyBusyPin == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Ready/busy pin not provided. Using status register polling";
     }
 
-    auto resetResult = reset();
-    if (not resetResult) {
+    if (auto resetResult = reset(); not resetResult) {
         LOG_ERROR << "NAND: Reset failed";
         return resetResult;
     }
@@ -350,8 +346,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
-    auto parameterResult = validateDeviceParameters();
-    if (not parameterResult) {
+    if (auto parameterResult = validateDeviceParameters(); not parameterResult) {
         return parameterResult;
     }
 
@@ -395,13 +390,12 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
         return validateResult;
     }
 
-    auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
+    if (auto status = readStatusRegister();
+        (status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    auto commandResult = executeReadCommandSequence(address);
-    if (not commandResult) {
+    if (auto commandResult = executeReadCommandSequence(address); not commandResult) {
         return etl::unexpected(commandResult.error());
     }
 
@@ -428,8 +422,8 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return validateResult;
     }
 
-    auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
+    if (auto status = readStatusRegister();
+        (status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -460,14 +454,11 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TimeoutProgramMs);
-    if (not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutProgramMs); not waitResult) {
         return waitResult;
     }
 
-    status = readStatusRegister();
-
-    if ((status & StatusFail) != 0) {
+    if (auto status = readStatusRegister(); (status & StatusFail) != 0) {
         return etl::unexpected(NANDErrorCode::PROGRAM_FAILED);
     }
 
@@ -483,8 +474,8 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
-    auto status = readStatusRegister();
-    if ((status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
+    if (auto status = readStatusRegister();
+        (status & StatusRdy) == 0 or (status & StatusArdy) == 0) {
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
@@ -501,14 +492,11 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TimeoutEraseMs);
-    if (not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutEraseMs); not waitResult) {
         return waitResult;
     }
 
-    status = readStatusRegister();
-
-    if ((status & StatusFail) != 0) {
+    if (auto status = readStatusRegister(); (status & StatusFail) != 0) {
         markBadBlock(block, lun);
         return etl::unexpected(NANDErrorCode::ERASE_FAILED);
     }

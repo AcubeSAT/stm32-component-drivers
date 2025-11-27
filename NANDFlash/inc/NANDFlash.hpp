@@ -58,13 +58,132 @@ public:
      */
     struct NANDAddress {
         uint32_t lun;
-        uint32_t block; 
+        uint32_t block;
         uint32_t page;
         uint32_t column;
-        
+
         constexpr explicit NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
-            : lun {lun}, block {block}, page {page}, column {column} {}
+            : lun {lun}
+            , block {block}
+            , page {page}
+            , column {column} {}
     };
+
+    /**
+     * @brief Constructor for MT29F NAND flash driver
+     *
+     * @param chipSelect SMC chip select for NAND flash
+     * @param readyBusyPin GPIO pin for R/B# signal monitoring
+     * @param writeProtectPin GPIO pin for write protect control
+     */
+    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin)
+        : SMC { chipSelect }
+        , NandReadyBusyPin { readyBusyPin }
+        , NandWriteProtect { writeProtectPin } {
+        selectNandConfiguration(chipSelect);
+    }
+
+    // Explicitly non-copyable and non-movable
+    MT29F(const MT29F&) = delete;
+    MT29F& operator=(const MT29F&) = delete;
+    MT29F(MT29F&&) = delete;
+    MT29F& operator=(MT29F&&) = delete;
+
+    ~MT29F() = default;
+
+    /* ========= Driver Initialization and Basic Info ========= */
+
+    /**
+     * @brief Initialize the NAND flash driver and verify device
+     *
+     * @details This function performs basic device initialization including:
+     * - Device reset and ID verification
+     * - ONFI compliance checking
+     * - Parameter page validation against expected geometry
+     * - Factory bad block scanning
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::SUCCESS Initialization completed successfully
+     * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
+     * @retval NANDErrorCode::TIMEOUT Device not responding
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
+
+    /**
+     * @brief Reset the NAND flash device
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::TIMEOUT Device not responding within timeout period
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
+
+
+    /* ================== Data Operations ================== */
+
+    /**
+     * @brief Read data from NAND flash page
+     *
+     * @param address NAND address to read from
+     * @param[out] data Buffer to store read data (size determines bytes to read)
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& address, etl::span<uint8_t> data);
+
+    /**
+     * @brief Program (write) data to NAND flash page
+     *
+     * @note Page must be in erased state before programming.
+     *
+     * @param address NAND address to write to
+     * @param data Data to write (max page size)
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Data size not equal to full page or column not zero
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
+     *
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
+
+    /**
+     * @brief Erase a block
+     *
+     * @note If erase fails, the block is automatically marked as bad in the runtime table.
+     *
+     * @param block Block number to erase
+     * @param lun LUN number (typically 0)
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of bounds
+     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
+
+
+    /* ==================== Bad Block Management ==================== */
+
+    /**
+     * @brief Check if a block is marked as bad
+     *
+     * @param block Block number to check
+     * @param lun LUN number (typically 0)
+     *
+     * @return true if block is bad, false if good
+     */
+    [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
 private:
     /* ============= ONFI Protocol Definitions ============= */
@@ -178,6 +297,9 @@ private:
 
     /**
      * @brief Read block marker from spare area
+     * 
+     * @details Based on the datasheet the bad block marker is guaranteed to be stored 
+     *          in the first page of each block in byte 0 of the spare area
      *
      * @param block Block number to check
      * @param lun LUN number (default 0)
@@ -252,13 +374,13 @@ private:
 
     /* ============= Hardware Interface ============= */
 
-    const uint32_t triggerNANDALEAddress = moduleBaseAddress | 0x200000U; /*!< SMC address for triggering ALE (Address Latch Enable) */
+    const uint32_t TriggerNANDALEAddress = moduleBaseAddress | 0x200000U; /*!< SMC address for triggering ALE (Address Latch Enable) */
 
-    const uint32_t triggerNANDCLEAddress = moduleBaseAddress | 0x400000U; /*!< SMC address for triggering CLE (Command Latch Enable) */
+    const uint32_t TriggerNANDCLEAddress = moduleBaseAddress | 0x400000U; /*!< SMC address for triggering CLE (Command Latch Enable) */
 
-    const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
+    const PIO_PIN NandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
 
-    const PIO_PIN nandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
+    const PIO_PIN NandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
 
     /**
      * @brief Send data byte to NAND flash
@@ -275,7 +397,7 @@ private:
      * @param address Address byte to send
      */
     void sendAddress(uint8_t address) {
-        smcWriteByte(triggerNANDALEAddress, address);
+        smcWriteByte(TriggerNANDALEAddress, address);
     }
 
     /**
@@ -284,7 +406,7 @@ private:
      * @param command NAND command to send
      */
     void sendCommand(Commands command) {
-        smcWriteByte(triggerNANDCLEAddress, static_cast<uint8_t>(command));
+        smcWriteByte(TriggerNANDCLEAddress, static_cast<uint8_t>(command));
     }
 
     /**
@@ -335,8 +457,8 @@ private:
      * @brief Validate parameter page CRC-16 checksum
      *
      * @details Implements ONFI CRC-16 algorithm with polynomial 0x8005.
-     * Initial value is 0x4F4E ("ON" in ASCII).
-     * Validates first 254 bytes against stored CRC in bytes 254-255.
+     *          Initial value is 0x4F4E.
+     *          Validates first 254 bytes against stored CRC in bytes 254-255.
      *
      * @param paramPage 256-byte parameter page data
      *
@@ -420,117 +542,6 @@ private:
      * @param chipSelect SMC chip select to configure
      */
     static void selectNandConfiguration(ChipSelect chipSelect);
-    
-public:
-    /**
-     * @brief Constructor for MT29F NAND flash driver
-     * 
-     * @param chipSelect SMC chip select for NAND flash
-     * @param readyBusyPin GPIO pin for R/B# signal monitoring
-     * @param writeProtectPin GPIO pin for write protect control
-     */
-    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin)
-        : SMC { chipSelect },
-          nandReadyBusyPin { readyBusyPin },
-          nandWriteProtect { writeProtectPin }
-    {
-        selectNandConfiguration(chipSelect);
-    }
-
-    /* ========= Driver Initialization and Basic Info ========= */
-    
-    /**
-     * @brief Initialize the NAND flash driver and verify device
-     * 
-     * @details This function performs basic device initialization including:
-     * - Device reset and ID verification
-     * - ONFI compliance checking
-     * - Parameter page validation against expected geometry
-     * - Factory bad block scanning
-     * 
-     * @return Success or specific error code
-     * @retval NANDErrorCode::SUCCESS Initialization completed successfully
-     * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
-     * @retval NANDErrorCode::TIMEOUT Device not responding
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
-
-    /**
-     * @brief Reset the NAND flash device
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::TIMEOUT Device not responding within timeout period
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
-    
-    
-    /* ================== Data Operations ================== */
-    
-    /**
-     * @brief Read data from NAND flash page
-     *
-     * @param address NAND address to read from
-     * @param[out] data Buffer to store read data (size determines bytes to read)
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
-     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
-     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::READ_FAILED Status register indicates read failure
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& address, etl::span<uint8_t> data);
-    
-    /**
-     * @brief Program (write) data to NAND flash page
-     * 
-     * @note Page must be in erased state before programming.
-     *
-     * @param address NAND address to write to
-     * @param data Data to write (max page size)
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Data size not equal to full page or column not zero
-     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
-     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
-     *
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
-     
-    /**
-     * @brief Erase a block
-     * 
-     * @note If erase fails, the block is automatically marked as bad in the runtime table.
-     *
-     * @param block Block number to erase
-     * @param lun LUN number (typically 0)
-     *
-     * @return Success or specific error code
-     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of bounds
-     * @retval NANDErrorCode::BUSY_ARRAY Device array busy
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
-     */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
-
-
-    /* ==================== Bad Block Management ==================== */
-    
-    /**
-     * @brief Check if a block is marked as bad
-     * 
-     * @param block Block number to check
-     * @param lun LUN number (typically 0)
-     * 
-     * @return true if block is bad, false if good
-     */
-    [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
-
 };
 
 
