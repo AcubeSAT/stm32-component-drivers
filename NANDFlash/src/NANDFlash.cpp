@@ -183,8 +183,7 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendAddress(0x00U);
     busyWaitNanoseconds(TwhrNs);
 
-    auto waitResult = waitForReady(TimeoutReadMs);
-    if (not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult) {
         return etl::unexpected(waitResult.error());
     }
 
@@ -352,8 +351,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     disableWrites();
 
-    auto scanResult = scanFactoryBadBlocks();
-    if (not scanResult) {
+    if (auto scanResult = scanFactoryBadBlocks(); not scanResult) {
         return scanResult;
     }
 
@@ -365,8 +363,7 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
     busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TimeoutResetMs);
-    if (not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutResetMs); not waitResult) {
         return waitResult;
     }
 
@@ -385,8 +382,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    auto validateResult = validateAddress(address);
-    if (not validateResult) {
+    if (auto validateResult = validateAddress(address); not validateResult) {
         return validateResult;
     }
 
@@ -417,8 +413,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    auto validateResult = validateAddress(address);
-    if (not validateResult) {
+    if (auto validateResult = validateAddress(address); not validateResult) {
         return validateResult;
     }
 
