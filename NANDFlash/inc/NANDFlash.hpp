@@ -139,14 +139,18 @@ public:
     /**
      * @brief Program (write) data to NAND flash page
      *
-     * @note Page must be in erased state before programming.
+     * @note 1) Page must be in erased state before programming.
+     *       2) The block marker is located at column address 8192 (BlockMarkerOffset).
+     *          If the caller's data includes this address, the byte at that position
+     *          MUST be 0xFF.
      *
      * @param address NAND address to write to
      * @param data Data to write (max page size)
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Data size not equal to full page or column not zero
+     * @retval NANDErrorCode::INVALID_PARAMETER Data size exceeds available space, or
+     *                                          invalid block marker value at column 8192
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
@@ -241,7 +245,6 @@ private:
     static constexpr uint32_t TrhwNs = 200U;   /*!< tRHW/tRHZ: Read to write turnaround */
     static constexpr uint32_t TrrNs = 40U;     /*!< tRR: R/B# ready to first read access */
     static constexpr uint32_t TwbNs = 200U;    /*!< tWB: Command to busy transition */
-    static constexpr uint32_t TccsNs = 200U;   /*!< tCCS: Change column setup time */
 
     /*
         Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says.

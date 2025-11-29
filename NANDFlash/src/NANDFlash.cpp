@@ -121,10 +121,11 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     if (not waitResult) {
         return waitResult;
     }
-
+    
     busyWaitNanoseconds(TrrNs);
 
     sendCommand(Commands::READ_MODE);
+
     busyWaitNanoseconds(TwhrNs);
 
     return {};
@@ -413,6 +414,14 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
+    if ((address.column <= BlockMarkerOffset) and ((address.column + data.size()) > BlockMarkerOffset)) {
+        const size_t markerIndex = BlockMarkerOffset - address.column;
+        const uint8_t markerValue = data[markerIndex];
+        if (markerValue != GoodBlockMarker) {
+            return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+        }
+    }
+
     if (auto validateResult = validateAddress(address); not validateResult) {
         return validateResult;
     }
@@ -438,13 +447,6 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     for (const auto& byte : data) {
         sendData(byte);
     }
-
-    sendCommand(Commands::CHANGE_WRITE_COLUMN);
-    sendAddress(DataBytesPerPage & 0xFFU);
-    sendAddress((DataBytesPerPage >> 8) & 0x3FU);
-    busyWaitNanoseconds(TccsNs);
-
-    sendData(GoodBlockMarker);
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
     busyWaitNanoseconds(TwbNs);
