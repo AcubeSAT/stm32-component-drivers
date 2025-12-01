@@ -5,7 +5,6 @@
 #include "etl/span.h"
 #include "Logger.hpp"
 #include "task.h"
-#include "plib_systick.h"
 #include "Peripheral_Definitions.hpp"
 
 #ifdef TWIHS0_ENABLED
@@ -135,7 +134,7 @@ namespace HAL_I2C {
         }
 
         template<PeripheralNumber peripheralNumber>
-        inline bool writeReadRegister(uint16_t deviceAddress, uint8_t * writeData, size_t writeSize, uint8_t readData, size_t readSize) {
+        inline bool writeReadRegister(uint16_t deviceAddress, uint8_t * writeData, size_t writeSize, uint8_t* readData, size_t readSize) {
             if constexpr (peripheralNumber == PeripheralNumber::TWIHS0) {
 #ifdef TWIHS0_ENABLED
                 return TWIHS0_WriteRead(deviceAddress, writeData, writeSize, readData, readSize);
@@ -253,7 +252,7 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::BUSY;
         }
-        if (!writeRegister<peripheralNumber>(deviceAddress, i2cData.data(), i2cData.size())) {
+        if (!Internal::writeRegister<peripheralNumber>(deviceAddress, i2cData.data(), i2cData.size())) {
             auto error = Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
             return I2CError::OPERATION_ERROR;
@@ -286,7 +285,7 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::BUSY;
         }
-        if (not readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
+        if (not Internal::readRegister<peripheralNumber>(deviceAddress, data.data(), data.size())) {
             auto error = Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write transaction failed with error code: " << error;
             return I2CError::OPERATION_ERROR;
@@ -319,7 +318,7 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::BUSY;
         }
-        if (!writeReadRegister<peripheralNumber>(deviceAddress, writeData.data(), writeData.size(), readData.data(), readData.size())) {
+        if (!Internal::writeReadRegister<peripheralNumber>(deviceAddress, writeData.data(), writeData.size(), readData.data(), readData.size())) {
             auto error =Internal::errorGet<peripheralNumber>();
             LOG_INFO << "I2C write/read transaction failed with error code: " << error;
             return I2CError::OPERATION_ERROR;
