@@ -40,7 +40,6 @@ namespace HAL_I2C {
          * A previous operation is still ongoing
          */
         BUSY
-
     };
 
     /**
