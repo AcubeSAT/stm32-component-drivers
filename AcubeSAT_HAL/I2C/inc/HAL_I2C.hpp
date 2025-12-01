@@ -22,7 +22,7 @@ namespace HAL_I2C {
     * @enum I2CError
     * @brief Enumeration to represent various I2C error states.
     */
-    enum class I2CError {
+    enum class I2CError : uint8_t {
         NONE,
         /**
          * Internal error during I2C write or read
