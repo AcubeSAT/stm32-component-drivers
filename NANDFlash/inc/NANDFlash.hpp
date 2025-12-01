@@ -48,7 +48,7 @@ public:
     /* ============== MT29F64G08AFAAAWP device constants =============== */
     static constexpr uint32_t DataBytesPerPage = 8192U;
     static constexpr uint16_t SpareBytesPerPage = 448U;
-    static constexpr uint16_t TotalBytesPerPage = DataBytesPerPage + SpareBytesPerPage;
+    static constexpr uint32_t TotalBytesPerPage = DataBytesPerPage + SpareBytesPerPage;
     static constexpr uint8_t PagesPerBlock = 128U;
     static constexpr uint16_t BlocksPerLun = 4096U;
     static constexpr uint8_t LunsPerCe = 1U;
@@ -259,7 +259,7 @@ private:
      * @brief Type alias for 5-cycle NAND addressing
      *
      * @note Represents the 5 address cycles required for NAND operations:
-     *       [CA1, CA2, RA1, RA2, RA3]
+     *       [COLUMN_ADDRESS_1, COLUMN_ADDRESS_2, ROW_ADDRESS_1, ROW_ADDRESS_2, ROW_ADDRESS_3]
      */
     using AddressCycles = etl::array<uint8_t, 5>;
 
@@ -267,11 +267,11 @@ private:
      * @brief Address cycle indices for 5-cycle NAND addressing
      */
     enum AddressCycle : uint8_t {
-        CA1,    /*!< Column address byte 1 [CA1]: Column[7:0] */
-        CA2,    /*!< Column address byte 2 [CA2]: Column[15:8] */
-        RA1,    /*!< Row address byte 1 [RA1]: Page[6:0] | Block[0] */
-        RA2,    /*!< Row address byte 2 [RA2]: Block[8:1] */
-        RA3,    /*!< Row address byte 3 [RA3]: LUN[0] | Block[11:9] */
+        COLUMN_ADDRESS_1,    /*!< Column address byte 1: Column[7:0] */
+        COLUMN_ADDRESS_2,    /*!< Column address byte 2: Column[15:8] */
+        ROW_ADDRESS_1,       /*!< Row address byte 1: Page[6:0] | Block[0] */
+        ROW_ADDRESS_2,       /*!< Row address byte 2: Block[8:1] */
+        ROW_ADDRESS_3,       /*!< Row address byte 3: LUN[0] | Block[11:9] */
     };
 
 
@@ -346,8 +346,6 @@ private:
      * @brief RAII guard for write-enable state
      */
     class WriteEnableGuard {
-    private:
-        MT29F& nand;
     public:
         explicit WriteEnableGuard(MT29F& n) : nand(n) {
             nand.enableWrites();
@@ -362,6 +360,9 @@ private:
         WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
         WriteEnableGuard(WriteEnableGuard&&) = delete;
         WriteEnableGuard& operator=(WriteEnableGuard&&) = delete;
+
+    private:
+        MT29F& nand;
     };
 
     /**
@@ -463,11 +464,11 @@ private:
      *          Initial value is 0x4F4E.
      *          Validates first 254 bytes against stored CRC in bytes 254-255.
      *
-     * @param paramPage 256-byte parameter page data
+     * @param parameterPage 256-byte parameter page data
      *
      * @return true if CRC matches, false if invalid
      */
-    static bool validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage);
+    static bool validateParameterPageCRC(etl::span<const uint8_t, 256> parametrPage);
 
     /**
      * @brief Validate device parameters match expected geometry
@@ -486,11 +487,11 @@ private:
      * @brief Build 5-cycle address sequence for NAND Device
      *
      * @note Converts NAND address structure to hardware address cycles:
-     *       - Cycle 1 (CA1): Column[7:0]
-     *       - Cycle 2 (CA2): Column[15:8] (only bits [5:0] used)
-     *       - Cycle 3 (RA1): Page[6:0] | Block[0]
-     *       - Cycle 4 (RA2): Block[8:1]
-     *       - Cycle 5 (RA3): LUN[0] | Block[11:9]
+     *       - Cycle 1 (COLUMN_ADDRESS_1): Column[7:0]
+     *       - Cycle 2 (COLUMN_ADDRESS_2): Column[15:8] (only bits [5:0] used)
+     *       - Cycle 3 (ROW_ADDRESS_1): Page[6:0] | Block[0]
+     *       - Cycle 4 (ROW_ADDRESS_2): Block[8:1]
+     *       - Cycle 5 (ROW_ADDRESS_3): LUN[0] | Block[11:9]
      *
      * @param address NAND address structure
      * @param[out] cycles Generated address cycles

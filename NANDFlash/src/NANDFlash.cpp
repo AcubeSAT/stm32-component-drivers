@@ -57,7 +57,7 @@ void MT29F::markBadBlock(uint16_t block, uint8_t lun) {
         return;
     }
 
-    badBlockTable[badBlockCount] = {block, lun};
+    badBlockTable[badBlockCount] = { block, lun };
     badBlockCount++;
 }
 
@@ -87,7 +87,6 @@ void MT29F::selectNandConfiguration(ChipSelect chipSelect) {
             MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(1);
             break;
         case NCS1:
-            MATRIX_REGS->CCFG_SMCNFCS &= 0xFU;
             MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(1);
             break;
         case NCS2:
@@ -158,15 +157,22 @@ void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     busyWaitNanoseconds(TrhwNs);
 }
 
-bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) {
+bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage) {
     constexpr uint16_t CrcPolynomial = 0x8005U;
-    uint16_t crc = 0x4F4EU;
+    constexpr uint16_t CrcInitialValue = 0x4F4EU;
+    constexpr size_t CrcDataLength = 254;
+    constexpr size_t StoredCrcLowByteOffset = 254;
+    constexpr size_t StoredCrcHighByteOffset = 255;
+    constexpr uint8_t BitsPerByte = 8;
+    constexpr uint16_t MsbMask = 0x8000U;
 
-    for (size_t byte = 0; byte < 254; byte++) {
-        crc ^= static_cast<uint16_t>(paramPage[byte]) << 8;
+    uint16_t crc = CrcInitialValue;
 
-        for (uint8_t bit = 0; bit < 8; bit++) {
-            if (crc & 0x8000U) {
+    for (const auto byte : parameterPage.first<CrcDataLength>()) {
+        crc ^= static_cast<uint16_t>(byte) << BitsPerByte;
+
+        for (uint8_t bit = 0; bit < BitsPerByte; bit++) {
+            if ((crc & MsbMask) != 0) {
                 crc = (crc << 1) ^ CrcPolynomial;
             } else {
                 crc <<= 1;
@@ -174,12 +180,19 @@ bool MT29F::validateParameterPageCRC(const etl::array<uint8_t, 256>& paramPage) 
         }
     }
 
-    const uint16_t storedCrc = static_cast<uint16_t>(paramPage[254]) | (static_cast<uint16_t>(paramPage[255]) << 8);
+    const uint16_t StoredCrc = static_cast<uint16_t>(parameterPage[StoredCrcLowByteOffset]) |
+                               (static_cast<uint16_t>(parameterPage[StoredCrcHighByteOffset]) << BitsPerByte);
 
-    return (crc == storedCrc);
+    return crc == StoredCrc;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
+    constexpr size_t OnfiDataBytesPerPageOffset = 80;
+    constexpr size_t OnfiSpareBytesPerPageOffset = 84;
+    constexpr size_t OnfiPagesPerBlockOffset = 92;
+    constexpr size_t OnfiBlocksPerLunOffset = 96;
+    constexpr uint8_t OnfiParameterPageCopies = 3;
+
     sendCommand(Commands::READ_PARAM_PAGE);
     sendAddress(0x00U);
     busyWaitNanoseconds(TwhrNs);
@@ -193,40 +206,60 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendCommand(Commands::READ_MODE);
     busyWaitNanoseconds(TwhrNs);
 
-    // ONFI requires 3 redundant copies of parameter page. Try each copy until we find a valid one
-    for (uint8_t copy = 0; copy < 3; copy++) {
-        etl::array<uint8_t, 256> paramPageData;
+    // ONFI requires redundant copies of parameter page. Try each copy until we find a valid one
+    for (uint8_t copy = 0; copy < OnfiParameterPageCopies; copy++) {
+        etl::array<uint8_t, 256> parametersPageData;
 
-        for (auto& byte : paramPageData) {
+        for (auto& byte : parametersPageData) {
             byte = readData();
         }
 
-        if (validateParameterPageCRC(paramPageData)) {
+        if (validateParameterPageCRC(parametersPageData)) {
             // Extract geometry values from parameter page (little-endian)
-            auto asUint16 = [](uint8_t low, uint8_t high) -> uint16_t {
-                return low | (static_cast<uint16_t>(high) << 8);
+            auto asUint16 = [](uint8_t byte0, uint8_t byte1) -> uint16_t {
+                return byte0 | (static_cast<uint16_t>(byte1) << 8);
             };
 
-            auto asUint32 = [](uint8_t b0, uint8_t b1, uint8_t b2, uint8_t b3) -> uint32_t {
-                return b0 | (static_cast<uint32_t>(b1) << 8) |
-                       (static_cast<uint32_t>(b2) << 16) | (static_cast<uint32_t>(b3) << 24);
+            auto asUint32 = [](uint8_t byte0, uint8_t byte1, uint8_t byte2, uint8_t byte3) -> uint32_t {
+                return byte0 | (static_cast<uint32_t>(byte1) << 8) |
+                       (static_cast<uint32_t>(byte2) << 16) | (static_cast<uint32_t>(byte3) << 24);
             };
 
-            const uint32_t readDataBytesPerPage = asUint32(paramPageData[80], paramPageData[81], paramPageData[82], paramPageData[83]);
-            const uint16_t readSpareBytesPerPage = asUint16(paramPageData[84], paramPageData[85]);
-            const uint32_t readPagesPerBlock = asUint32(paramPageData[92], paramPageData[93], paramPageData[94], paramPageData[95]);
-            const uint32_t readBlocksPerLUN = asUint32(paramPageData[96], paramPageData[97], paramPageData[98], paramPageData[99]);
+            const uint32_t ReadDataBytesPerPage = asUint32(
+                parametersPageData[OnfiDataBytesPerPageOffset],
+                parametersPageData[OnfiDataBytesPerPageOffset + 1],
+                parametersPageData[OnfiDataBytesPerPageOffset + 2],
+                parametersPageData[OnfiDataBytesPerPageOffset + 3]);
 
-            if (readDataBytesPerPage != DataBytesPerPage) {
+            const uint16_t ReadSpareBytesPerPage = asUint16(
+                parametersPageData[OnfiSpareBytesPerPageOffset],
+                parametersPageData[OnfiSpareBytesPerPageOffset + 1]);
+
+            const uint32_t ReadPagesPerBlock = asUint32(
+                parametersPageData[OnfiPagesPerBlockOffset],
+                parametersPageData[OnfiPagesPerBlockOffset + 1],
+                parametersPageData[OnfiPagesPerBlockOffset + 2],
+                parametersPageData[OnfiPagesPerBlockOffset + 3]);
+
+            const uint32_t ReadBlocksPerLun = asUint32(
+                parametersPageData[OnfiBlocksPerLunOffset],
+                parametersPageData[OnfiBlocksPerLunOffset + 1],
+                parametersPageData[OnfiBlocksPerLunOffset + 2],
+                parametersPageData[OnfiBlocksPerLunOffset + 3]);
+
+            if (ReadDataBytesPerPage != DataBytesPerPage) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readSpareBytesPerPage != SpareBytesPerPage) {
+
+            if (ReadSpareBytesPerPage != SpareBytesPerPage) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readPagesPerBlock != PagesPerBlock) {
+
+            if (ReadPagesPerBlock != PagesPerBlock) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
-            if (readBlocksPerLUN != BlocksPerLun) {
+
+            if (ReadBlocksPerLun != BlocksPerLun) {
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
@@ -241,11 +274,24 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 /* ============= Address and Status Utilities ============= */
 
 void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles) {
-    cycles[AddressCycle::CA1] = address.column & 0xFFU;
-    cycles[AddressCycle::CA2] = (address.column >> 8) & 0x3FU;
-    cycles[AddressCycle::RA1] = (address.page & 0x7FU) | ((address.block & 0x01U) << 7);
-    cycles[AddressCycle::RA2] = (address.block >> 1) & 0xFFU;
-    cycles[AddressCycle::RA3] = ((address.block >> 9) & 0x07U) | ((address.lun & 0x01U) << 3);
+    constexpr uint8_t ByteMask = 0xFFU;
+    constexpr uint8_t ColumnHighByteMask = 0x3FU;
+    constexpr uint8_t PageMask = 0x7FU;
+    constexpr uint8_t SingleBitMask = 0x01U;
+    constexpr uint8_t BlockHighBitsMask = 0x07U;
+
+    constexpr uint8_t BitsPerByte = 8;
+    constexpr uint8_t PageBitsWidth = 7;
+    constexpr uint8_t BlockShiftForRowAddress2 = 1;
+    constexpr uint8_t BlockShiftForRowAddress3 = 9;
+    constexpr uint8_t LunShiftInRowAddress3 = 3;
+
+    cycles[AddressCycle::COLUMN_ADDRESS_1] = address.column & ByteMask;
+    cycles[AddressCycle::COLUMN_ADDRESS_2] = (address.column >> BitsPerByte) & ColumnHighByteMask;
+    cycles[AddressCycle::ROW_ADDRESS_1] = (address.page & PageMask) | ((address.block & SingleBitMask) << PageBitsWidth);
+    cycles[AddressCycle::ROW_ADDRESS_2] = (address.block >> BlockShiftForRowAddress2) & ByteMask;
+    cycles[AddressCycle::ROW_ADDRESS_3] = ((address.block >> BlockShiftForRowAddress3) & BlockHighBitsMask) |
+                                          ((address.lun & SingleBitMask) << LunShiftInRowAddress3);
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& address) {
@@ -300,11 +346,13 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
 /* ============= Timing Utilities ============= */
 
 void MT29F::busyWaitNanoseconds(uint32_t nanoseconds) {
-    constexpr uint32_t CPU_MHZ = CPU_CLOCK_FREQUENCY / 1000000UL;
+    constexpr uint32_t HertzPerMegahertz = 1000000UL;
+    constexpr uint32_t NanosecondsPerMicrosecond = 1000UL;
+    constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / HertzPerMegahertz;
 
-    const uint32_t cycles = (nanoseconds * CPU_MHZ) / 1000UL;
+    const uint32_t Cycles = (nanoseconds * CpuMhz) / NanosecondsPerMicrosecond;
 
-    for (volatile uint32_t i = 0; i < cycles; i++) {
+    for (volatile uint32_t i = 0; i < Cycles; i++) {
         __asm__ volatile ("nop");
     }
 }
@@ -341,7 +389,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     etl::array<uint8_t, 4> onfiSignature;
     readONFISignature(onfiSignature);
 
-    constexpr etl::array<uint8_t, 4> expectedOnfi {'O', 'N', 'F', 'I'};
+    constexpr etl::array<uint8_t, 4> expectedOnfi { 'O', 'N', 'F', 'I' };
     if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), expectedOnfi.begin())) {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
@@ -483,9 +531,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     buildAddressCycles(address, cycles);
 
     sendCommand(Commands::ERASE_BLOCK);
-    sendAddress(cycles[AddressCycle::RA1]);
-    sendAddress(cycles[AddressCycle::RA2]);
-    sendAddress(cycles[AddressCycle::RA3]);
+    sendAddress(cycles[AddressCycle::ROW_ADDRESS_1]);
+    sendAddress(cycles[AddressCycle::ROW_ADDRESS_2]);
+    sendAddress(cycles[AddressCycle::ROW_ADDRESS_3]);
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
@@ -505,8 +553,8 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 /* ============= Public Interface - Bad Block Management ============= */
 
 bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
-    for (size_t tableIndex = 0; tableIndex < badBlockCount; tableIndex++) {
-        if ((badBlockTable[tableIndex].blockNumber == block) && (badBlockTable[tableIndex].lun == lun)) {
+    for (const auto& entry : etl::span(badBlockTable).first(badBlockCount)) {
+        if ((entry.blockNumber == block) and (entry.lun == lun)) {
             return true;
         }
     }
@@ -518,20 +566,35 @@ bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
 
 const char* toString(NANDErrorCode error) {
     switch (error) {
-        case NANDErrorCode::TIMEOUT: return "Timeout";
-        case NANDErrorCode::ADDRESS_OUT_OF_BOUNDS: return "Address out of bounds";
-        case NANDErrorCode::BUSY_IO: return "Device busy - I/O";
-        case NANDErrorCode::BUSY_ARRAY: return "Device busy - Array";
-        case NANDErrorCode::PROGRAM_FAILED: return "Program operation failed";
-        case NANDErrorCode::ERASE_FAILED: return "Erase operation failed";
-        case NANDErrorCode::READ_FAILED: return "Read operation failed";
-        case NANDErrorCode::NOT_READY: return "Device not ready";
-        case NANDErrorCode::WRITE_PROTECTED: return "Device write protected";
-        case NANDErrorCode::BAD_BLOCK: return "Bad block detected";
-        case NANDErrorCode::INVALID_PARAMETER: return "Invalid parameter";
-        case NANDErrorCode::NOT_INITIALIZED: return "Driver not initialized";
-        case NANDErrorCode::HARDWARE_FAILURE: return "Hardware failure";
-        case NANDErrorCode::BAD_PARAMETER_PAGE: return "Bad parameter page";
-        default: return "Unknown error";
+        case NANDErrorCode::TIMEOUT:
+            return "Timeout";
+        case NANDErrorCode::ADDRESS_OUT_OF_BOUNDS:
+            return "Address out of bounds";
+        case NANDErrorCode::BUSY_IO:
+            return "Device busy - I/O";
+        case NANDErrorCode::BUSY_ARRAY:
+            return "Device busy - Array";
+        case NANDErrorCode::PROGRAM_FAILED:
+            return "Program operation failed";
+        case NANDErrorCode::ERASE_FAILED:
+            return "Erase operation failed";
+        case NANDErrorCode::READ_FAILED:
+            return "Read operation failed";
+        case NANDErrorCode::NOT_READY:
+            return "Device not ready";
+        case NANDErrorCode::WRITE_PROTECTED:
+            return "Device write protected";
+        case NANDErrorCode::BAD_BLOCK:
+            return "Bad block detected";
+        case NANDErrorCode::INVALID_PARAMETER:
+            return "Invalid parameter";
+        case NANDErrorCode::NOT_INITIALIZED:
+            return "Driver not initialized";
+        case NANDErrorCode::HARDWARE_FAILURE:
+            return "Hardware failure";
+        case NANDErrorCode::BAD_PARAMETER_PAGE:
+            return "Bad parameter page";
+        default:
+            return "Unknown error";
     }
 }
