@@ -37,6 +37,7 @@ enum class NANDErrorCode : uint8_t {
  *       - Driver maintains bad block table (factory + runtime discovered)
  *       - Query via isBlockBad() before operations
  *       - Driver does NOT enforce checks on read/program/erase (caller responsibility)
+ *       - Caller must mark the runtime bad blocks via markBadBlock()
  *
  * @ingroup drivers
  * @see http://ww1.microchip.com/downloads/en/DeviceDoc/NAND-Flash-Interface-with-EBI-on-Cortex-M-Based-MCUs-DS90003184A.pdf
@@ -91,16 +92,18 @@ public:
 
     ~MT29F() = default;
 
+
     /* ========= Driver Initialization and Basic Info ========= */
 
     /**
      * @brief Initialize the NAND flash driver and verify device
      *
      * @details This function performs basic device initialization including:
-     * - Device reset and ID verification
-     * - ONFI compliance checking
-     * - Parameter page validation against expected geometry
-     * - Factory bad block scanning
+     *          - Device reset and ID verification
+     *          - ONFI compliance checking
+     *          - Parameter page validation against expected geometry
+     *          - Factory bad block scanning
+     *          - Enables the write protection if the user has provided a WP# pin
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::SUCCESS Initialization completed successfully
@@ -139,18 +142,17 @@ public:
     /**
      * @brief Program (write) data to NAND flash page
      *
-     * @note 1) Page must be in erased state before programming.
-     *       2) The block marker is located at column address 8192 (BlockMarkerOffset).
-     *          If the caller's data includes this address, the byte at that position
-     *          MUST be 0xFF.
+     * @warning 1) Page must be in erased state before programming
+     *          2) The block marker is located at column address 8192 (BlockMarkerOffset)
+     *             If the caller's data includes this address, the byte at that position
+     *             MUST be 0xFF.
      *
      * @param address NAND address to write to
      * @param data Data to write (max page size)
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Data size exceeds available space, or
-     *                                          invalid block marker value at column 8192
+     * @retval NANDErrorCode::INVALID_PARAMETER Data size exceeds available space, or invalid block marker value at column 8192
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::BUSY_ARRAY Device array busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
@@ -161,8 +163,6 @@ public:
 
     /**
      * @brief Erase a block
-     *
-     * @note If erase fails, the block is automatically marked as bad in the runtime table.
      *
      * @param block Block number to erase
      * @param lun LUN number (typically 0)
@@ -189,6 +189,23 @@ public:
      */
     [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
+    /**
+     * @brief Mark a block as bad in the runtime table
+     *
+     * @note Call this when program/erase operations fail to track bad blocks.
+     * 
+     * @warning The driver does not auto-mark blocks. The caller is responsible for
+     *          bad block policy decisions.
+     *
+     * @param block Block number to mark as bad
+     * @param lun LUN number (typically 0)
+     *
+     * @return Success or specific error code
+     * @retval NANDErrorCode::HARDWARE_FAILURE Bad block table is full
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
+
+    
 private:
     /* ============= ONFI Protocol Definitions ============= */
 
@@ -331,14 +348,6 @@ private:
      */
     etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);
 
-    /**
-     * @brief Mark a block as bad
-     *
-     * @param block Block number to mark as bad
-     * @param lun LUN number (typically 0)
-     */
-    void markBadBlock(uint16_t block, uint8_t lun = 0);
-
 
     /* ============= Write Protection ============= */
 
@@ -472,6 +481,9 @@ private:
 
     /**
      * @brief Validate device parameters match expected geometry
+     * 
+     * @details 1) ONFI requires redundant copies of the parameter page. We try each copy until we find a valid one
+     *          2) The values of the parameter page are stored in little-endian
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
