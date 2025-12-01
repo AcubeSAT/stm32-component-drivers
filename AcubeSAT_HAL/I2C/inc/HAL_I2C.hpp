@@ -44,9 +44,9 @@ namespace HAL_I2C {
     };
 
     /**
-    * @enum Peripheral
-    * @brief Enumeration to represent different I2C peripheral numbers.
-    */
+     * @enum Peripheral
+     * @brief Enumeration to represent different I2C peripheral numbers.
+     */
     enum class PeripheralNumber : uint8_t {
         TWIHS0 = 0,
         TWIHS1 = 1,
