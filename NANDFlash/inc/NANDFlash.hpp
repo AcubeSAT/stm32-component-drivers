@@ -205,7 +205,7 @@ public:
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
 
-    
+
 private:
     /* ============= ONFI Protocol Definitions ============= */
 
@@ -318,9 +318,6 @@ private:
     /**
      * @brief Read block marker from spare area
      * 
-     * @details Based on the datasheet the bad block marker is guaranteed to be stored 
-     *          in the first page of each block in byte 0 of the spare area
-     *
      * @param block Block number to check
      * @param lun LUN number (default 0)
      *
@@ -336,6 +333,10 @@ private:
 
     /**
      * @brief Scan all blocks in a LUN for factory bad block markers
+     * 
+     * @details Based on the datasheet the bad block marker is guaranteed to be stored 
+     *          in the first page of each block in byte 0 of the spare area. 
+     *          If (for some reason) we can't read the marker, we assume that the block is bad for safety
      *
      * @param lun LUN number to scan (default 0)
      *

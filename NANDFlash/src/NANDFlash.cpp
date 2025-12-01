@@ -9,7 +9,7 @@
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
     const NANDAddress address { lun, block, 0, BlockMarkerOffset };
 
-    if (auto commandResult = executeReadCommandSequence(address); not commandResult) {
+    if (auto commandResult = executeReadCommandSequence(address); not commandResult.has_value()) {
         return etl::unexpected(commandResult.error());
     }
 
@@ -27,20 +27,16 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     for (uint16_t block = 0; block < BlocksPerLun; block++) {
 
-        if ((block % 5) == 0) {
-            vTaskDelay(1);
-        }
-
         auto markerResult = readBlockMarker(block, lun);
+        
         bool isBlockBad = false;
 
-        if ((not markerResult) or (markerResult.value() == BadBlockMarker)) {
-            // If we can't read the marker, assume block is bad for safety
+        if ((not markerResult.has_value()) or (markerResult.value() == BadBlockMarker)) {
             isBlockBad = true;
         }
 
         if (isBlockBad) {
-            if (auto markResult = markBadBlock(block, lun); not markResult) {
+            if (auto markResult = markBadBlock(block, lun); not markResult.has_value()) {
                 return markResult;
             }
         }
@@ -115,8 +111,7 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     sendCommand(Commands::READ_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    auto waitResult = waitForReady(TimeoutReadMs);
-    if (not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult.has_value()) {
         return waitResult;
     }
     
@@ -196,8 +191,8 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendAddress(0x00U);
     busyWaitNanoseconds(TwhrNs);
 
-    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult) {
-        return etl::unexpected(waitResult.error());
+    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult.has_value()) {
+        return waitResult;
     }
 
     busyWaitNanoseconds(TrrNs);
@@ -367,7 +362,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         LOG_INFO << "NAND: Ready/busy pin not provided. Using status register polling";
     }
 
-    if (auto resetResult = reset(); not resetResult) {
+    if (auto resetResult = reset(); not resetResult.has_value()) {
         LOG_ERROR << "NAND: Reset failed";
         return resetResult;
     }
@@ -389,13 +384,13 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
-    if (auto parameterResult = validateDeviceParameters(); not parameterResult) {
+    if (auto parameterResult = validateDeviceParameters(); not parameterResult.has_value()) {
         return parameterResult;
     }
 
     disableWrites();
 
-    if (auto scanResult = scanFactoryBadBlocks(); not scanResult) {
+    if (auto scanResult = scanFactoryBadBlocks(); not scanResult.has_value()) {
         return scanResult;
     }
 
@@ -407,7 +402,7 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutResetMs); not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutResetMs); not waitResult.has_value()) {
         return waitResult;
     }
 
@@ -426,7 +421,7 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    if (auto validateResult = validateAddress(address); not validateResult) {
+    if (auto validateResult = validateAddress(address); not validateResult.has_value()) {
         return validateResult;
     }
 
@@ -435,8 +430,8 @@ etl::expected<void, NANDErrorCode> MT29F::readPage(const NANDAddress& address, e
         return etl::unexpected(NANDErrorCode::BUSY_ARRAY);
     }
 
-    if (auto commandResult = executeReadCommandSequence(address); not commandResult) {
-        return etl::unexpected(commandResult.error());
+    if (auto commandResult = executeReadCommandSequence(address); not commandResult.has_value()) {
+        return commandResult;
     }
 
     for (auto& byte : data) {
@@ -465,7 +460,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         }
     }
 
-    if (auto validateResult = validateAddress(address); not validateResult) {
+    if (auto validateResult = validateAddress(address); not validateResult.has_value()) {
         return validateResult;
     }
 
@@ -477,7 +472,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     WriteEnableGuard guard(*this);
 
     if (NandWriteProtect != PIO_PIN_NONE) {
-        if ((readStatusRegister() & StatusWp) == 0) {
+        if (auto status = readStatusRegister(); (status & StatusWp) == 0) {
             return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
         }
     }
@@ -500,7 +495,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutProgramMs); not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutProgramMs); not waitResult.has_value()) {
         return waitResult;
     }
 
@@ -528,7 +523,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     WriteEnableGuard guard(*this);
 
     if (NandWriteProtect != PIO_PIN_NONE) {
-        if ((readStatusRegister() & StatusWp) == 0) {
+        if (auto status = readStatusRegister(); (status & StatusWp) == 0) {
             return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
         }
     }
@@ -544,7 +539,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutEraseMs); not waitResult) {
+    if (auto waitResult = waitForReady(TimeoutEraseMs); not waitResult.has_value()) {
         return waitResult;
     }
 
