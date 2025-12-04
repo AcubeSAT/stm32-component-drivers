@@ -1,8 +1,6 @@
 #include "NANDFlash.hpp"
 #include <etl/algorithm.h>
 #include <Logger.hpp>
-#include "FreeRTOS.h"
-#include "task.h"
 
 /* ============= Bad Block Management ============= */
 
@@ -27,7 +25,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     for (uint16_t block = 0; block < BlocksPerLun; block++) {
         if ((block % 64) == 0) {
-            vTaskDelay(1);
+            yieldMilliseconds(1);
         }
 
         auto markerResult = readBlockMarker(block, lun);
@@ -113,7 +111,7 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     sendCommand(Commands::READ_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult.has_value()) {
+    if (auto waitResult = waitForReady(TimeoutReadUs); not waitResult.has_value()) {
         return waitResult;
     }
     
@@ -194,7 +192,7 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     sendAddress(0x00U);
     busyWaitNanoseconds(TwhrNs);
 
-    if (auto waitResult = waitForReady(TimeoutReadMs); not waitResult.has_value()) {
+    if (auto waitResult = waitForReady(TimeoutReadUs); not waitResult.has_value()) {
         return waitResult;
     }
 
@@ -321,31 +319,44 @@ etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutMs) {
-    const TickType_t startTick = xTaskGetTickCount();
-    const TickType_t timeoutTicks = pdMS_TO_TICKS(timeoutMs);
+/* ============= Wait Policy ============= */
+
+etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
+    const bool usePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
+    uint32_t elapsedUs = 0;
 
     if (NandReadyBusyPin != PIO_PIN_NONE) {
         while (PIO_PinRead(NandReadyBusyPin) == 0) {
-            if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
+            if (elapsedUs > timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
-            vTaskDelay(1);
+
+            if (usePureBusyWait || elapsedUs < BusyWaitThresholdUs) {
+                busyWaitMicroseconds(BusyWaitPollIntervalUs);
+                elapsedUs += BusyWaitPollIntervalUs;
+            } else {
+                yieldMilliseconds(YieldIntervalMs);
+                elapsedUs += YieldIntervalMs * 1000U;
+            }
         }
     }
 
     while (true) {
-        auto status = readStatusRegister();
-
-        if (isReady(status)) {
+        if (isReady(readStatusRegister())) {
             return {};
         }
 
-        if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
+        if (elapsedUs > timeoutUs) {
             return etl::unexpected(NANDErrorCode::TIMEOUT);
         }
 
-        vTaskDelay(1);
+        if (usePureBusyWait || elapsedUs < BusyWaitThresholdUs) {
+            busyWaitMicroseconds(BusyWaitPollIntervalUs);
+            elapsedUs += BusyWaitPollIntervalUs;
+        } else {
+            yieldMilliseconds(YieldIntervalMs);
+            elapsedUs += YieldIntervalMs * 1000U;
+        }
     }
 }
 
@@ -362,6 +373,10 @@ void MT29F::busyWaitNanoseconds(uint32_t nanoseconds) {
     for (volatile uint32_t i = 0; i < Cycles; i++) {
         __asm__ volatile ("nop");
     }
+}
+
+void MT29F::busyWaitMicroseconds(uint32_t microseconds) {
+    busyWaitNanoseconds(microseconds * 1000U);
 }
 
 
@@ -422,7 +437,7 @@ etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutResetMs); not waitResult.has_value()) {
+    if (auto waitResult = waitForReady(TimeoutResetUs); not waitResult.has_value()) {
         return waitResult;
     }
 
@@ -511,7 +526,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutProgramMs); not waitResult.has_value()) {
+    if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
         return waitResult;
     }
 
@@ -552,7 +567,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
     busyWaitNanoseconds(TwbNs);
 
-    if (auto waitResult = waitForReady(TimeoutEraseMs); not waitResult.has_value()) {
+    if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
         return waitResult;
     }
 

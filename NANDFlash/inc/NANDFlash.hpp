@@ -5,6 +5,7 @@
 #include <etl/expected.h>
 #include <etl/span.h>
 #include <etl/array.h>
+#include <etl/delegate.h>
 
 /**
  * @brief Error codes for NAND flash operations
@@ -21,6 +22,16 @@ enum class NANDErrorCode : uint8_t {
     HARDWARE_FAILURE,       /*!< Hardware failure (ID mismatch, geometry mismatch, bad block table full) */
     BAD_PARAMETER_PAGE,     /*!< All ONFI parameter page copies have invalid CRC */
 };
+
+/**
+ * @brief Type alias for yield delegate
+ *
+ * Callable that yields to OS scheduler for given milliseconds.
+ * Used for long operations where other tasks should run and not starvate.
+ *
+ * @note Bind to wrapper calling vTaskDelay(pdMS_TO_TICKS(ms))
+ */
+using YieldDelegate = etl::delegate<void(uint32_t)>;
 
 /**
  * @brief Driver for MT29F64G08AFAAAWP NAND Flash
@@ -60,10 +71,10 @@ public:
         uint32_t column;
 
         constexpr explicit NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
-            : lun {lun}
-            , block {block}
-            , page {page}
-            , column {column} {}
+            : lun{lun}
+            , block{block}
+            , page{page}
+            , column{column} {}
     };
 
     /**
@@ -72,11 +83,13 @@ public:
      * @param chipSelect SMC chip select for NAND flash
      * @param readyBusyPin GPIO pin for R/B# signal monitoring
      * @param writeProtectPin GPIO pin for write protect control
+     * @param yieldMs Delegate for yielding to OS during long operations
      */
-    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin)
-        : SMC { chipSelect }
-        , NandReadyBusyPin { readyBusyPin }
-        , NandWriteProtect { writeProtectPin } {
+    MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin, YieldDelegate yieldMs)
+        : SMC{chipSelect}
+        , NandReadyBusyPin{readyBusyPin}
+        , NandWriteProtect{writeProtectPin}
+        , yieldMilliseconds{yieldMs} {
         selectNandConfiguration(chipSelect);
     }
 
@@ -219,9 +232,6 @@ private:
         READ_CONFIRM = 0x30U,
         PAGE_PROGRAM = 0x80U,
         PAGE_PROGRAM_CONFIRM = 0x10U,
-        CHANGE_WRITE_COLUMN = 0x85U,
-        CHANGE_READ_COLUMN = 0x05U,
-        CHANGE_READ_COLUMN_CONFIRM = 0xE0U,
     };
 
     /**
@@ -263,16 +273,16 @@ private:
     static constexpr uint32_t TwbNs = 200U;    /*!< tWB: Command to busy transition */
 
     /*
-        Calculated based on the ONFI table of the datasheet. For safety reasons they are ~5 times what the datasheet says.
-        Also for practical reasons (easier calculations) the read timeout was put to 1ms.
+        Calculated based on the ONFI table of the datasheet.
+        For safety reasons they are ~5 times what the datasheet says.
     */
-    static constexpr uint32_t TimeoutReadMs = 1U;       /*!< Timeout for READ operation (35us max from datasheet) */
-    
-    static constexpr uint32_t TimeoutProgramMs = 3U;    /*!< Timeout for RPROGRAM operation (560us max from datasheet) */
-    
-    static constexpr uint32_t TimeoutEraseMs = 35U;     /*!< Timeout for ERASE operation (7ms max from datasheet) */
-    
-    static constexpr uint32_t TimeoutResetMs = 5U;      /*!< Timeout for RESET operation (1ms max from datasheet) */
+    static constexpr uint32_t TimeoutReadUs = 200U;      /*!< Timeout for READ operation (35us max from datasheet) */
+
+    static constexpr uint32_t TimeoutProgramUs = 3000U;  /*!< Timeout for PROGRAM operation (560us max from datasheet) */
+
+    static constexpr uint32_t TimeoutEraseUs = 35000U;   /*!< Timeout for ERASE operation (7ms max from datasheet) */
+
+    static constexpr uint32_t TimeoutResetUs = 5000U;    /*!< Timeout for RESET operation (1ms max from datasheet) */
 
     /**
      * @brief Type alias for 5-cycle NAND addressing
@@ -584,15 +594,39 @@ private:
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> verifyWriteEnabled();
 
+
+    /* ============= Wait Policy ============= */
+
+    static constexpr uint32_t BusyWaitThresholdUs = 1000U;   /*!< Threshold for switching from busy-wait to OS yield (1ms) */
+
+    static constexpr uint32_t BusyWaitPollIntervalUs = 5U;   /*!< Polling interval during busy-wait (5µs) */
+
+    static constexpr uint32_t YieldIntervalMs = 1U;          /*!< Yield interval during hybrid wait (1ms) */
+
+    YieldDelegate yieldMilliseconds; /*!< Delegate for yielding to OS during long operations */
+
     /**
      * @brief Wait for NAND device to become ready
      *
-     * @param timeoutMs Timeout in milliseconds
+     * @details Uses hybrid busy-wait/yield approach:
+     *          - If timeout <= BusyWaitThresholdUs (1ms): pure busy-wait with 5µs polling
+     *          - If timeout > BusyWaitThresholdUs: busy-wait first 1ms, then yield 1ms intervals
+     *
+     * @param timeoutUs Timeout in microseconds
      *
      * @return Success or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout period
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutMs);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutUs);
+
+    /**
+     * @brief Busy-wait delay for microsecond-precision timing
+     *
+     * @param microseconds Delay duration in microseconds
+     *
+     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
+     */
+    void busyWaitMicroseconds(uint32_t microseconds);
 
 
     /* ============= Timing Utilities ============= */
