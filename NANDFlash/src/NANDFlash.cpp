@@ -12,6 +12,7 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uin
     }
 
     const uint8_t marker = readData();
+    
     busyWaitNanoseconds(TrhwNs);
 
     return marker;
@@ -51,6 +52,7 @@ etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t l
     }
 
     badBlockTable[badBlockCount] = { block, lun };
+
     badBlockCount++;
 
     return {};
@@ -62,6 +64,7 @@ etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t l
 void MT29F::enableWrites() {
     if (NandWriteProtect != PIO_PIN_NONE) {
         PIO_PinWrite(NandWriteProtect, true);
+
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
 }
@@ -69,6 +72,7 @@ void MT29F::enableWrites() {
 void MT29F::disableWrites() {
     if (NandWriteProtect != PIO_PIN_NONE) {
         PIO_PinWrite(NandWriteProtect, false);
+
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
 }
@@ -109,6 +113,7 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
     }
 
     sendCommand(Commands::READ_CONFIRM);
+    
     busyWaitNanoseconds(TwbNs);
 
     if (auto waitResult = waitForReady(TimeoutReadUs); not waitResult.has_value()) {
@@ -129,6 +134,7 @@ etl::expected<void, NANDErrorCode> MT29F::executeReadCommandSequence(const NANDA
 
 void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     sendCommand(Commands::READID);
+    
     sendAddress(static_cast<uint8_t>(ReadIDAddress::MANUFACTURER_ID));
     
     busyWaitNanoseconds(TwhrNs);
@@ -136,11 +142,13 @@ void MT29F::readDeviceID(etl::span<uint8_t, 5> id) {
     for (auto& byte : id) { 
         byte = readData();
     }
+    
     busyWaitNanoseconds(TrhwNs);
 }
 
 void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
     sendCommand(Commands::READID);
+    
     sendAddress(static_cast<uint8_t>(ReadIDAddress::ONFI_SIGNATURE));
     
     busyWaitNanoseconds(TwhrNs);
@@ -189,7 +197,9 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     constexpr uint8_t OnfiParameterPageCopies = 3;
 
     sendCommand(Commands::READ_PARAM_PAGE);
+
     sendAddress(0x00U);
+    
     busyWaitNanoseconds(TwhrNs);
 
     if (auto waitResult = waitForReady(TimeoutReadUs); not waitResult.has_value()) {
@@ -199,6 +209,7 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     busyWaitNanoseconds(TrrNs);
 
     sendCommand(Commands::READ_MODE);
+    
     busyWaitNanoseconds(TwhrNs);
 
     for (uint8_t copy = 0; copy < OnfiParameterPageCopies; copy++) {
@@ -295,9 +306,11 @@ etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& add
 
 uint8_t MT29F::readStatusRegister() {
     sendCommand(Commands::READ_STATUS);
+
     busyWaitNanoseconds(TwhrNs);
 
     uint8_t status = readData();
+
     busyWaitNanoseconds(TrhwNs);
 
     return status;
@@ -307,6 +320,7 @@ etl::expected<void, NANDErrorCode> MT29F::ensureDeviceReady() {
     if (not isReady(readStatusRegister())) {
         return etl::unexpected(NANDErrorCode::DEVICE_BUSY);
     }
+
     return {};
 }
 
@@ -316,6 +330,7 @@ etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
             return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
         }
     }
+
     return {};
 }
 
@@ -363,20 +378,24 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
 
 /* ============= Timing Utilities ============= */
 
-void MT29F::busyWaitNanoseconds(uint32_t nanoseconds) {
-    constexpr uint32_t HertzPerMegahertz = 1000000U;
-    constexpr uint32_t NanosecondsPerMicrosecond = 1000U;
-    constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / HertzPerMegahertz;
+__attribute__((noinline, section(".ramfunc")))
+void MT29F::busyWaitCycles(uint32_t cycles) {
+    constexpr uint32_t CyclesPerLoop = 2U;
 
-    const uint32_t Cycles = (nanoseconds * CpuMhz) / NanosecondsPerMicrosecond;
+    uint32_t iterations = cycles / CyclesPerLoop;
 
-    for (volatile uint32_t i = 0; i < Cycles; i++) {
-        __asm__ volatile ("nop");
+    if (iterations == 0) {
+        return;
     }
-}
 
-void MT29F::busyWaitMicroseconds(uint32_t microseconds) {
-    busyWaitNanoseconds(microseconds * 1000U);
+    __asm__ volatile (
+        ".align 4              \n"
+        "1:  subs %0, %0, #1   \n"
+        "    bne  1b           \n"
+        : "+r" (iterations)
+        :
+        : "cc"
+    );
 }
 
 
@@ -410,6 +429,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     }
 
     constexpr etl::array<uint8_t, 4> expectedOnfi { 'O', 'N', 'F', 'I' };
+    
     etl::array<uint8_t, 4> onfiSignature;
 
     readONFISignature(onfiSignature);
@@ -435,6 +455,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
 etl::expected<void, NANDErrorCode> MT29F::reset() {
     sendCommand(Commands::RESET);
+
     busyWaitNanoseconds(TwbNs);
 
     if (auto waitResult = waitForReady(TimeoutResetUs); not waitResult.has_value()) {
@@ -489,6 +510,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     if ((address.column <= BlockMarkerOffset) and ((address.column + data.size()) > BlockMarkerOffset)) {
         const size_t markerIndex = BlockMarkerOffset - address.column;
         const uint8_t markerValue = data[markerIndex];
+
         if (markerValue != GoodBlockMarker) {
             return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
         }
@@ -509,6 +531,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     }
 
     AddressCycles cycles;
+    
     buildAddressCycles(address, cycles);
 
     sendCommand(Commands::PAGE_PROGRAM);
@@ -524,6 +547,7 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     }
 
     sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+
     busyWaitNanoseconds(TwbNs);
 
     if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
@@ -557,14 +581,21 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
     }
 
     const NANDAddress address { lun, block, 0, 0 };
+
     AddressCycles cycles;
+
     buildAddressCycles(address, cycles);
 
     sendCommand(Commands::ERASE_BLOCK);
+
     sendAddress(cycles[AddressCycle::ROW_ADDRESS_1]);
+
     sendAddress(cycles[AddressCycle::ROW_ADDRESS_2]);
+
     sendAddress(cycles[AddressCycle::ROW_ADDRESS_3]);
+
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+
     busyWaitNanoseconds(TwbNs);
 
     if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
@@ -587,6 +618,7 @@ bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
             return true;
         }
     }
+    
     return false;
 }
 

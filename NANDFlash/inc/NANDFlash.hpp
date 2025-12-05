@@ -260,16 +260,17 @@ private:
     static constexpr uint32_t GpioSettleTimeNs = 100U; /*!< WP# GPIO settling time */
 
     /*
+        NAND timing constants (Timing Mode 0).
         Calculated based on the datasheet.
     */
     static constexpr uint32_t TwhrNs = 120U;   /*!< tWHR: Command/address to data read */
     
     static constexpr uint32_t TadlNs = 200U;   /*!< tADL: Address to data input */
-    
+
     static constexpr uint32_t TrhwNs = 200U;   /*!< tRHW/tRHZ: Read to write turnaround */
-    
+
     static constexpr uint32_t TrrNs = 40U;     /*!< tRR: R/B# ready to first read access */
-    
+
     static constexpr uint32_t TwbNs = 200U;    /*!< tWB: Command to busy transition */
 
     /*
@@ -619,26 +620,48 @@ private:
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> waitForReady(uint32_t timeoutUs);
 
-    /**
-     * @brief Busy-wait delay for microsecond-precision timing
-     *
-     * @param microseconds Delay duration in microseconds
-     *
-     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
-     */
-    void busyWaitMicroseconds(uint32_t microseconds);
-
 
     /* ============= Timing Utilities ============= */
 
     /**
+     * @brief Low-level cycle-accurate delay
+     *
+     * @note Implementation uses tight assembly loop executed from RAM
+     * 
+     * @param cycles Number of CPU cycles to delay
+     */
+    static void busyWaitCycles(uint32_t cycles);
+    
+    /**
      * @brief Busy-wait delay for nanosecond-precision timing
      *
+     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
+     *       Rounds up to ensure minimum delay is met.
+     *       Maximum delay for 300MHz clock is 14000ns.
+     * 
      * @param nanoseconds Delay duration in nanoseconds
-     *
-     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY in Hz) for calibration.
      */
-    static void busyWaitNanoseconds(uint32_t nanoseconds);
+    static void busyWaitNanoseconds(uint32_t nanoseconds) {
+        constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / 1000000U;
+        const uint32_t Cycles = ((nanoseconds * CpuMhz) + 999U) / 1000U;
+
+        busyWaitCycles(Cycles);
+    }
+
+    /**
+     * @brief Busy-wait delay for microsecond-precision timing
+     * 
+     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
+     *       Maximum delay for 300MHz clock is 14000ms.
+     *
+     * @param microseconds Delay duration in microseconds
+     */
+    static void busyWaitMicroseconds(uint32_t microseconds) {
+        constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / 1000000U;
+        const uint32_t Cycles = microseconds * CpuMhz;
+        
+        busyWaitCycles(Cycles);
+    }
 
 
     /* ============= Hardware Configuration ============= */
