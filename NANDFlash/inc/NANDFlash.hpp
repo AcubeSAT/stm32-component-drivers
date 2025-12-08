@@ -375,6 +375,8 @@ private:
 
     static constexpr uint16_t BlockScanYieldInterval = 64U;     /*!< Yield to scheduler every N blocks during factory bad block scan */
 
+    static constexpr uint8_t BlockMarkerReadRetries = 3U;       /*!< Number of retries when reading block marker fails */
+
     etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable = {};  /*!< Table of known bad blocks */
 
     /**
@@ -394,7 +396,8 @@ private:
      *
      * @details Based on the datasheet the bad block marker is guaranteed to be stored
      *          in the first page of each block in byte 0 of the spare area.
-     *          Fails immediately on any read error.
+     *          Retries failed reads up to BlockMarkerReadRetries times.
+     *          Blocks that fail to read after all retries are marked as bad.
      *          Yields to other tasks periodically during the scan (every BlockScanYieldInterval blocks).
      *
      * @param lun LUN number to scan (default 0)
@@ -402,8 +405,7 @@ private:
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN out of bounds
      * @retval NANDErrorCode::HARDWARE_FAILURE Too many bad blocks (bad block table full)
-     * @retval NANDErrorCode::TIMEOUT Block marker read timed out
-     * 
+     *
      * @see MT29F datasheet section "Error Management"
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);

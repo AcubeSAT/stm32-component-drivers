@@ -23,19 +23,27 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
+    badBlockCount = 0;
+    badBlockTable.fill({});
+
     for (uint16_t block = 0; block < BlocksPerLun; block++) {
         if ((block % BlockScanYieldInterval) == 0) {
             yieldMilliseconds(1);
         }
 
-        auto markerResult = readBlockMarker(block, lun);
+        etl::expected<uint8_t, NANDErrorCode> readResult;
+        bool readSucceeded = false;
 
-        if (not markerResult.has_value()) {
-            LOG_ERROR << "NAND: Failed to read block marker for block " << block << " in LUN " << lun;
-            return etl::unexpected(markerResult.error());
+        for (uint8_t attempt = 0; attempt < BlockMarkerReadRetries; attempt++) {
+            readResult = readBlockMarker(block, lun);
+
+            if (readResult.has_value()) {
+                readSucceeded = true;
+                break;
+            }
         }
 
-        if (markerResult.value() == BadBlockMarker) {
+        if ((not readSucceeded) or (readResult.value() == BadBlockMarker)) {
             if (auto markResult = markBadBlock(block, lun); not markResult.has_value()) {
                 return markResult;
             }
