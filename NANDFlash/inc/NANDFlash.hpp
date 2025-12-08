@@ -114,17 +114,32 @@ public:
      *          - Factory bad block scanning
      *          - Enables the write protection if the user has provided a WP# pin
      *
+     * @pre Driver must not already be initialized (will log warning and return success if called twice)
+     * @post If successful, driver is ready for read/program/erase operations
+     * @post Bad block table is populated with factory-marked bad blocks
+     * @post Write protection is enabled (WP# asserted)
+     *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
      * @retval NANDErrorCode::TIMEOUT Device not responding
+     * 
+     * @note Thread Safety: Caller must hold external mutex. Device state is modified.
+     * 
+     * @see MT29F datasheet section "Device Initialization"
+     * @see ONFI 2.0 specification for parameter page format
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
 
     /**
      * @brief Reset the NAND flash device
      *
+     * @pre Device must be powered on
+     * @post Device is in known initial state (async timing mode 0)
+     *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not responding within timeout period
+     *
+     * @note Thread Safety: Caller must hold external mutex. Device state is modified.
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
 
@@ -137,25 +152,35 @@ public:
      * @param address NAND address to read from
      * @param[out] data Buffer to store read data (size determines bytes to read)
      *
+     * @pre Driver must be initialized (call initialize() first)
+     * @post On success, data buffer contains page contents starting at specified column
+     *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
      * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @note Thread Safety: Caller must hold external mutex for duration of read operation.
+     *
+     * @see MT29F datasheet section "READ PAGE (00h-30h)" for command sequence
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& address, etl::span<uint8_t> data);
 
     /**
      * @brief Program (write) data to NAND flash page
      *
-     * @warning 1) Page must be in erased state before programming
-     *          2) The block marker is located at column address 8192 (BlockMarkerOffset)
-     *             If the caller's data includes this address, the byte at that position
-     *             MUST be 0xFF.
+     * @warning The block marker is located at column address 8192 (BlockMarkerOffset)
+     *          If the caller's data includes this address, the byte at that position
+     *          MUST be 0xFF.
      *
      * @param address NAND address to write to
      * @param data Data to write (max page size)
+     *
+     * @pre Driver must be initialized
+     * @pre Target page must be in erased state (all 0xFF)
+     * @post On success, data is programmed to specified page location
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
@@ -165,6 +190,9 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     *
+     * @see MT29F datasheet section "PROGRAM PAGE (80h-10h)" for command sequence
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
 
@@ -174,12 +202,19 @@ public:
      * @param block Block number to erase
      * @param lun LUN number (typically 0)
      *
+     * @pre Driver must be initialized
+     * @post On success, all pages in block are set to 0xFF
+     *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of bounds
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     *
+     * @see MT29F datasheet section "ERASE BLOCK (60h-D0h)" for command sequence
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
 
@@ -192,8 +227,12 @@ public:
      * @param block Block number to check
      * @param lun LUN number (typically 0)
      *
-     * @retval true if block is bad
+     * @pre Driver should be initialized for accurate results
+     *
+     * @retval true if block is bad (factory or runtime marked)
      * @retval false if good
+     *
+     * @note Thread Safety: Read-only access to bad block table so it's safe for concurrent reads.
      */
     [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
@@ -201,15 +240,20 @@ public:
      * @brief Mark a block as bad in the runtime table
      *
      * @note Call this when program/erase operations fail to track bad blocks.
-     * 
+     *
      * @warning The driver does not auto-mark blocks. The caller is responsible for
      *          bad block policy decisions.
      *
      * @param block Block number to mark as bad
      * @param lun LUN number (typically 0)
      *
+     * @pre Driver must be initialized
+     * @post Block is recorded in runtime bad block table
+     *
      * @return Success (empty expected) or specific error code
-     * @retval NANDErrorCode::HARDWARE_FAILURE Bad block table is full
+     * @retval NANDErrorCode::HARDWARE_FAILURE Bad block table is full (MaxBadBlocks reached)
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies bad block table.
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
 
@@ -259,37 +303,39 @@ private:
 
     static constexpr uint32_t GpioSettleTimeNs = 100U; /*!< WP# GPIO settling time */
 
-    /*
-        NAND timing constants (Timing Mode 0).
-        Calculated based on the datasheet.
-    */
-    static constexpr uint32_t TwhrNs = 120U;   /*!< tWHR: Command/address to data read */
-    
-    static constexpr uint32_t TadlNs = 200U;   /*!< tADL: Address to data input */
 
-    static constexpr uint32_t TrhwNs = 200U;   /*!< tRHW/tRHZ: Read to write turnaround */
+    /* ============= ONFI Timing Parameters (Timing Mode 0) ============= */
+    /* @see MT29F datasheet AC Timing Tables for Mode 0 parameters */
 
-    static constexpr uint32_t TrrNs = 40U;     /*!< tRR: R/B# ready to first read access */
+    static constexpr uint32_t TwhrNs = 120U;   /*!< tWHR: WE# HIGH to RE# LOW (command to read) */
 
-    static constexpr uint32_t TwbNs = 200U;    /*!< tWB: Command to busy transition */
+    static constexpr uint32_t TadlNs = 200U;   /*!< tADL: ALE LOW to data input valid */
 
-    /*
-        Calculated based on the ONFI table of the datasheet.
-        For safety reasons they are ~5 times what the datasheet says.
-    */
-    static constexpr uint32_t TimeoutReadUs = 200U;      /*!< Timeout for READ operation (35us max from datasheet) */
+    static constexpr uint32_t TrhwNs = 200U;   /*!< tRHW: RE# HIGH to WE# LOW (read to write turnaround) */
 
-    static constexpr uint32_t TimeoutProgramUs = 3000U;  /*!< Timeout for PROGRAM operation (560us max from datasheet) */
+    static constexpr uint32_t TrrNs = 40U;     /*!< tRR: R/B# rising edge to RE# falling edge */
 
-    static constexpr uint32_t TimeoutEraseUs = 35000U;   /*!< Timeout for ERASE operation (7ms max from datasheet) */
+    static constexpr uint32_t TwbNs = 200U;    /*!< tWB: WE# HIGH to R/B# falling edge */
 
-    static constexpr uint32_t TimeoutResetUs = 5000U;    /*!< Timeout for RESET operation (1ms max from datasheet) */
+
+    /* ============= Operation Timeout Values ============= */
+    /* @note Values are ~5x datasheet maximums for safety margin */
+
+    static constexpr uint32_t TimeoutReadUs = 200U;      /*!< tR timeout (datasheet max: 35us) */
+
+    static constexpr uint32_t TimeoutProgramUs = 3000U;  /*!< tPROG timeout (datasheet max: 560us) */
+
+    static constexpr uint32_t TimeoutEraseUs = 35000U;   /*!< tBERS timeout (datasheet max: 7ms) */
+
+    static constexpr uint32_t TimeoutResetUs = 5000U;    /*!< tRST timeout (datasheet max: 1ms) */
 
     /**
      * @brief Type alias for 5-cycle NAND addressing
      *
      * @note Represents the 5 address cycles required for NAND operations:
      *       [COLUMN_ADDRESS_1, COLUMN_ADDRESS_2, ROW_ADDRESS_1, ROW_ADDRESS_2, ROW_ADDRESS_3]
+     *       Read and program operations use all the cycles.
+     *       Erase operation uses only the ROWs.
      */
     using AddressCycles = etl::array<uint8_t, 5>;
 
@@ -317,25 +363,29 @@ private:
 
     size_t badBlockCount = 0;   /*!< Current number of bad blocks in table */
 
-    static constexpr size_t MaxBadBlocks = 512U;                /*!< Maximum number of bad blocks to track */
+    /* ============= Bad Block Management Constants ============= */
 
-    static constexpr uint16_t BlockMarkerOffset = 8192U;        /*!< Offset to bad block marker in spare area */
+    static constexpr size_t MaxBadBlocks = 512U;                /*!< Maximum tracked bad blocks (factory + runtime) */
 
-    static constexpr uint8_t GoodBlockMarker = 0xFFU;           /*!< Marker value for good blocks */
+    static constexpr uint16_t BlockMarkerOffset = 8192U;        /*!< Column address of bad block marker in spare area */
 
-    static constexpr uint8_t BadBlockMarker = 0x00U;            /*!< Marker value for bad blocks */
+    static constexpr uint8_t GoodBlockMarker = 0xFFU;           /*!< Erased state indicates good block */
+
+    static constexpr uint8_t BadBlockMarker = 0x00U;            /*!< Factory marks bad blocks with 0x00 */
+
+    static constexpr uint16_t BlockScanYieldInterval = 64U;     /*!< Yield to scheduler every N blocks during factory bad block scan */
 
     etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable = {};  /*!< Table of known bad blocks */
 
-
     /**
-     * @brief Read block marker from spare area
+     * @brief Read factory bad block marker byte from first spare byte of block's first page
      *
      * @param block Block number to check
      * @param lun LUN number (default 0)
      *
      * @return Block marker byte (0xFF = good, 0x00 = bad) or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
      */
     [[nodiscard]] etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun = 0);
 
@@ -345,7 +395,7 @@ private:
      * @details Based on the datasheet the bad block marker is guaranteed to be stored
      *          in the first page of each block in byte 0 of the spare area.
      *          Fails immediately on any read error.
-     *          Yields to other tasks periodically during the scan.
+     *          Yields to other tasks periodically during the scan (every BlockScanYieldInterval blocks).
      *
      * @param lun LUN number to scan (default 0)
      *
@@ -353,6 +403,8 @@ private:
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN out of bounds
      * @retval NANDErrorCode::HARDWARE_FAILURE Too many bad blocks (bad block table full)
      * @retval NANDErrorCode::TIMEOUT Block marker read timed out
+     * 
+     * @see MT29F datasheet section "Error Management"
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);
 
@@ -372,7 +424,7 @@ private:
             nand.disableWrites();
         }
 
-        // Non-copyable, non-movable
+        /* Non-copyable, non-movable */
         WriteEnableGuard(const WriteEnableGuard&) = delete;
         WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
         WriteEnableGuard(WriteEnableGuard&&) = delete;
@@ -383,12 +435,12 @@ private:
     };
 
     /**
-     * @brief Enable writes by deasserting WP# pin
+     * @brief Deassert WP# pin (set HIGH) to allow program and erase operations
      */
     void enableWrites();
 
     /**
-     * @brief Disable writes by asserting WP# pin
+     * @brief Assert WP# pin (set LOW) to hardware-protect array from program and erase
      */
     void disableWrites();
 
@@ -452,7 +504,10 @@ private:
     /* ============= Command Sequences ============= */
 
     /**
-     * @brief Execute NAND read command sequence without initialization check
+     * @brief Execute 00h-30h READ PAGE command sequence and wait for array transfer completion
+     *
+     * @details Sends READ MODE (00h), 5-cycle address, READ CONFIRM (30h),
+     *          waits for device ready, then sends READ MODE (00h) to enable data output.
      *
      * @param address NAND address to read from
      *
@@ -479,7 +534,7 @@ private:
     void readONFISignature(etl::span<uint8_t, 4> signature);
 
     /**
-     * @brief Validate parameter page CRC-16 checksum
+     * @brief Validate ONFI parameter page integrity using CRC-16
      *
      * @details Implements ONFI CRC-16 algorithm with polynomial 0x8005.
      *          Initial value is 0x4F4E.
@@ -489,8 +544,10 @@ private:
      *
      * @retval true if CRC matches
      * @retval false if invalid
+     *
+     * @see ONFI 2.0 specification section for CRC algorithm details
      */
-    static bool validateParameterPageCRC(etl::span<const uint8_t, 256> parametrPage);
+    static bool validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage);
 
     /**
      * @brief Validate device parameters match expected geometry

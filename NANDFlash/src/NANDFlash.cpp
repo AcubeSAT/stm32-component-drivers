@@ -19,20 +19,19 @@ etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uin
 }
 
 etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
-
     if (lun >= LunsPerCe) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
     for (uint16_t block = 0; block < BlocksPerLun; block++) {
-        if ((block % 64) == 0) {
+        if ((block % BlockScanYieldInterval) == 0) {
             yieldMilliseconds(1);
         }
 
         auto markerResult = readBlockMarker(block, lun);
 
         if (not markerResult.has_value()) {
-            LOG_ERROR << "NAND: Failed to read block marker for block " << block;
+            LOG_ERROR << "NAND: Failed to read block marker for block " << block << " in LUN " << lun;
             return etl::unexpected(markerResult.error());
         }
 
@@ -48,6 +47,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
 etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t lun) {
     if (badBlockCount >= MaxBadBlocks) {
+        LOG_ERROR << "NAND: Bad block table full (" << MaxBadBlocks << " entries). Cannot add block " << block << " LUN " << lun;
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
@@ -183,10 +183,10 @@ bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage
         }
     }
 
-    const uint16_t StoredCrc = static_cast<uint16_t>(parameterPage[StoredCrcLowByteOffset]) |
+    const uint16_t storedCrc = static_cast<uint16_t>(parameterPage[StoredCrcLowByteOffset]) |
                                (static_cast<uint16_t>(parameterPage[StoredCrcHighByteOffset]) << BitsPerByte);
 
-    return crc == StoredCrc;
+    return crc == storedCrc;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
@@ -229,37 +229,41 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
                        (static_cast<uint32_t>(byte2) << 16) | (static_cast<uint32_t>(byte3) << 24);
             };
 
-            const uint32_t ReadDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
+            const uint32_t readDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
                                                            parametersPageData[OnfiDataBytesPerPageOffset + 1],
                                                            parametersPageData[OnfiDataBytesPerPageOffset + 2],
                                                            parametersPageData[OnfiDataBytesPerPageOffset + 3]);
 
-            const uint16_t ReadSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
+            const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
                                                             parametersPageData[OnfiSpareBytesPerPageOffset + 1]);
 
-            const uint32_t ReadPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
+            const uint32_t readPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
                                                         parametersPageData[OnfiPagesPerBlockOffset + 1],
                                                         parametersPageData[OnfiPagesPerBlockOffset + 2],
                                                         parametersPageData[OnfiPagesPerBlockOffset + 3]);
 
-            const uint32_t ReadBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
+            const uint32_t readBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
                                                        parametersPageData[OnfiBlocksPerLunOffset + 1],
                                                        parametersPageData[OnfiBlocksPerLunOffset + 2],
                                                        parametersPageData[OnfiBlocksPerLunOffset + 3]);
 
-            if (ReadDataBytesPerPage != DataBytesPerPage) {
+            if (readDataBytesPerPage != DataBytesPerPage) {
+                LOG_ERROR << "NAND: Geometry mismatch - DataBytesPerPage: expected " << DataBytesPerPage << ", got " << readDataBytesPerPage;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
-            if (ReadSpareBytesPerPage != SpareBytesPerPage) {
+            if (readSpareBytesPerPage != SpareBytesPerPage) {
+                LOG_ERROR << "NAND: Geometry mismatch - SpareBytesPerPage: expected " << SpareBytesPerPage << ", got " << readSpareBytesPerPage;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
-            if (ReadPagesPerBlock != PagesPerBlock) {
+            if (readPagesPerBlock != PagesPerBlock) {
+                LOG_ERROR << "NAND: Geometry mismatch - PagesPerBlock: expected " << static_cast<uint32_t>(PagesPerBlock) << ", got " << readPagesPerBlock;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
-            if (ReadBlocksPerLun != BlocksPerLun) {
+            if (readBlocksPerLun != BlocksPerLun) {
+                LOG_ERROR << "NAND: Geometry mismatch - BlocksPerLun: expected " << BlocksPerLun << ", got " << readBlocksPerLun;
                 return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
             }
 
@@ -425,6 +429,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     readDeviceID(deviceId);
 
     if (not etl::equal(ExpectedDeviceId.begin(), ExpectedDeviceId.end(), deviceId.begin())) {
+        LOG_ERROR << "NAND: Device ID mismatch";
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
@@ -435,6 +440,7 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     readONFISignature(onfiSignature);
 
     if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), expectedOnfi.begin())) {
+        LOG_ERROR << "NAND: ONFI signature verification failed";
         return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
