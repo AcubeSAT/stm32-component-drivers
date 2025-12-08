@@ -5,6 +5,7 @@
 #include <etl/expected.h>
 #include <etl/span.h>
 #include <etl/array.h>
+#include <etl/bitset.h>
 #include <etl/delegate.h>
 
 /**
@@ -229,17 +230,18 @@ public:
      *
      * @pre Driver should be initialized for accurate results
      *
-     * @retval true if block is bad (factory or runtime marked)
-     * @retval false if good
+     * @return true if block is bad, false if good, or error code
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN exceeds device geometry
      *
-     * @note Thread Safety: Read-only access to bad block table so it's safe for concurrent reads.
+     * @note Thread Safety: Read-only access to bad block bitset so it's safe for concurrent reads.
      */
-    [[nodiscard]] bool isBlockBad(uint16_t block, uint8_t lun = 0) const;
+    [[nodiscard]] etl::expected<bool, NANDErrorCode> isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
     /**
-     * @brief Mark a block as bad in the runtime table
+     * @brief Mark a block as bad in the runtime bitset
      *
-     * @note Call this when program/erase operations fail to track bad blocks.
+     * @note Call this when program/erase operations fail in order to track bad blocks.
+     *       Marking an already-bad block is a no-op.
      *
      * @warning The driver does not auto-mark blocks. The caller is responsible for
      *          bad block policy decisions.
@@ -248,12 +250,12 @@ public:
      * @param lun LUN number (typically 0)
      *
      * @pre Driver must be initialized
-     * @post Block is recorded in runtime bad block table
+     * @post Block bit is set in bad block bitset
      *
      * @return Success (empty expected) or specific error code
-     * @retval NANDErrorCode::HARDWARE_FAILURE Bad block table is full (MaxBadBlocks reached)
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN exceeds device geometry
      *
-     * @note Thread Safety: Caller must hold external mutex. Modifies bad block table.
+     * @note Thread Safety: Caller must hold external mutex. Modifies bad block bitset.
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
 
@@ -351,33 +353,22 @@ private:
     };
 
 
-    /* ============= Bad Block Management ============= */
-
-    /**
-     * @brief Internal bad block information structure
-     */
-    struct BadBlockInfo {
-        uint16_t blockNumber;
-        uint8_t lun;
-    };
-
-    size_t badBlockCount = 0;   /*!< Current number of bad blocks in table */
-
+    
     /* ============= Bad Block Management Constants ============= */
-
-    static constexpr size_t MaxBadBlocks = 512U;                /*!< Maximum tracked bad blocks (factory + runtime) */
-
+    
     static constexpr uint16_t BlockMarkerOffset = 8192U;        /*!< Column address of bad block marker in spare area */
-
+    
     static constexpr uint8_t GoodBlockMarker = 0xFFU;           /*!< Erased state indicates good block */
-
+    
     static constexpr uint8_t BadBlockMarker = 0x00U;            /*!< Factory marks bad blocks with 0x00 */
-
+    
     static constexpr uint16_t BlockScanYieldInterval = 64U;     /*!< Yield to scheduler every N blocks during factory bad block scan */
-
+    
     static constexpr uint8_t BlockMarkerReadRetries = 3U;       /*!< Number of retries when reading block marker fails */
-
-    etl::array<BadBlockInfo, MaxBadBlocks> badBlockTable = {};  /*!< Table of known bad blocks */
+    
+    etl::array<etl::bitset<BlocksPerLun>, LunsPerCe> badBlockBitset;  /*!< Bitset tracking bad blocks per LUN (1 = bad, 0 = good) */
+    
+    /* ================= Bad Block Management =================== */
 
     /**
      * @brief Read factory bad block marker byte from first spare byte of block's first page
@@ -404,7 +395,6 @@ private:
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN out of bounds
-     * @retval NANDErrorCode::HARDWARE_FAILURE Too many bad blocks (bad block table full)
      *
      * @see MT29F datasheet section "Error Management"
      */

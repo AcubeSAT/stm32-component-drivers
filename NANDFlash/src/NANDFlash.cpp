@@ -23,8 +23,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
         return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
-    badBlockCount = 0;
-    badBlockTable.fill({});
+    badBlockBitset[lun].reset();
 
     for (uint16_t block = 0; block < BlocksPerLun; block++) {
         if ((block % BlockScanYieldInterval) == 0) {
@@ -54,14 +53,11 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 }
 
 etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t lun) {
-    if (badBlockCount >= MaxBadBlocks) {
-        LOG_ERROR << "NAND: Bad block table full (" << MaxBadBlocks << " entries). Cannot add block " << block << " LUN " << lun;
-        return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+    if ((block >= BlocksPerLun) or (lun >= LunsPerCe)) {
+        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
 
-    badBlockTable[badBlockCount] = { block, lun };
-
-    badBlockCount++;
+    badBlockBitset[lun].set(block);
 
     return {};
 }
@@ -626,14 +622,12 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
 /* ============= Public Interface - Bad Block Management ============= */
 
-bool MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
-    for (const auto& entry : etl::span(badBlockTable).first(badBlockCount)) {
-        if ((entry.blockNumber == block) and (entry.lun == lun)) {
-            return true;
-        }
+etl::expected<bool, NANDErrorCode> MT29F::isBlockBad(uint16_t block, uint8_t lun) const {
+    if ((block >= BlocksPerLun) or (lun >= LunsPerCe)) {
+        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
     }
-    
-    return false;
+
+    return badBlockBitset[lun].test(block);
 }
 
 
