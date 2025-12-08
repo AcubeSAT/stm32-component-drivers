@@ -80,7 +80,7 @@ void MT29F::disableWrites() {
 
 /* ============= Hardware Configuration ============= */
 
-void MT29F::selectNandConfiguration(ChipSelect chipSelect) {
+void MT29F::enableNandFlashMode(ChipSelect chipSelect) {
     switch (chipSelect) {
         case NCS0:
             MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(1);

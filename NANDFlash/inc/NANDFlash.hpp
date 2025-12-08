@@ -90,7 +90,7 @@ public:
         , NandReadyBusyPin{readyBusyPin}
         , NandWriteProtect{writeProtectPin}
         , yieldMilliseconds{yieldMs} {
-        selectNandConfiguration(chipSelect);
+        enableNandFlashMode(chipSelect);
     }
 
     // Explicitly non-copyable and non-movable
@@ -667,11 +667,16 @@ private:
     /* ============= Hardware Configuration ============= */
 
     /**
-     * @brief Configure SMC for NAND flash operation
+     * @brief Enable NAND Flash mode for an SMC chip select.
      *
-     * @param chipSelect SMC chip select to configure
+     * Configures the CCFG_SMCNFCS register to assign the specified chip select
+     * to NAND Flash mode. This routes NANDOE/NANDWE signals to the chip select
+     * and enables interpretation of address bits A21/A22 as CLE/ALE signals,
+     * which is required for command and address latch operations.
+     *
+     * @param chipSelect SMC chip select to configure for NAND Flash mode.
      */
-    static void selectNandConfiguration(ChipSelect chipSelect);
+    static void enableNandFlashMode(ChipSelect chipSelect);
 };
 
 
