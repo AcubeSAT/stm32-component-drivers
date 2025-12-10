@@ -354,11 +354,13 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
 
-            if (usePureBusyWait || elapsedUs < BusyWaitThresholdUs) {
+            if (usePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
                 busyWaitMicroseconds(BusyWaitPollIntervalUs);
                 elapsedUs += BusyWaitPollIntervalUs;
             } else {
-                yieldMilliseconds(YieldIntervalMs);
+                if (not yieldMilliseconds.call_if(YieldIntervalMs)) {
+                    busyWaitMicroseconds(YieldIntervalMs * 1000U);
+                }
                 elapsedUs += YieldIntervalMs * 1000U;
             }
         }
@@ -373,11 +375,13 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
             return etl::unexpected(NANDErrorCode::TIMEOUT);
         }
 
-        if (usePureBusyWait || elapsedUs < BusyWaitThresholdUs) {
+        if (usePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
             busyWaitMicroseconds(BusyWaitPollIntervalUs);
             elapsedUs += BusyWaitPollIntervalUs;
         } else {
-            yieldMilliseconds(YieldIntervalMs);
+            if (not yieldMilliseconds.call_if(YieldIntervalMs)) {
+                busyWaitMicroseconds(YieldIntervalMs * 1000U);
+            }
             elapsedUs += YieldIntervalMs * 1000U;
         }
     }

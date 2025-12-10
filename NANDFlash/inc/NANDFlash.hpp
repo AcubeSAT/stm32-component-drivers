@@ -32,8 +32,9 @@ enum class NANDErrorCode : uint8_t {
  *
  * @details Callable that yields to OS scheduler for given milliseconds.
  *          Used for long operations where other tasks should run and not starvate.
+ *          If not provided, the driver will use a busy wait loop.
  *
- * @note Bind to wrapper calling vTaskDelay(pdMS_TO_TICKS(ms))
+ * @note For FreeRTOS bind to wrapper calling vTaskDelay(pdMS_TO_TICKS(ms)).
  */
 using YieldDelegate = etl::delegate<void(uint32_t)>;
 
