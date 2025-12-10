@@ -113,7 +113,8 @@ public:
      * @brief Initialize the NAND flash driver and verify device.
      *
      * @pre Driver must not already be initialized (will log warning and return success if called twice)
-     * @post If successful, driver is ready for read/program/erase operations
+     * @post If successful, driver is reset
+     * @post The device and ONFI parameters are validated
      * @post Bad block table is populated with factory-marked bad blocks
      * @post Write protection is enabled if a WP# pin has been provided (WP# asserted)
      *
@@ -131,6 +132,15 @@ public:
     /**
      * @brief Reset the NAND flash device.
      *
+     * @details Issues the FFh RESET command per ONFI specification. This command:
+     *          - Returns the device to its power-on default state
+     *          - Aborts any operation currently in progress
+     *          - Resets the internal state machine and clears data registers
+     *          - Sets the device to asynchronous timing mode 0
+     *
+     *          Per ONFI specification, RESET must be issued to all chip enables as the
+     *          first command after power-on before any other operations.
+     *
      * @pre Device must be powered on
      * @post Device is in known initial state (async timing mode 0)
      *
@@ -138,6 +148,13 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not responding within timeout period
      *
      * @note Thread Safety: Caller must hold external mutex. Device state is modified.
+     * 
+     * @note initialize() already calls reset() internally, so manual reset is not needed during
+     *       normal startup. Use reset() during runtime if the device is suspected to be in a
+     *       corrupted or unknown state (e.g., after power glitch or unexpected behavior).
+     *
+     * @see ONFI 2.0 specification section "Reset Definition"
+     * @see MT29F datasheet "RESET (FFh)" command description
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> reset();
 
