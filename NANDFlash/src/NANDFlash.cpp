@@ -536,8 +536,8 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
 
     WriteEnableGuard guard(*this);
 
-    if (auto wpResult = verifyWriteEnabled(); not wpResult.has_value()) {
-        return wpResult;
+    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+        return writeEnabledResult;
     }
 
     AddressCycles cycles;
@@ -586,8 +586,8 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
     WriteEnableGuard guard(*this);
 
-    if (auto wpResult = verifyWriteEnabled(); not wpResult.has_value()) {
-        return wpResult;
+    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+        return writeEnabledResult;
     }
 
     const NANDAddress address { lun, block, 0, 0 };
@@ -631,6 +631,188 @@ etl::expected<bool, NANDErrorCode> MT29F::isBlockBad(uint16_t block, uint8_t lun
 }
 
 
+/* ==================== Multi-Plane Operations ==================== */
+
+etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, uint16_t block1, uint8_t lun) {
+    if (not isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if ((block0 >= BlocksPerLun) or (block1 >= BlocksPerLun) or (lun >= LunsPerCe)) {
+        return etl::unexpected(NANDErrorCode::ADDRESS_OUT_OF_BOUNDS);
+    }
+
+    if (getPlane(block0) == getPlane(block1)) {
+        return etl::unexpected(NANDErrorCode::PLANE_MISMATCH);
+    }
+
+    if (auto readyResult = ensureDeviceReady(); not readyResult.has_value()) {
+        return readyResult;
+    }
+
+    WriteEnableGuard guard(*this);
+
+    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+        return writeEnabledResult;
+    }
+
+    const NANDAddress address0 { lun, block0, 0, 0 };
+    const NANDAddress address1 { lun, block1, 0, 0 };
+
+    AddressCycles cycles0;
+    AddressCycles cycles1;
+
+    buildAddressCycles(address0, cycles0);
+    buildAddressCycles(address1, cycles1);
+
+    sendCommand(Commands::ERASE_BLOCK);
+
+    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_1]);
+    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_2]);
+    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_3]);
+
+    sendCommand(Commands::ERASE_MULTIPLANE_CONFIRM);
+
+    sendCommand(Commands::ERASE_BLOCK);
+
+    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_1]);
+    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_2]);
+    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_3]);
+
+    sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+
+    busyWaitNanoseconds(TwbNs);
+
+    if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
+        return waitResult;
+    }
+
+    if (hasOperationFailed(readStatusRegister())) {
+        return etl::unexpected(NANDErrorCode::MULTIPLANE_FAILED);
+    }
+
+    return {};
+}
+
+
+/* ==================== Copyback Operations ==================== */
+
+etl::expected<void, NANDErrorCode> MT29F::copyback(
+    const NANDAddress& sourceAddress,
+    const NANDAddress& destinationAddress) {
+
+    if (getPlane(sourceAddress.block) != getPlane(destinationAddress.block)) {
+        return etl::unexpected(NANDErrorCode::PLANE_MISMATCH);
+    }
+
+    if (auto readResult = copybackRead(sourceAddress); not readResult.has_value()) {
+        return readResult;
+    }
+
+    return copybackProgram(destinationAddress);
+}
+
+etl::expected<void, NANDErrorCode> MT29F::copybackRead(const NANDAddress& sourceAddress) {
+    if (not isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if (auto validateResult = validateAddress(sourceAddress); not validateResult.has_value()) {
+        return validateResult;
+    }
+
+    if (auto readyResult = ensureDeviceReady(); not readyResult.has_value()) {
+        return readyResult;
+    }
+
+    AddressCycles cycles;
+    buildAddressCycles(sourceAddress, cycles);
+
+    sendCommand(Commands::READ_MODE);
+
+    for (const auto& cycle : cycles) {
+        sendAddress(cycle);
+    }
+
+    sendCommand(Commands::COPYBACK_READ_CONFIRM);
+
+    busyWaitNanoseconds(TwbNs);
+
+    if (auto waitResult = waitForReady(TimeoutReadUs); not waitResult.has_value()) {
+        return waitResult;
+    }
+
+    return {};
+}
+
+etl::expected<void, NANDErrorCode> MT29F::copybackProgram(const NANDAddress& destinationAddress) {
+    if (not isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if (auto validateResult = validateAddress(destinationAddress); not validateResult.has_value()) {
+        return validateResult;
+    }
+
+    if (auto readyResult = ensureDeviceReady(); not readyResult.has_value()) {
+        return readyResult;
+    }
+
+    WriteEnableGuard guard(*this);
+
+    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+        return writeEnabledResult;
+    }
+
+    AddressCycles cycles;
+    buildAddressCycles(destinationAddress, cycles);
+
+    sendCommand(Commands::COPYBACK_PROGRAM);
+
+    for (const auto& cycle : cycles) {
+        sendAddress(cycle);
+    }
+
+    sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+
+    busyWaitNanoseconds(TwbNs);
+
+    if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
+        return waitResult;
+    }
+
+    if (hasOperationFailed(readStatusRegister())) {
+        return etl::unexpected(NANDErrorCode::COPYBACK_FAILED);
+    }
+
+    return {};
+}
+
+etl::expected<void, NANDErrorCode> MT29F::copybackViaHost(
+    const NANDAddress& sourceAddress,
+    const NANDAddress& destinationAddress,
+    etl::span<uint8_t> buffer) {
+
+    if (buffer.size() < DataBytesPerPage) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    const NANDAddress readAddress { sourceAddress.lun, sourceAddress.block, sourceAddress.page, 0 };
+
+    if (auto readResult = readPage(readAddress, buffer.first(DataBytesPerPage)); not readResult.has_value()) {
+        return readResult;
+    }
+
+    const NANDAddress writeAddress { destinationAddress.lun, destinationAddress.block, destinationAddress.page, 0 };
+
+    if (auto programResult = programPage(writeAddress, buffer.first(DataBytesPerPage)); not programResult.has_value()) {
+        return programResult;
+    }
+
+    return {};
+}
+
+
 /* ==================== Debug ==================== */
 
 const char* toString(NANDErrorCode error) {
@@ -655,6 +837,12 @@ const char* toString(NANDErrorCode error) {
             return "Hardware failure";
         case NANDErrorCode::BAD_PARAMETER_PAGE:
             return "Bad parameter page";
+        case NANDErrorCode::COPYBACK_FAILED:
+            return "Copyback operation failed";
+        case NANDErrorCode::MULTIPLANE_FAILED:
+            return "Multi-plane operation failed";
+        case NANDErrorCode::PLANE_MISMATCH:
+            return "Blocks not in different planes";
         default:
             return "Unknown error";
     }

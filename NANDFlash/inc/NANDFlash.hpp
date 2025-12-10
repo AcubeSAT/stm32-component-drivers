@@ -22,6 +22,9 @@ enum class NANDErrorCode : uint8_t {
     NOT_INITIALIZED,        /*!< Driver not initialized */
     HARDWARE_FAILURE,       /*!< Hardware failure (ID mismatch, geometry mismatch, bad block table full) */
     BAD_PARAMETER_PAGE,     /*!< All ONFI parameter page copies have invalid CRC */
+    COPYBACK_FAILED,        /*!< Copyback operation failed (FAIL bit set in status) */
+    MULTIPLANE_FAILED,      /*!< Multi-plane operation failed (FAIL bit set in status) */
+    PLANE_MISMATCH,         /*!< Blocks not in different planes (multi-plane erase requires one even + one odd block) */
 };
 
 /**
@@ -94,7 +97,7 @@ public:
         enableNandFlashMode(chipSelect);
     }
 
-    // Explicitly non-copyable and non-movable
+    /* Explicitly non-copyable and non-movable */
     MT29F(const MT29F&) = delete;
     MT29F& operator=(const MT29F&) = delete;
     MT29F(MT29F&&) = delete;
@@ -108,17 +111,10 @@ public:
     /**
      * @brief Initialize the NAND flash driver and verify device
      *
-     * @details This function performs basic device initialization including:
-     *          - Device reset and ID verification
-     *          - ONFI compliance checking
-     *          - Parameter page validation against expected geometry
-     *          - Factory bad block scanning
-     *          - Enables the write protection if the user has provided a WP# pin
-     *
      * @pre Driver must not already be initialized (will log warning and return success if called twice)
      * @post If successful, driver is ready for read/program/erase operations
      * @post Bad block table is populated with factory-marked bad blocks
-     * @post Write protection is enabled (WP# asserted)
+     * @post Write protection is enabled if a WP# pin has been provided (WP# asserted)
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
@@ -260,24 +256,150 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
 
 
+    /* ==================== Plane Helpers ==================== */
+
+    /**
+     * @brief Plane identifier (MT29F has 2 planes per LUN)
+     *
+     * @note Plane is determined by block number:
+     *       - Even blocks (0, 2, 4, ...) are in Plane 0
+     *       - Odd blocks (1, 3, 5, ...) are in Plane 1
+     */
+    enum class Plane : uint8_t {
+        PLANE_0 = 0U,  /*!< Even blocks */
+        PLANE_1 = 1U,  /*!< Odd blocks */
+    };
+
+    /**
+     * @brief Get plane for a given block number
+     *
+     * @param block Block number
+     * 
+     * @return Plane identifier
+     */
+    [[nodiscard]] static Plane getPlane(uint16_t block) {
+        return (block & 1U) ? Plane::PLANE_1 : Plane::PLANE_0;
+    }
+
+
+    /* ==================== Multi-Plane Operations ==================== */
+
+    /**
+     * @brief Erase two blocks simultaneously from different planes
+     *
+     * @param block0 First block (must be in different plane than block1)
+     * @param block1 Second block (must be in different plane than block0)
+     * @param lun LUN number (typically 0)
+     *
+     * @pre Driver must be initialized
+     * @pre Blocks must be in different planes (one even, one odd)
+     * @post Both blocks are erased (all pages set to 0xFF)
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::PLANE_MISMATCH Both blocks in same plane
+     * @retval NANDErrorCode::MULTIPLANE_FAILED Erase operation failed
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of range
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     *
+     * @see MT29F datasheet section "ERASE BLOCK MULTI-PLANE (60h-D1h + 60h-D0h)"
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlockMultiPlane(uint16_t block0, uint16_t block1, uint8_t lun = 0);
+
+
+    /* ==================== Copyback Operations ==================== */
+
+    /**
+     * @brief Copy page within same plane using hardware copyback (zero RAM)
+     *
+     * @param sourceAddress Source page address
+     * @param destinationAddress Destination page address (must be in same plane as source)
+     *
+     * @pre Driver must be initialized
+     * @pre Source and destination blocks must be in the same plane
+     * @pre Destination block must be erased
+     * @post Page is copied from source to destination
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::PLANE_MISMATCH Source and destination in different planes
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
+     * @retval NANDErrorCode::COPYBACK_FAILED Programming failed
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     *
+     * @see MT29F datasheet sections "COPYBACK READ (00h-35h)" and "COPYBACK PROGRAM (85h-10h)"
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> copyback(const NANDAddress& sourceAddress, const NANDAddress& destinationAddress);
+
+    /**
+     * @brief Copy page via host buffer (works across planes)
+     *
+     * @details Performs standard read + program using caller-provided buffer.
+     *
+     * @param sourceAddress Source page address
+     * @param destinationAddress Destination page address (any plane)
+     * @param buffer Working buffer for page data (must be at least DataBytesPerPage bytes)
+     *
+     * @pre Driver must be initialized
+     * @pre Destination block must be erased
+     * @post Page is copied from source to destination
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
+     * @retval NANDErrorCode::INVALID_PARAMETER Buffer too small
+     * @retval NANDErrorCode::PROGRAM_FAILED Programming failed
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> copybackViaHost(const NANDAddress& sourceAddress,
+                                                                     const NANDAddress& destinationAddress,
+                                                                     etl::span<uint8_t> buffer);
+
+
 private:
     /* ============= ONFI Protocol Definitions ============= */
 
     /**
-     * @brief NAND Commands
+     * @brief NAND command codes per ONFI specification
+     *
+     * @see MT29F datasheet "Command Definitions" section
      */
     enum class Commands : uint8_t {
-        RESET = 0xFFU,
-        READID = 0x90U,
-        READ_PARAM_PAGE = 0xECU,
-        READ_UNIQ_ID = 0xEDU,
-        READ_STATUS = 0x70U,
-        ERASE_BLOCK = 0x60U,
-        ERASE_BLOCK_CONFIRM = 0xD0U,
-        READ_MODE = 0x00U,
-        READ_CONFIRM = 0x30U,
-        PAGE_PROGRAM = 0x80U,
-        PAGE_PROGRAM_CONFIRM = 0x10U,
+        /* Device Control */
+        RESET = 0xFFU,                      /*!< FFh: Reset device to power-on state (async timing mode 0) */
+
+        /* Identification */
+        READID = 0x90U,                     /*!< 90h: Read manufacturer/device ID (followed by address 00h or 20h) */
+        READ_PARAM_PAGE = 0xECU,            /*!< ECh: Read ONFI parameter page (followed by address 00h) */
+        READ_UNIQ_ID = 0xEDU,               /*!< EDh: Read unique device identifier */
+
+        /* Status */
+        READ_STATUS = 0x70U,                /*!< 70h: Read status register (immediate, no address cycles) */
+
+        /* Erase Operations */
+        ERASE_BLOCK = 0x60U,                /*!< 60h: Start erase sequence (followed by 3 row address cycles) */
+        ERASE_BLOCK_CONFIRM = 0xD0U,        /*!< D0h: Confirm and execute block erase (60h-addr-D0h sequence) */
+
+        /* Read Operations */
+        READ_MODE = 0x00U,                  /*!< 00h: Start read sequence (followed by 5 address cycles) */
+        READ_CONFIRM = 0x30U,               /*!< 30h: Confirm read and start array-to-register transfer (00h-addr-30h) */
+
+        /* Program Operations */
+        PAGE_PROGRAM = 0x80U,               /*!< 80h: Start program sequence (followed by 5 address cycles + data) */
+        PAGE_PROGRAM_CONFIRM = 0x10U,       /*!< 10h: Confirm and execute page program (80h-addr-data-10h) */
+
+        /* Copyback Operations (internal data move, no host transfer) */
+        COPYBACK_READ_CONFIRM = 0x35U,      /*!< 35h: Load page to internal register (00h-addr-35h, same-plane only) */
+        COPYBACK_PROGRAM = 0x85U,           /*!< 85h: Program from internal register (85h-addr-10h, same-plane only) */
+
+        /* Multi-Plane Operations */
+        ERASE_MULTIPLANE_CONFIRM = 0xD1U,   /*!< D1h: Queue block for multi-plane erase (60h-addr-D1h, then 60h-addr-D0h) */
     };
 
     /**
@@ -307,7 +429,7 @@ private:
 
 
     /* ============= ONFI Timing Parameters (Timing Mode 0) ============= */
-    /* @see MT29F datasheet AC Timing Tables for Mode 0 parameters */
+    /** @see MT29F datasheet AC Timing Tables for Mode 0 parameters */
 
     static constexpr uint32_t TwhrNs = 120U;   /*!< tWHR: WE# HIGH to RE# LOW (command to read) */
 
@@ -321,7 +443,7 @@ private:
 
 
     /* ============= Operation Timeout Values ============= */
-    /* @note Values are ~5x datasheet maximums for safety margin */
+    /** @note Values are ~5x datasheet maximums for safety margin */
 
     static constexpr uint32_t TimeoutReadUs = 200U;      /*!< tR timeout (datasheet max: 35us) */
 
@@ -507,6 +629,58 @@ private:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> executeReadCommandSequence(const NANDAddress& address);
+
+    
+    /* ============= internal Helpers for Copyback Operations ============= */
+    
+    /**
+     * @brief Load page into internal data register (no host transfer)
+     *
+     * @param sourceAddress Page address to read into internal register
+     *
+     * @pre Driver must be initialized
+     * @post Page data is in internal data register
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @warning After this call, you must call copybackProgram() to complete
+     *          the operation. Do not issue other commands in between.
+     *
+     * @note Thread Safety: Caller must hold external mutex.
+     *
+     * @see MT29F datasheet section "COPYBACK READ (00h-35h)"
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> copybackRead(const NANDAddress& sourceAddress);
+
+    /**
+     * @brief Program page from internal data register to destination
+     *
+     * @details Uses COPYBACK PROGRAM (85h-10h) command.
+     *          Programs the data previously loaded by copybackRead().
+     *
+     * @param destinationAddress Destination page address
+     *
+     * @pre copybackRead() must have been called first
+     * @pre Destination MUST be in the same plane as source
+     * @post Page is programmed at destination
+     *
+     * @return Success or error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
+     * @retval NANDErrorCode::COPYBACK_FAILED Programming failed
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @warning Same-plane constraint: source and destination blocks must
+     *          both be even (plane 0) or both be odd (plane 1).
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     *
+     * @see MT29F datasheet section "COPYBACK PROGRAM (85h-10h)"
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> copybackProgram(const NANDAddress& destinationAddress);
 
 
     /* ============= Device Identification and Validation ============= */
