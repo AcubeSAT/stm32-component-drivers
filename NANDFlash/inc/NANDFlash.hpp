@@ -9,7 +9,7 @@
 #include <etl/delegate.h>
 
 /**
- * @brief Error codes for NAND flash operations
+ * @brief Error codes for NAND flash operations.
  */
 enum class NANDErrorCode : uint8_t {
     TIMEOUT = 1U,           /*!< Operation timed out waiting for device ready */
@@ -28,27 +28,27 @@ enum class NANDErrorCode : uint8_t {
 };
 
 /**
- * @brief Type alias for yield delegate
+ * @brief Type alias for yield delegate.
  *
- * Callable that yields to OS scheduler for given milliseconds.
- * Used for long operations where other tasks should run and not starvate.
+ * @details Callable that yields to OS scheduler for given milliseconds.
+ *          Used for long operations where other tasks should run and not starvate.
  *
  * @note Bind to wrapper calling vTaskDelay(pdMS_TO_TICKS(ms))
  */
 using YieldDelegate = etl::delegate<void(uint32_t)>;
 
 /**
- * @brief Driver for MT29F64G08AFAAAWP NAND Flash
+ * @brief Driver for MT29F64G08AFAAAWP NAND Flash.
  *
  * @note Thread Safety:
- *       - Driver requires external synchronization
- *       - Caller must hold external mutex during all operations
+ *       - Driver requires external synchronization.
+ *       - Caller must hold external mutex during all operations.
  *
  *       Bad Block Management:
- *       - Driver maintains bad block table (factory + runtime discovered)
- *       - Query via isBlockBad() before operations
- *       - Driver does NOT enforce checks on read/program/erase (caller responsibility)
- *       - Caller must mark the runtime bad blocks via markBadBlock()
+ *       - Driver maintains bad block table (factory + runtime discovered).
+ *       - Query via isBlockBad() before operations.
+ *       - Driver does NOT enforce checks on read/program/erase (caller responsibility).
+ *       - Caller must mark the runtime bad blocks via markBadBlock().
  *
  * @ingroup drivers
  * @see http://ww1.microchip.com/downloads/en/DeviceDoc/NAND-Flash-Interface-with-EBI-on-Cortex-M-Based-MCUs-DS90003184A.pdf
@@ -66,7 +66,7 @@ public:
     static constexpr uint8_t LunsPerCe = 1U;
 
     /**
-     * @brief NAND address structure
+     * @brief NAND address structure.
      */
     struct NANDAddress {
         uint32_t lun;
@@ -82,7 +82,7 @@ public:
     };
 
     /**
-     * @brief Constructor for MT29F NAND flash driver
+     * @brief Constructor for MT29F NAND flash driver.
      *
      * @param chipSelect SMC chip select for NAND flash
      * @param readyBusyPin GPIO pin for R/B# signal monitoring
@@ -91,8 +91,8 @@ public:
      */
     MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin, YieldDelegate yieldMs)
         : SMC{chipSelect}
-        , NandReadyBusyPin{readyBusyPin}
-        , NandWriteProtect{writeProtectPin}
+        , nandReadyBusyPin{readyBusyPin}
+        , nandWriteProtectPin{writeProtectPin}
         , yieldMilliseconds{yieldMs} {
         enableNandFlashMode(chipSelect);
     }
@@ -109,7 +109,7 @@ public:
     /* ========= Driver Initialization and Basic Info ========= */
 
     /**
-     * @brief Initialize the NAND flash driver and verify device
+     * @brief Initialize the NAND flash driver and verify device.
      *
      * @pre Driver must not already be initialized (will log warning and return success if called twice)
      * @post If successful, driver is ready for read/program/erase operations
@@ -128,7 +128,7 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> initialize();
 
     /**
-     * @brief Reset the NAND flash device
+     * @brief Reset the NAND flash device.
      *
      * @pre Device must be powered on
      * @post Device is in known initial state (async timing mode 0)
@@ -144,7 +144,7 @@ public:
     /* ================== Data Operations ================== */
 
     /**
-     * @brief Read data from NAND flash page
+     * @brief Read data from NAND flash page.
      *
      * @param address NAND address to read from
      * @param[out] data Buffer to store read data (size determines bytes to read)
@@ -166,11 +166,7 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> readPage(const NANDAddress& address, etl::span<uint8_t> data);
 
     /**
-     * @brief Program (write) data to NAND flash page
-     *
-     * @warning The block marker is located at column address 8192 (BlockMarkerOffset)
-     *          If the caller's data includes this address, the byte at that position
-     *          MUST be 0xFF.
+     * @brief Program (write) data to NAND flash page.
      *
      * @param address NAND address to write to
      * @param data Data to write (max page size)
@@ -187,6 +183,10 @@ public:
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      *
+     * @warning The block marker is located at column address 8192 (BlockMarkerOffset).
+     *          If the caller's data includes this address, the byte at that position
+     *          MUST be 0xFF.
+     *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      *
      * @see MT29F datasheet section "PROGRAM PAGE (80h-10h)" for command sequence
@@ -194,7 +194,7 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
 
     /**
-     * @brief Erase a block
+     * @brief Erase a block.
      *
      * @param block Block number to erase
      * @param lun LUN number (typically 0)
@@ -219,14 +219,14 @@ public:
     /* ==================== Bad Block Management ==================== */
 
     /**
-     * @brief Check if a block is marked as bad
+     * @brief Check if a block is marked as bad.
      *
      * @param block Block number to check
      * @param lun LUN number (typically 0)
      *
      * @pre Driver should be initialized for accurate results
      *
-     * @return true if block is bad, false if good, or error code
+     * @return true if block is bad, false if good or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN exceeds device geometry
      *
      * @note Thread Safety: Read-only access to bad block bitset so it's safe for concurrent reads.
@@ -234,13 +234,7 @@ public:
     [[nodiscard]] etl::expected<bool, NANDErrorCode> isBlockBad(uint16_t block, uint8_t lun = 0) const;
 
     /**
-     * @brief Mark a block as bad in the runtime bitset
-     *
-     * @note Call this when program/erase operations fail in order to track bad blocks.
-     *       Marking an already-bad block is a no-op.
-     *
-     * @warning The driver does not auto-mark blocks. The caller is responsible for
-     *          bad block policy decisions.
+     * @brief Mark a block as bad in the runtime bitset.
      *
      * @param block Block number to mark as bad
      * @param lun LUN number (typically 0)
@@ -251,6 +245,10 @@ public:
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN exceeds device geometry
      *
+     * @warning The driver does not auto-mark blocks. The caller is responsible for
+     *          bad block policy decisions.
+     *          Call this when program/erase operations fail.
+     * 
      * @note Thread Safety: Caller must hold external mutex. Modifies bad block bitset.
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
@@ -259,7 +257,7 @@ public:
     /* ==================== Plane Helpers ==================== */
 
     /**
-     * @brief Plane identifier (MT29F has 2 planes per LUN)
+     * @brief Plane identifier (MT29F has 2 planes per LUN).
      *
      * @note Plane is determined by block number:
      *       - Even blocks (0, 2, 4, ...) are in Plane 0
@@ -271,7 +269,7 @@ public:
     };
 
     /**
-     * @brief Get plane for a given block number
+     * @brief Get plane for a given block number.
      *
      * @param block Block number
      * 
@@ -285,7 +283,7 @@ public:
     /* ==================== Multi-Plane Operations ==================== */
 
     /**
-     * @brief Erase two blocks simultaneously from different planes
+     * @brief Erase two blocks simultaneously from different planes.
      *
      * @param block0 First block (must be in different plane than block1)
      * @param block1 Second block (must be in different plane than block0)
@@ -312,7 +310,7 @@ public:
     /* ==================== Copyback Operations ==================== */
 
     /**
-     * @brief Copy page within same plane using hardware copyback (zero RAM)
+     * @brief Copy page within same plane using hardware copyback (zero RAM).
      *
      * @param sourceAddress Source page address
      * @param destinationAddress Destination page address (must be in same plane as source)
@@ -336,7 +334,7 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> copyback(const NANDAddress& sourceAddress, const NANDAddress& destinationAddress);
 
     /**
-     * @brief Copy page via host buffer (works across planes)
+     * @brief Copy page via host buffer (works across planes).
      *
      * @details Performs standard read + program using caller-provided buffer.
      *
@@ -366,7 +364,7 @@ private:
     /* ============= ONFI Protocol Definitions ============= */
 
     /**
-     * @brief NAND command codes per ONFI specification
+     * @brief NAND command codes per ONFI specification.
      *
      * @see MT29F datasheet "Command Definitions" section
      */
@@ -403,7 +401,7 @@ private:
     };
 
     /**
-     * @brief Address parameters for Read ID command
+     * @brief Address parameters for Read ID command.
      */
     enum class ReadIDAddress : uint8_t {
         MANUFACTURER_ID = 0x00U,
@@ -454,17 +452,17 @@ private:
     static constexpr uint32_t TimeoutResetUs = 5000U;    /*!< tRST timeout (datasheet max: 1ms) */
 
     /**
-     * @brief Type alias for 5-cycle NAND addressing
+     * @brief Type alias for 5-cycle NAND addressing.
      *
      * @note Represents the 5 address cycles required for NAND operations:
      *       [COLUMN_ADDRESS_1, COLUMN_ADDRESS_2, ROW_ADDRESS_1, ROW_ADDRESS_2, ROW_ADDRESS_3]
      *       Read and program operations use all the cycles.
-     *       Erase operation uses only the ROWs.
+     *       Erase operations use only the ROWs.
      */
     using AddressCycles = etl::array<uint8_t, 5>;
 
     /**
-     * @brief Address cycle indices for 5-cycle NAND addressing
+     * @brief Address cycle indices for 5-cycle NAND addressing.
      */
     enum AddressCycle : uint8_t {
         COLUMN_ADDRESS_1,    /*!< Column address byte 1: Column[7:0] */
@@ -493,19 +491,18 @@ private:
     /* ================= Bad Block Management =================== */
 
     /**
-     * @brief Read factory bad block marker byte from first spare byte of block's first page
+     * @brief Read factory bad block marker byte from first spare byte of block's first page.
      *
      * @param block Block number to check
      * @param lun LUN number (default 0)
      *
      * @return Block marker byte (0xFF = good, 0x00 = bad) or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     *
      */
     [[nodiscard]] etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun = 0);
 
     /**
-     * @brief Scan all blocks in a LUN for factory bad block markers
+     * @brief Scan all blocks in a LUN for factory bad block markers.
      *
      * @details Based on the datasheet the bad block marker is guaranteed to be stored
      *          in the first page of each block in byte 0 of the spare area.
@@ -526,11 +523,11 @@ private:
     /* ============= Write Protection ============= */
 
     /**
-     * @brief RAII guard for write-enable state
+     * @brief RAII guard for write enabled state.
      */
     class WriteEnableGuard {
     public:
-        explicit WriteEnableGuard(MT29F& n) : nand(n) {
+        explicit WriteEnableGuard(MT29F& n) : nand{n} {
             nand.enableWrites();
         }
 
@@ -549,12 +546,12 @@ private:
     };
 
     /**
-     * @brief Deassert WP# pin (set HIGH) to allow program and erase operations
+     * @brief Deassert WP# pin (set HIGH) to allow program and erase operations.
      */
     void enableWrites();
 
     /**
-     * @brief Assert WP# pin (set LOW) to hardware-protect array from program and erase
+     * @brief Assert WP# pin (set LOW) to hardware-protect array from program and erase.
      */
     void disableWrites();
 
@@ -565,16 +562,16 @@ private:
     
     static constexpr uint32_t SmcCleTriggerOffset = 0x400000U;  /*!< Offset of CLE (Command Latch Enable) */
 
-    const uint32_t TriggerNANDALEAddress = moduleBaseAddress | SmcAleTriggerOffset; /*!< SMC address for triggering ALE */
+    const uint32_t TriggerNANDAleAddress = moduleBaseAddress | SmcAleTriggerOffset; /*!< SMC address for triggering ALE */
     
-    const uint32_t TriggerNANDCLEAddress = moduleBaseAddress | SmcCleTriggerOffset; /*!< SMC address for triggering CLE */
+    const uint32_t TriggerNANDCleAddress = moduleBaseAddress | SmcCleTriggerOffset; /*!< SMC address for triggering CLE */
 
-    const PIO_PIN NandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
+    const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
 
-    const PIO_PIN NandWriteProtect; /*!< GPIO pin for controlling WP# (Write Protect) signal */
+    const PIO_PIN nandWriteProtectPin; /*!< GPIO pin for controlling WP# (Write Protect) signal */
 
     /**
-     * @brief Send data byte to NAND flash
+     * @brief Send data byte to NAND flash.
      *
      * @param data Data byte to send
      */
@@ -583,25 +580,25 @@ private:
     }
 
     /**
-     * @brief Send address byte to NAND flash (triggers ALE)
+     * @brief Send address byte to NAND flash (triggers ALE).
      *
      * @param address Address byte to send
      */
     void sendAddress(uint8_t address) {
-        smcWriteByte(TriggerNANDALEAddress, address);
+        smcWriteByte(TriggerNANDAleAddress, address);
     }
 
     /**
-     * @brief Send command to NAND flash (triggers CLE)
+     * @brief Send command to NAND flash (triggers CLE).
      *
      * @param command NAND command to send
      */
     void sendCommand(Commands command) {
-        smcWriteByte(TriggerNANDCLEAddress, static_cast<uint8_t>(command));
+        smcWriteByte(TriggerNANDCleAddress, static_cast<uint8_t>(command));
     }
 
     /**
-     * @brief Read data byte from NAND flash
+     * @brief Read data byte from NAND flash.
      *
      * @return Data byte read from device
      */
@@ -618,10 +615,7 @@ private:
     /* ============= Command Sequences ============= */
 
     /**
-     * @brief Execute 00h-30h READ PAGE command sequence and wait for array transfer completion
-     *
-     * @details Sends READ MODE (00h), 5-cycle address, READ CONFIRM (30h),
-     *          waits for device ready, then sends READ MODE (00h) to enable data output.
+     * @brief Execute 00h-30h READ PAGE command sequence and wait for array transfer completion.
      *
      * @param address NAND address to read from
      *
@@ -634,7 +628,7 @@ private:
     /* ============= internal Helpers for Copyback Operations ============= */
     
     /**
-     * @brief Load page into internal data register (no host transfer)
+     * @brief Load page into internal data register (no host transfer).
      *
      * @param sourceAddress Page address to read into internal register
      *
@@ -649,14 +643,14 @@ private:
      * @warning After this call, you must call copybackProgram() to complete
      *          the operation. Do not issue other commands in between.
      *
-     * @note Thread Safety: Caller must hold external mutex.
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      *
      * @see MT29F datasheet section "COPYBACK READ (00h-35h)"
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> copybackRead(const NANDAddress& sourceAddress);
 
     /**
-     * @brief Program page from internal data register to destination
+     * @brief Program page from internal data register to destination.
      *
      * @details Uses COPYBACK PROGRAM (85h-10h) command.
      *          Programs the data previously loaded by copybackRead().
@@ -686,21 +680,21 @@ private:
     /* ============= Device Identification and Validation ============= */
 
     /**
-     * @brief Read device manufacturer and device ID
+     * @brief Read device manufacturer and device ID.
      *
      * @param[out] id Buffer to store 5-byte device ID
      */
     void readDeviceID(etl::span<uint8_t, 5> id);
 
     /**
-     * @brief Read ONFI signature to verify ONFI compliance
+     * @brief Read ONFI signature to verify ONFI compliance.
      *
      * @param[out] signature Buffer to store 4-byte ONFI signature
      */
     void readONFISignature(etl::span<uint8_t, 4> signature);
 
     /**
-     * @brief Validate ONFI parameter page integrity using CRC-16
+     * @brief Validate ONFI parameter page integrity using CRC-16.
      *
      * @details Implements ONFI CRC-16 algorithm with polynomial 0x8005.
      *          Initial value is 0x4F4E.
@@ -716,7 +710,7 @@ private:
     static bool validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage);
 
     /**
-     * @brief Validate device parameters match expected geometry
+     * @brief Validate device parameters match expected geometry.
      * 
      * @details 1) ONFI requires redundant copies of the parameter page. 
      *             This device has 3 copies. We try each copy until we find a valid one.
@@ -733,7 +727,7 @@ private:
     /* ============= Address and Status Utilities ============= */
 
     /**
-     * @brief Build 5-cycle address sequence for NAND Device
+     * @brief Build 5-cycle address sequence for NAND Device.
      *
      * @note Converts NAND address structure to hardware address cycles:
      *       - Cycle 1 (COLUMN_ADDRESS_1): Column[7:0]
@@ -748,7 +742,7 @@ private:
     static void buildAddressCycles(const NANDAddress& address, AddressCycles& cycles);
 
     /**
-     * @brief Validate NAND address bounds
+     * @brief Validate NAND address bounds.
      *
      * @param address Address to validate
      *
@@ -758,14 +752,14 @@ private:
     [[nodiscard]] static etl::expected<void, NANDErrorCode> validateAddress(const NANDAddress& address);
 
     /**
-     * @brief Read NAND status register
+     * @brief Read NAND status register.
      *
      * @return Status register value
      */
     uint8_t readStatusRegister();
 
     /**
-     * @brief Check if device is ready (both I/O interface and flash array)
+     * @brief Check if device is ready (both I/O interface and flash array).
      *
      * @param status Status register value
      *
@@ -777,10 +771,10 @@ private:
     }
 
     /**
-     * @brief Check if device is write protected
+     * @brief Check if device is write protected.
      *
      * @param status Status register value
-     * 
+     *
      * @retval true if WP bit is clear (protected)
      * @retval false otherwise
      */
@@ -789,21 +783,21 @@ private:
     }
 
     /**
-     * @brief Check if last operation failed
+     * @brief Check if last operation failed.
      *
-     * @note This is only valid for Program/Erase operations
-     * 
      * @param status Status register value
-     * 
+     *
      * @retval true if FAIL or FAILC bits are set
      * @retval false otherwise
+     *
+     * @note This is only valid for Program/Erase operations.
      */
     [[nodiscard]] static bool hasOperationFailed(uint8_t status) {
         return (status & (StatusFail | StatusFailCommand)) != 0;
     }
 
     /**
-     * @brief Check if device is ready for operations
+     * @brief Check if device is ready for operations.
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::DEVICE_BUSY Device is busy (RDY=0 or ARDY=0)
@@ -811,7 +805,7 @@ private:
     [[nodiscard]] etl::expected<void, NANDErrorCode> ensureDeviceReady();
 
     /**
-     * @brief Verify write protection is disabled
+     * @brief Verify write protection is disabled.
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::WRITE_PROTECTED WP# is asserted (status WP bit clear)
@@ -830,7 +824,7 @@ private:
     YieldDelegate yieldMilliseconds; /*!< Delegate for yielding to OS during long operations */
 
     /**
-     * @brief Wait for NAND device to become ready
+     * @brief Wait for NAND device to become ready.
      *
      * @details Uses hybrid busy-wait/yield approach:
      *          - If timeout <= BusyWaitThresholdUs (1ms): pure busy-wait with 5µs polling
@@ -847,22 +841,22 @@ private:
     /* ============= Timing Utilities ============= */
 
     /**
-     * @brief Low-level cycle-accurate delay
-     *
-     * @note Implementation uses tight assembly loop executed from RAM
+     * @brief Low-level cycle-accurate delay.
      * 
+     * @details Implementation uses tight assembly loop executed from RAM.
      * @param cycles Number of CPU cycles to delay
      */
     static void busyWaitCycles(uint32_t cycles);
     
     /**
-     * @brief Busy-wait delay for nanosecond-precision timing
+     * @brief Busy-wait delay for nanosecond-precision timing.
      *
-     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
-     *       Rounds up to ensure minimum delay is met.
-     *       Maximum delay for 300MHz clock is 14000ns.
+     * @details Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
+     *          Rounds up to ensure minimum delay is met.
      * 
      * @param nanoseconds Delay duration in nanoseconds
+     * 
+     * @note Maximum delay for 300MHz clock is 14000ns.
      */
     static void busyWaitNanoseconds(uint32_t nanoseconds) {
         constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / 1000000U;
@@ -872,12 +866,13 @@ private:
     }
 
     /**
-     * @brief Busy-wait delay for microsecond-precision timing
+     * @brief Busy-wait delay for microsecond-precision timing.
      * 
-     * @note Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
-     *       Maximum delay for 300MHz clock is 14000ms.
+     * @details Uses CPU clock (CPU_CLOCK_FREQUENCY) for calibration.
      *
      * @param microseconds Delay duration in microseconds
+     * 
+     * @note Maximum delay for 300MHz clock is 14000ms.
      */
     static void busyWaitMicroseconds(uint32_t microseconds) {
         constexpr uint32_t CpuMhz = CPU_CLOCK_FREQUENCY / 1000000U;
@@ -892,12 +887,12 @@ private:
     /**
      * @brief Enable NAND Flash mode for an SMC chip select.
      *
-     * Configures the CCFG_SMCNFCS register to assign the specified chip select
-     * to NAND Flash mode. This routes NANDOE/NANDWE signals to the chip select
-     * and enables interpretation of address bits A21/A22 as CLE/ALE signals,
-     * which is required for command and address latch operations.
+     * @details Configures the CCFG_SMCNFCS register to assign the specified chip select
+     *          to NAND Flash mode. This routes NANDOE/NANDWE signals to the chip select
+     *          and enables interpretation of address bits A21/A22 as CLE/ALE signals,
+     *          which is required for command and address latch operations.
      *
-     * @param chipSelect SMC chip select to configure for NAND Flash mode.
+     * @param chipSelect SMC chip select to configure for NAND Flash mode
      */
     static void enableNandFlashMode(ChipSelect chipSelect);
 };
@@ -906,12 +901,12 @@ private:
 /* ==================== Debug ==================== */
 
 /**
- * @brief Convert error code to human-readable string
- *
- * @note Used for logging
+ * @brief Convert error code to human-readable string.
  *
  * @param error Error code to convert
  *
  * @return String description of error
+ *
+ * @note Used for logging.
  */
 const char* toString(NANDErrorCode error);

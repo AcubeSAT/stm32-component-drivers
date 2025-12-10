@@ -66,16 +66,16 @@ etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t l
 /* ============= Write Protection ============= */
 
 void MT29F::enableWrites() {
-    if (NandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(NandWriteProtect, true);
+    if (nandWriteProtectPin != PIO_PIN_NONE) {
+        PIO_PinWrite(nandWriteProtectPin, true);
 
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
 }
 
 void MT29F::disableWrites() {
-    if (NandWriteProtect != PIO_PIN_NONE) {
-        PIO_PinWrite(NandWriteProtect, false);
+    if (nandWriteProtectPin != PIO_PIN_NONE) {
+        PIO_PinWrite(nandWriteProtectPin, false);
 
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
@@ -333,7 +333,7 @@ etl::expected<void, NANDErrorCode> MT29F::ensureDeviceReady() {
 }
 
 etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
-    if (NandWriteProtect != PIO_PIN_NONE) {
+    if (nandWriteProtectPin != PIO_PIN_NONE) {
         if (isWriteProtected(readStatusRegister())) {
             return etl::unexpected(NANDErrorCode::WRITE_PROTECTED);
         }
@@ -348,8 +348,8 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
     const bool usePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
     uint32_t elapsedUs = 0;
 
-    if (NandReadyBusyPin != PIO_PIN_NONE) {
-        while (PIO_PinRead(NandReadyBusyPin) == 0) {
+    if (nandReadyBusyPin != PIO_PIN_NONE) {
+        while (PIO_PinRead(nandReadyBusyPin) == 0) {
             if (elapsedUs > timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
@@ -415,11 +415,11 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return {};
     }
 
-    if (NandWriteProtect == PIO_PIN_NONE) {
+    if (nandWriteProtectPin == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Write protection pin not provided. Hardware write protection disabled";
     }
 
-    if (NandReadyBusyPin == PIO_PIN_NONE) {
+    if (nandReadyBusyPin == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Ready/busy pin not provided. Using status register polling";
     }
 
