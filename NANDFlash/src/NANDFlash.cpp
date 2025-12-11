@@ -67,7 +67,7 @@ etl::expected<void, NANDErrorCode> MT29F::markBadBlock(uint16_t block, uint8_t l
 
 void MT29F::enableWrites() {
     if (nandWriteProtectPin != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtectPin, true);
+        PIO_PinWrite(nandWriteProtectPin, static_cast<bool>(ActiveLowPin::DEASSERTED));
 
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
@@ -75,7 +75,7 @@ void MT29F::enableWrites() {
 
 void MT29F::disableWrites() {
     if (nandWriteProtectPin != PIO_PIN_NONE) {
-        PIO_PinWrite(nandWriteProtectPin, false);
+        PIO_PinWrite(nandWriteProtectPin, static_cast<bool>(ActiveLowPin::ASSERTED));
 
         busyWaitNanoseconds(GpioSettleTimeNs);
     }
@@ -297,12 +297,13 @@ void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles
     constexpr uint8_t BlockShiftForRowAddress3 = 9U;
     constexpr uint8_t LunShiftInRowAddress3 = 3U;
 
-    cycles[AddressCycle::COLUMN_ADDRESS_1] = address.column & ByteMask;
-    cycles[AddressCycle::COLUMN_ADDRESS_2] = (address.column >> BitsPerByte) & ColumnHighByteMask;
-    cycles[AddressCycle::ROW_ADDRESS_1] = (address.page & PageMask) | ((address.block & SingleBitMask) << PageBitsWidth);
-    cycles[AddressCycle::ROW_ADDRESS_2] = (address.block >> BlockShiftForRowAddress2) & ByteMask;
-    cycles[AddressCycle::ROW_ADDRESS_3] = ((address.block >> BlockShiftForRowAddress3) & BlockHighBitsMask) |
-                                          ((address.lun & SingleBitMask) << LunShiftInRowAddress3);
+    cycles[static_cast<size_t>(AddressCycle::COLUMN_ADDRESS_1)] = address.column & ByteMask;
+    cycles[static_cast<size_t>(AddressCycle::COLUMN_ADDRESS_2)] = (address.column >> BitsPerByte) & ColumnHighByteMask;
+    cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)] = (address.page & PageMask) | 
+                                                               ((address.block & SingleBitMask) << PageBitsWidth);
+    cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)] = (address.block >> BlockShiftForRowAddress2) & ByteMask;
+    cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)] = ((address.block >> BlockShiftForRowAddress3) & BlockHighBitsMask) |
+                                                               ((address.lun & SingleBitMask) << LunShiftInRowAddress3);
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateAddress(const NANDAddress& address) {
@@ -350,9 +351,10 @@ etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
     const bool usePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
     uint32_t elapsedUs = 0U;
+    constexpr bool PinLevelBusy = static_cast<bool>(ActiveLowPin::ASSERTED);
 
     if (nandReadyBusyPin != PIO_PIN_NONE) {
-        while (PIO_PinRead(nandReadyBusyPin) == 0U) {
+        while (PIO_PinRead(nandReadyBusyPin) == PinLevelBusy) {
             if (elapsedUs > timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
@@ -604,11 +606,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
 
     sendCommand(Commands::ERASE_BLOCK);
 
-    sendAddress(cycles[AddressCycle::ROW_ADDRESS_1]);
-
-    sendAddress(cycles[AddressCycle::ROW_ADDRESS_2]);
-
-    sendAddress(cycles[AddressCycle::ROW_ADDRESS_3]);
+    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
 
@@ -673,17 +673,17 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
 
     sendCommand(Commands::ERASE_BLOCK);
 
-    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_1]);
-    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_2]);
-    sendAddress(cycles0[AddressCycle::ROW_ADDRESS_3]);
+    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
     sendCommand(Commands::ERASE_MULTIPLANE_CONFIRM);
 
     sendCommand(Commands::ERASE_BLOCK);
 
-    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_1]);
-    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_2]);
-    sendAddress(cycles1[AddressCycle::ROW_ADDRESS_3]);
+    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
     sendCommand(Commands::ERASE_BLOCK_CONFIRM);
 

@@ -99,7 +99,6 @@ public:
         enableNandFlashMode(chipSelect);
     }
 
-    /* Explicitly non-copyable and non-movable */
     MT29F(const MT29F&) = delete;
     MT29F& operator=(const MT29F&) = delete;
     MT29F(MT29F&&) = delete;
@@ -496,7 +495,7 @@ private:
     /**
      * @brief Address cycle indices for 5-cycle NAND addressing.
      */
-    enum AddressCycle : uint8_t {
+    enum class AddressCycle : uint8_t {
         COLUMN_ADDRESS_1,    /*!< Column address byte 1: Column[7:0] */
         COLUMN_ADDRESS_2,    /*!< Column address byte 2: Column[15:8] */
         ROW_ADDRESS_1,       /*!< Row address byte 1: Page[6:0] | Block[0] */
@@ -569,7 +568,6 @@ private:
             nand.disableWrites();
         }
 
-        /* Non-copyable, non-movable */
         WriteEnableGuard(const WriteEnableGuard&) = delete;
         WriteEnableGuard& operator=(const WriteEnableGuard&) = delete;
         WriteEnableGuard(WriteEnableGuard&&) = delete;
@@ -599,6 +597,14 @@ private:
     const uint32_t TriggerNANDAleAddress = moduleBaseAddress | SmcAleTriggerOffset; /*!< SMC address for triggering ALE */
     
     const uint32_t TriggerNANDCleAddress = moduleBaseAddress | SmcCleTriggerOffset; /*!< SMC address for triggering CLE */
+
+    /**
+     * @brief Pin state for active-low signals (R/B#, WP#).
+     */
+    enum class ActiveLowPin : bool {
+        ASSERTED = false,    /*!< Active-low signal driven LOW (active state) */
+        DEASSERTED = true,   /*!< Active-low signal driven HIGH (inactive state) */
+    };
 
     const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
 
