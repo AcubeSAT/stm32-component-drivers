@@ -199,10 +199,11 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     constexpr size_t OnfiPagesPerBlockOffset = 92U;
     constexpr size_t OnfiBlocksPerLunOffset = 96U;
     constexpr uint8_t OnfiParameterPageCopies = 3U;
+    constexpr uint8_t ParameterPageAddress = 0x00U;
 
     sendCommand(Commands::READ_PARAM_PAGE);
 
-    sendAddress(0x00U);
+    sendAddress(ParameterPageAddress);
     
     busyWaitNanoseconds(TwhrNs);
 
