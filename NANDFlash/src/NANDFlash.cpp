@@ -224,56 +224,58 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
             byte = readData();
         }
 
-        if (validateParameterPageCRC(parametersPageData)) {
-            auto asUint16 = [](uint8_t byte0, uint8_t byte1) -> uint16_t {
-                return byte0 | (static_cast<uint16_t>(byte1) << 8U);
-            };
-
-            auto asUint32 = [](uint8_t byte0, uint8_t byte1, uint8_t byte2, uint8_t byte3) -> uint32_t {
-                return byte0 | (static_cast<uint32_t>(byte1) << 8U) |
-                       (static_cast<uint32_t>(byte2) << 16U) | (static_cast<uint32_t>(byte3) << 24U);
-            };
-
-            const uint32_t readDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 1U],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 2U],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 3U]);
-
-            const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
-                                                            parametersPageData[OnfiSpareBytesPerPageOffset + 1U]);
-
-            const uint32_t readPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 1U],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 2U],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 3U]);
-
-            const uint32_t readBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 1U],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 2U],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 3U]);
-
-            if (readDataBytesPerPage != DataBytesPerPage) {
-                LOG_ERROR << "NAND: Geometry mismatch - DataBytesPerPage: expected " << DataBytesPerPage << ", got " << readDataBytesPerPage;
-                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-            }
-
-            if (readSpareBytesPerPage != SpareBytesPerPage) {
-                LOG_ERROR << "NAND: Geometry mismatch - SpareBytesPerPage: expected " << SpareBytesPerPage << ", got " << readSpareBytesPerPage;
-                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-            }
-
-            if (readPagesPerBlock != PagesPerBlock) {
-                LOG_ERROR << "NAND: Geometry mismatch - PagesPerBlock: expected " << static_cast<uint32_t>(PagesPerBlock) << ", got " << readPagesPerBlock;
-                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-            }
-
-            if (readBlocksPerLun != BlocksPerLun) {
-                LOG_ERROR << "NAND: Geometry mismatch - BlocksPerLun: expected " << BlocksPerLun << ", got " << readBlocksPerLun;
-                return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-            }
-
-            return {};
+        if (not validateParameterPageCRC(parametersPageData)) {
+            continue;
         }
+
+        auto asUint16 = [](uint8_t byte0, uint8_t byte1) -> uint16_t {
+            return byte0 | (static_cast<uint16_t>(byte1) << 8U);
+        };
+
+        auto asUint32 = [](uint8_t byte0, uint8_t byte1, uint8_t byte2, uint8_t byte3) -> uint32_t {
+            return byte0 | (static_cast<uint32_t>(byte1) << 8U) |
+                   (static_cast<uint32_t>(byte2) << 16U) | (static_cast<uint32_t>(byte3) << 24U);
+        };
+
+        const uint32_t readDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
+                                                       parametersPageData[OnfiDataBytesPerPageOffset + 1U],
+                                                       parametersPageData[OnfiDataBytesPerPageOffset + 2U],
+                                                       parametersPageData[OnfiDataBytesPerPageOffset + 3U]);
+
+        const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
+                                                        parametersPageData[OnfiSpareBytesPerPageOffset + 1U]);
+
+        const uint32_t readPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
+                                                    parametersPageData[OnfiPagesPerBlockOffset + 1U],
+                                                    parametersPageData[OnfiPagesPerBlockOffset + 2U],
+                                                    parametersPageData[OnfiPagesPerBlockOffset + 3U]);
+
+        const uint32_t readBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
+                                                   parametersPageData[OnfiBlocksPerLunOffset + 1U],
+                                                   parametersPageData[OnfiBlocksPerLunOffset + 2U],
+                                                   parametersPageData[OnfiBlocksPerLunOffset + 3U]);
+
+        if (readDataBytesPerPage != DataBytesPerPage) {
+            LOG_ERROR << "NAND: Geometry mismatch - DataBytesPerPage: expected " << DataBytesPerPage << ", got " << readDataBytesPerPage;
+            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+        }
+
+        if (readSpareBytesPerPage != SpareBytesPerPage) {
+            LOG_ERROR << "NAND: Geometry mismatch - SpareBytesPerPage: expected " << SpareBytesPerPage << ", got " << readSpareBytesPerPage;
+            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+        }
+
+        if (readPagesPerBlock != PagesPerBlock) {
+            LOG_ERROR << "NAND: Geometry mismatch - PagesPerBlock: expected " << static_cast<uint32_t>(PagesPerBlock) << ", got " << readPagesPerBlock;
+            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+        }
+
+        if (readBlocksPerLun != BlocksPerLun) {
+            LOG_ERROR << "NAND: Geometry mismatch - BlocksPerLun: expected " << BlocksPerLun << ", got " << readBlocksPerLun;
+            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+        }
+
+        return {};
     }
 
     return etl::unexpected(NANDErrorCode::BAD_PARAMETER_PAGE);
