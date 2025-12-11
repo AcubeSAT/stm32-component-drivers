@@ -25,6 +25,7 @@ enum class NANDErrorCode : uint8_t {
     COPYBACK_FAILED,        /*!< Copyback operation failed (FAIL bit set in status) */
     MULTIPLANE_FAILED,      /*!< Multi-plane operation failed (FAIL bit set in status) */
     PLANE_MISMATCH,         /*!< Blocks not in different planes (multi-plane erase requires one even + one odd block) */
+    ALREADY_INITIALIZED,    /*!< Driver already initialized (initialize() called twice) */
 };
 
 /**
@@ -112,18 +113,19 @@ public:
     /**
      * @brief Initialize the NAND flash driver and verify device.
      *
-     * @pre Driver must not already be initialized (will log warning and return success if called twice)
+     * @pre Driver must not already be initialized
      * @post If successful, driver is reset
      * @post The device and ONFI parameters are validated
      * @post Bad block table is populated with factory-marked bad blocks
      * @post Write protection is enabled if a WP# pin has been provided (WP# asserted)
      *
      * @return Success (empty expected) or specific error code
+     * @retval NANDErrorCode::ALREADY_INITIALIZED Driver already initialized
      * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
      * @retval NANDErrorCode::TIMEOUT Device not responding
-     * 
+     *
      * @note Thread Safety: Caller must hold external mutex. Device state is modified.
-     * 
+     *
      * @see MT29F datasheet section "Device Initialization"
      * @see ONFI 2.0 specification for parameter page format
      */
@@ -165,14 +167,16 @@ public:
      * @brief Read data from NAND flash page.
      *
      * @param address NAND address to read from
-     * @param[out] data Buffer to store read data (size determines bytes to read)
+     * @param[out] data Buffer to store read data. Can be any size from 0 to
+     *                  (TotalBytesPerPage - address.column). The span size determines
+     *                  how many bytes are read starting from the specified column offset.
      *
      * @pre Driver must be initialized (call initialize() first)
      * @post On success, data buffer contains page contents starting at specified column
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Invalid size or column address
+     * @retval NANDErrorCode::INVALID_PARAMETER data.size() exceeds (TotalBytesPerPage - address.column)
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
@@ -187,7 +191,8 @@ public:
      * @brief Program (write) data to NAND flash page.
      *
      * @param address NAND address to write to
-     * @param data Data to write (max page size)
+     * @param data Data to write. Can be any size from 0 to (TotalBytesPerPage - address.column).
+     *             Only the bytes in the span are sent to the device.
      *
      * @pre Driver must be initialized
      * @pre Target page must be in erased state (all 0xFF)
@@ -195,7 +200,8 @@ public:
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
-     * @retval NANDErrorCode::INVALID_PARAMETER Data size exceeds available space, or invalid block marker value at column 8192
+     * @retval NANDErrorCode::INVALID_PARAMETER data.size() exceeds (TotalBytesPerPage - address.column),
+     *                                          or invalid block marker value at column 8192
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
@@ -204,6 +210,14 @@ public:
      * @warning The block marker is located at column address 8192 (BlockMarkerOffset).
      *          If the caller's data includes this address, the byte at that position
      *          MUST be 0xFF.
+     *
+     * @warning Partial page programming: Only the bytes in the provided span are written
+     *          to the NAND's internal page buffer. Bytes outside the span range (before
+     *          address.column and after address.column + data.size()) are not modified
+     *          in the buffer and may contain undefined data from previous operations.
+     *          The MT29F has a nop (number of partial programs) of 4 before an erase is needed again.
+     *          It is the caller's responsibility to keep track of that if partial writes are needed.
+     *          Writing more that 4 times between erases is undefined behaviour.
      *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      *
@@ -526,7 +540,9 @@ private:
      *          in the first page of each block in byte 0 of the spare area.
      *          Retries failed reads up to BlockMarkerReadRetries times.
      *          Blocks that fail to read after all retries are marked as bad.
-     *          Yields to other tasks periodically during the scan (every BlockScanYieldInterval blocks).
+     *          Yields to other tasks periodically during the scan (every BlockScanYieldInterval blocks)
+     *          if a delegate has been provided during initialization.
+     *          This is done to prevent task starvation.
      *
      * @param lun LUN number to scan (default 0)
      *

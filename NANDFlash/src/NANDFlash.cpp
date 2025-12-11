@@ -27,7 +27,7 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     for (uint16_t block = 0U; block < BlocksPerLun; block++) {
         if ((block % BlockScanYieldInterval) == 0U) {
-            yieldMilliseconds(1U);
+            yieldMilliseconds.call_if(1U);
         }
 
         etl::expected<uint8_t, NANDErrorCode> readResult;
@@ -415,12 +415,13 @@ void MT29F::busyWaitCycles(uint32_t cycles) {
 
 etl::expected<void, NANDErrorCode> MT29F::initialize() {
     if (isInitialized) {
-        LOG_WARNING << "NAND: Already initialized, skipping";
-        return {};
+        return etl::unexpected(NANDErrorCode::ALREADY_INITIALIZED);
     }
 
     if (nandWriteProtectPin == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Write protection pin not provided. Hardware write protection disabled";
+    } else {
+        disableWrites();
     }
 
     if (nandReadyBusyPin == PIO_PIN_NONE) {
@@ -455,8 +456,6 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
     if (auto parameterResult = validateDeviceParameters(); not parameterResult.has_value()) {
         return parameterResult;
     }
-
-    disableWrites();
 
     if (auto scanResult = scanFactoryBadBlocks(); not scanResult.has_value()) {
         return scanResult;
