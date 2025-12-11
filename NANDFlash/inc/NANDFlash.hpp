@@ -75,7 +75,7 @@ public:
         uint32_t page;
         uint32_t column;
 
-        constexpr explicit NANDAddress(uint32_t lun = 0, uint32_t block = 0, uint32_t page = 0, uint32_t column = 0)
+        constexpr explicit NANDAddress(uint32_t lun = 0U, uint32_t block = 0U, uint32_t page = 0U, uint32_t column = 0U)
             : lun{lun}
             , block{block}
             , page{page}
@@ -231,7 +231,7 @@ public:
      *
      * @see MT29F datasheet section "ERASE BLOCK (60h-D0h)" for command sequence
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlock(uint16_t block, uint8_t lun = 0U);
 
 
     /* ==================== Bad Block Management ==================== */
@@ -249,7 +249,7 @@ public:
      *
      * @note Thread Safety: Read-only access to bad block bitset so it's safe for concurrent reads.
      */
-    [[nodiscard]] etl::expected<bool, NANDErrorCode> isBlockBad(uint16_t block, uint8_t lun = 0) const;
+    [[nodiscard]] etl::expected<bool, NANDErrorCode> isBlockBad(uint16_t block, uint8_t lun = 0U) const;
 
     /**
      * @brief Mark a block as bad in the runtime bitset.
@@ -269,7 +269,7 @@ public:
      * 
      * @note Thread Safety: Caller must hold external mutex. Modifies bad block bitset.
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> markBadBlock(uint16_t block, uint8_t lun = 0U);
 
 
     /* ==================== Plane Helpers ==================== */
@@ -322,7 +322,7 @@ public:
      *
      * @see MT29F datasheet section "ERASE BLOCK MULTI-PLANE (60h-D1h + 60h-D0h)"
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlockMultiPlane(uint16_t block0, uint16_t block1, uint8_t lun = 0);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> eraseBlockMultiPlane(uint16_t block0, uint16_t block1, uint8_t lun = 0U);
 
 
     /* ==================== Copyback Operations ==================== */
@@ -517,7 +517,7 @@ private:
      * @return Block marker byte (0xFF = good, 0x00 = bad) or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
      */
-    [[nodiscard]] etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun = 0);
+    [[nodiscard]] etl::expected<uint8_t, NANDErrorCode> readBlockMarker(uint16_t block, uint8_t lun = 0U);
 
     /**
      * @brief Scan all blocks in a LUN for factory bad block markers.
@@ -535,7 +535,7 @@ private:
      *
      * @see MT29F datasheet section "Error Management"
      */
-    [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0);
+    [[nodiscard]] etl::expected<void, NANDErrorCode> scanFactoryBadBlocks(uint8_t lun = 0U);
 
 
     /* ============= Write Protection ============= */
@@ -797,7 +797,7 @@ private:
      * @retval false otherwise
      */
     [[nodiscard]] static bool isWriteProtected(uint8_t status) {
-        return (status & StatusWriteProtect) == 0;
+        return (status & StatusWriteProtect) == 0U;
     }
 
     /**
@@ -811,7 +811,7 @@ private:
      * @note This is only valid for Program/Erase operations.
      */
     [[nodiscard]] static bool hasOperationFailed(uint8_t status) {
-        return (status & (StatusFail | StatusFailCommand)) != 0;
+        return (status & (StatusFail | StatusFailCommand)) != 0U;
     }
 
     /**

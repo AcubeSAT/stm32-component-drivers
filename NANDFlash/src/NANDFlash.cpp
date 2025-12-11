@@ -25,15 +25,15 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
 
     badBlockBitset[lun].reset();
 
-    for (uint16_t block = 0; block < BlocksPerLun; block++) {
-        if ((block % BlockScanYieldInterval) == 0) {
-            yieldMilliseconds(1);
+    for (uint16_t block = 0U; block < BlocksPerLun; block++) {
+        if ((block % BlockScanYieldInterval) == 0U) {
+            yieldMilliseconds(1U);
         }
 
         etl::expected<uint8_t, NANDErrorCode> readResult;
         bool readSucceeded = false;
 
-        for (uint8_t attempt = 0; attempt < BlockMarkerReadRetries; attempt++) {
+        for (uint8_t attempt = 0U; attempt < BlockMarkerReadRetries; attempt++) {
             readResult = readBlockMarker(block, lun);
 
             if (readResult.has_value()) {
@@ -87,16 +87,16 @@ void MT29F::disableWrites() {
 void MT29F::enableNandFlashMode(ChipSelect chipSelect) {
     switch (chipSelect) {
         case NCS0:
-            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(1);
+            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS0(1U);
             break;
         case NCS1:
-            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(1);
+            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS1(1U);
             break;
         case NCS2:
-            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS2(1);
+            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS2(1U);
             break;
         case NCS3:
-            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS3(1);
+            MATRIX_REGS->CCFG_SMCNFCS |= CCFG_SMCNFCS_SMC_NFCS3(1U);
             break;
         default:
             break;
@@ -167,10 +167,10 @@ void MT29F::readONFISignature(etl::span<uint8_t, 4> signature) {
 bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage) {
     constexpr uint16_t CrcPolynomial = 0x8005U;
     constexpr uint16_t CrcInitialValue = 0x4F4EU;
-    constexpr size_t CrcDataLength = 254;
-    constexpr size_t StoredCrcLowByteOffset = 254;
-    constexpr size_t StoredCrcHighByteOffset = 255;
-    constexpr uint8_t BitsPerByte = 8;
+    constexpr size_t CrcDataLength = 254U;
+    constexpr size_t StoredCrcLowByteOffset = 254U;
+    constexpr size_t StoredCrcHighByteOffset = 255U;
+    constexpr uint8_t BitsPerByte = 8U;
     constexpr uint16_t MsbMask = 0x8000U;
 
     uint16_t crc = CrcInitialValue;
@@ -178,11 +178,11 @@ bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage
     for (const auto byte : parameterPage.first<CrcDataLength>()) {
         crc ^= static_cast<uint16_t>(byte) << BitsPerByte;
 
-        for (uint8_t bit = 0; bit < BitsPerByte; bit++) {
-            if ((crc & MsbMask) != 0) {
-                crc = (crc << 1) ^ CrcPolynomial;
+        for (uint8_t bit = 0U; bit < BitsPerByte; bit++) {
+            if ((crc & MsbMask) != 0U) {
+                crc = (crc << 1U) ^ CrcPolynomial;
             } else {
-                crc <<= 1;
+                crc <<= 1U;
             }
         }
     }
@@ -194,11 +194,11 @@ bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
-    constexpr size_t OnfiDataBytesPerPageOffset = 80;
-    constexpr size_t OnfiSpareBytesPerPageOffset = 84;
-    constexpr size_t OnfiPagesPerBlockOffset = 92;
-    constexpr size_t OnfiBlocksPerLunOffset = 96;
-    constexpr uint8_t OnfiParameterPageCopies = 3;
+    constexpr size_t OnfiDataBytesPerPageOffset = 80U;
+    constexpr size_t OnfiSpareBytesPerPageOffset = 84U;
+    constexpr size_t OnfiPagesPerBlockOffset = 92U;
+    constexpr size_t OnfiBlocksPerLunOffset = 96U;
+    constexpr uint8_t OnfiParameterPageCopies = 3U;
 
     sendCommand(Commands::READ_PARAM_PAGE);
 
@@ -216,7 +216,7 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
     
     busyWaitNanoseconds(TwhrNs);
 
-    for (uint8_t copy = 0; copy < OnfiParameterPageCopies; copy++) {
+    for (uint8_t copy = 0U; copy < OnfiParameterPageCopies; copy++) {
         etl::array<uint8_t, 256> parametersPageData;
 
         for (auto& byte : parametersPageData) {
@@ -225,31 +225,31 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
 
         if (validateParameterPageCRC(parametersPageData)) {
             auto asUint16 = [](uint8_t byte0, uint8_t byte1) -> uint16_t {
-                return byte0 | (static_cast<uint16_t>(byte1) << 8);
+                return byte0 | (static_cast<uint16_t>(byte1) << 8U);
             };
 
             auto asUint32 = [](uint8_t byte0, uint8_t byte1, uint8_t byte2, uint8_t byte3) -> uint32_t {
-                return byte0 | (static_cast<uint32_t>(byte1) << 8) |
-                       (static_cast<uint32_t>(byte2) << 16) | (static_cast<uint32_t>(byte3) << 24);
+                return byte0 | (static_cast<uint32_t>(byte1) << 8U) |
+                       (static_cast<uint32_t>(byte2) << 16U) | (static_cast<uint32_t>(byte3) << 24U);
             };
 
             const uint32_t readDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 1],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 2],
-                                                           parametersPageData[OnfiDataBytesPerPageOffset + 3]);
+                                                           parametersPageData[OnfiDataBytesPerPageOffset + 1U],
+                                                           parametersPageData[OnfiDataBytesPerPageOffset + 2U],
+                                                           parametersPageData[OnfiDataBytesPerPageOffset + 3U]);
 
             const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
-                                                            parametersPageData[OnfiSpareBytesPerPageOffset + 1]);
+                                                            parametersPageData[OnfiSpareBytesPerPageOffset + 1U]);
 
             const uint32_t readPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 1],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 2],
-                                                        parametersPageData[OnfiPagesPerBlockOffset + 3]);
+                                                        parametersPageData[OnfiPagesPerBlockOffset + 1U],
+                                                        parametersPageData[OnfiPagesPerBlockOffset + 2U],
+                                                        parametersPageData[OnfiPagesPerBlockOffset + 3U]);
 
             const uint32_t readBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 1],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 2],
-                                                       parametersPageData[OnfiBlocksPerLunOffset + 3]);
+                                                       parametersPageData[OnfiBlocksPerLunOffset + 1U],
+                                                       parametersPageData[OnfiBlocksPerLunOffset + 2U],
+                                                       parametersPageData[OnfiBlocksPerLunOffset + 3U]);
 
             if (readDataBytesPerPage != DataBytesPerPage) {
                 LOG_ERROR << "NAND: Geometry mismatch - DataBytesPerPage: expected " << DataBytesPerPage << ", got " << readDataBytesPerPage;
@@ -288,11 +288,11 @@ void MT29F::buildAddressCycles(const NANDAddress& address, AddressCycles& cycles
     constexpr uint8_t SingleBitMask = 0x01U;
     constexpr uint8_t BlockHighBitsMask = 0x07U;
 
-    constexpr uint8_t BitsPerByte = 8;
-    constexpr uint8_t PageBitsWidth = 7;
-    constexpr uint8_t BlockShiftForRowAddress2 = 1;
-    constexpr uint8_t BlockShiftForRowAddress3 = 9;
-    constexpr uint8_t LunShiftInRowAddress3 = 3;
+    constexpr uint8_t BitsPerByte = 8U;
+    constexpr uint8_t PageBitsWidth = 7U;
+    constexpr uint8_t BlockShiftForRowAddress2 = 1U;
+    constexpr uint8_t BlockShiftForRowAddress3 = 9U;
+    constexpr uint8_t LunShiftInRowAddress3 = 3U;
 
     cycles[AddressCycle::COLUMN_ADDRESS_1] = address.column & ByteMask;
     cycles[AddressCycle::COLUMN_ADDRESS_2] = (address.column >> BitsPerByte) & ColumnHighByteMask;
@@ -346,10 +346,10 @@ etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
 
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
     const bool usePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
-    uint32_t elapsedUs = 0;
+    uint32_t elapsedUs = 0U;
 
     if (nandReadyBusyPin != PIO_PIN_NONE) {
-        while (PIO_PinRead(nandReadyBusyPin) == 0) {
+        while (PIO_PinRead(nandReadyBusyPin) == 0U) {
             if (elapsedUs > timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
@@ -396,7 +396,7 @@ void MT29F::busyWaitCycles(uint32_t cycles) {
 
     uint32_t iterations = cycles / CyclesPerLoop;
 
-    if (iterations == 0) {
+    if (iterations == 0U) {
         return;
     }
 
@@ -594,7 +594,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return writeEnabledResult;
     }
 
-    const NANDAddress address { lun, block, 0, 0 };
+    const NANDAddress address { lun, block, 0U, 0U };
 
     AddressCycles cycles;
 
@@ -660,8 +660,8 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
         return writeEnabledResult;
     }
 
-    const NANDAddress address0 { lun, block0, 0, 0 };
-    const NANDAddress address1 { lun, block1, 0, 0 };
+    const NANDAddress address0 { lun, block0, 0U, 0U };
+    const NANDAddress address1 { lun, block1, 0U, 0U };
 
     AddressCycles cycles0;
     AddressCycles cycles1;
@@ -801,13 +801,13 @@ etl::expected<void, NANDErrorCode> MT29F::copybackViaHost(
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    const NANDAddress readAddress { sourceAddress.lun, sourceAddress.block, sourceAddress.page, 0 };
+    const NANDAddress readAddress { sourceAddress.lun, sourceAddress.block, sourceAddress.page, 0U };
 
     if (auto readResult = readPage(readAddress, buffer.first(DataBytesPerPage)); not readResult.has_value()) {
         return readResult;
     }
 
-    const NANDAddress writeAddress { destinationAddress.lun, destinationAddress.block, destinationAddress.page, 0 };
+    const NANDAddress writeAddress { destinationAddress.lun, destinationAddress.block, destinationAddress.page, 0U };
 
     if (auto programResult = programPage(writeAddress, buffer.first(DataBytesPerPage)); not programResult.has_value()) {
         return programResult;
