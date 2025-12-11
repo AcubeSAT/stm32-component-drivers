@@ -542,34 +542,35 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         return readyResult;
     }
 
-    WriteEnableGuard guard(*this);
-
-    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
-        return writeEnabledResult;
-    }
-
     AddressCycles cycles;
-    
     buildAddressCycles(address, cycles);
 
-    sendCommand(Commands::PAGE_PROGRAM);
+    {
+        WriteEnableGuard guard(*this);
 
-    for (const auto& cycle : cycles) {
-        sendAddress(cycle);
-    }
+        if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+            return writeEnabledResult;
+        }
 
-    busyWaitNanoseconds(TadlNs);
+        sendCommand(Commands::PAGE_PROGRAM);
 
-    for (const auto& byte : data) {
-        sendData(byte);
-    }
+        for (const auto& cycle : cycles) {
+            sendAddress(cycle);
+        }
 
-    sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+        busyWaitNanoseconds(TadlNs);
 
-    busyWaitNanoseconds(TwbNs);
+        for (const auto& byte : data) {
+            sendData(byte);
+        }
 
-    if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
-        return waitResult;
+        sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+
+        busyWaitNanoseconds(TwbNs);
+
+        if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
+            return waitResult;
+        }
     }
 
     if (hasOperationFailed(readStatusRegister())) {
@@ -592,30 +593,30 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return readyResult;
     }
 
-    WriteEnableGuard guard(*this);
-
-    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
-        return writeEnabledResult;
-    }
-
     const NANDAddress address { lun, block, 0U, 0U };
-
     AddressCycles cycles;
-
     buildAddressCycles(address, cycles);
 
-    sendCommand(Commands::ERASE_BLOCK);
+    {
+        WriteEnableGuard guard(*this);
 
-    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
-    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
-    sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
+        if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+            return writeEnabledResult;
+        }
 
-    sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+        sendCommand(Commands::ERASE_BLOCK);
 
-    busyWaitNanoseconds(TwbNs);
+        sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+        sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+        sendAddress(cycles[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
-    if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
-        return waitResult;
+        sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+
+        busyWaitNanoseconds(TwbNs);
+
+        if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
+            return waitResult;
+        }
     }
 
     if (hasOperationFailed(readStatusRegister())) {
@@ -656,41 +657,41 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
         return readyResult;
     }
 
-    WriteEnableGuard guard(*this);
-
-    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
-        return writeEnabledResult;
-    }
-
     const NANDAddress address0 { lun, block0, 0U, 0U };
     const NANDAddress address1 { lun, block1, 0U, 0U };
-
     AddressCycles cycles0;
     AddressCycles cycles1;
-
     buildAddressCycles(address0, cycles0);
     buildAddressCycles(address1, cycles1);
 
-    sendCommand(Commands::ERASE_BLOCK);
+    {
+        WriteEnableGuard guard(*this);
 
-    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
-    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
-    sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
+        if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+            return writeEnabledResult;
+        }
 
-    sendCommand(Commands::ERASE_MULTIPLANE_CONFIRM);
+        sendCommand(Commands::ERASE_BLOCK);
 
-    sendCommand(Commands::ERASE_BLOCK);
+        sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+        sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+        sendAddress(cycles0[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
-    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
-    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
-    sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
+        sendCommand(Commands::ERASE_MULTIPLANE_CONFIRM);
 
-    sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+        sendCommand(Commands::ERASE_BLOCK);
 
-    busyWaitNanoseconds(TwbNs);
+        sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_1)]);
+        sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_2)]);
+        sendAddress(cycles1[static_cast<size_t>(AddressCycle::ROW_ADDRESS_3)]);
 
-    if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
-        return waitResult;
+        sendCommand(Commands::ERASE_BLOCK_CONFIRM);
+
+        busyWaitNanoseconds(TwbNs);
+
+        if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
+            return waitResult;
+        }
     }
 
     if (hasOperationFailed(readStatusRegister())) {
@@ -764,27 +765,29 @@ etl::expected<void, NANDErrorCode> MT29F::copybackProgram(const NANDAddress& des
         return readyResult;
     }
 
-    WriteEnableGuard guard(*this);
-
-    if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
-        return writeEnabledResult;
-    }
-
     AddressCycles cycles;
     buildAddressCycles(destinationAddress, cycles);
 
-    sendCommand(Commands::COPYBACK_PROGRAM);
+    {
+        WriteEnableGuard guard(*this);
 
-    for (const auto& cycle : cycles) {
-        sendAddress(cycle);
-    }
+        if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+            return writeEnabledResult;
+        }
 
-    sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+        sendCommand(Commands::COPYBACK_PROGRAM);
 
-    busyWaitNanoseconds(TwbNs);
+        for (const auto& cycle : cycles) {
+            sendAddress(cycle);
+        }
 
-    if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
-        return waitResult;
+        sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+
+        busyWaitNanoseconds(TwbNs);
+
+        if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
+            return waitResult;
+        }
     }
 
     if (hasOperationFailed(readStatusRegister())) {
