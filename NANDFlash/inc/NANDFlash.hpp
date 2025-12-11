@@ -914,17 +914,3 @@ private:
      */
     static void enableNandFlashMode(ChipSelect chipSelect);
 };
-
-
-/* ==================== Debug ==================== */
-
-/**
- * @brief Convert error code to human-readable string.
- *
- * @param error Error code to convert
- *
- * @return String description of error
- *
- * @note Used for logging.
- */
-const char* toString(NANDErrorCode error);

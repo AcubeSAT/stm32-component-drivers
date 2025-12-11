@@ -815,39 +815,3 @@ etl::expected<void, NANDErrorCode> MT29F::copybackViaHost(
 
     return {};
 }
-
-
-/* ==================== Debug ==================== */
-
-const char* toString(NANDErrorCode error) {
-    switch (error) {
-        case NANDErrorCode::TIMEOUT:
-            return "Timeout";
-        case NANDErrorCode::ADDRESS_OUT_OF_BOUNDS:
-            return "Address out of bounds";
-        case NANDErrorCode::DEVICE_BUSY:
-            return "Device busy";
-        case NANDErrorCode::PROGRAM_FAILED:
-            return "Program operation failed";
-        case NANDErrorCode::ERASE_FAILED:
-            return "Erase operation failed";
-        case NANDErrorCode::WRITE_PROTECTED:
-            return "Device write protected";
-        case NANDErrorCode::INVALID_PARAMETER:
-            return "Invalid parameter";
-        case NANDErrorCode::NOT_INITIALIZED:
-            return "Driver not initialized";
-        case NANDErrorCode::HARDWARE_FAILURE:
-            return "Hardware failure";
-        case NANDErrorCode::BAD_PARAMETER_PAGE:
-            return "Bad parameter page";
-        case NANDErrorCode::COPYBACK_FAILED:
-            return "Copyback operation failed";
-        case NANDErrorCode::MULTIPLANE_FAILED:
-            return "Multi-plane operation failed";
-        case NANDErrorCode::PLANE_MISMATCH:
-            return "Blocks not in different planes";
-        default:
-            return "Unknown error";
-    }
-}
