@@ -20,8 +20,6 @@ enum class NANDErrorCode : uint8_t {
     WRITE_PROTECTED,        /*!< Device is write-protected (WP# asserted or status WP bit clear) */
     INVALID_PARAMETER,      /*!< Invalid parameter (size exceeds page, invalid block marker value) */
     NOT_INITIALIZED,        /*!< Driver not initialized */
-    HARDWARE_FAILURE,       /*!< Hardware failure (ID mismatch, geometry mismatch, bad block table full) */
-    BAD_PARAMETER_PAGE,     /*!< All ONFI parameter page copies have invalid CRC */
     COPYBACK_FAILED,        /*!< Copyback operation failed (FAIL bit set in status) */
     MULTIPLANE_FAILED,      /*!< Multi-plane operation failed (FAIL bit set in status) */
     PLANE_MISMATCH,         /*!< Blocks not in different planes (multi-plane erase requires one even + one odd block) */
@@ -110,19 +108,22 @@ public:
     /* ========= Driver Initialization and Basic Info ========= */
 
     /**
-     * @brief Initialize the NAND flash driver and verify device.
+     * @brief Initialize the NAND flash driver and validate the device.
      *
      * @pre Driver must not already be initialized
      * @post If successful, driver is reset
-     * @post The device and ONFI parameters are validated
      * @post Bad block table is populated with factory-marked bad blocks
      * @post Write protection is enabled if a WP# pin has been provided (WP# asserted)
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ALREADY_INITIALIZED Driver already initialized
-     * @retval NANDErrorCode::HARDWARE_FAILURE Wrong device ID, ONFI failure, or geometry mismatch
      * @retval NANDErrorCode::TIMEOUT Device not responding
      *
+     * @note Parameter page and device ID validations are non-fatal. If all three ONFI 
+     *       parameter page copies or the ID fail validation (e.g. due to bit flips),
+     *       the driver continues with the hardcoded geometry values for the MT29F64G08AFAAAWP
+     *       and assumes the device is ONFI compliant.
+     * 
      * @note Thread Safety: Caller must hold external mutex. Device state is modified.
      *
      * @see MT29F datasheet section "Device Initialization"
@@ -755,11 +756,12 @@ private:
      * @details 1) ONFI requires redundant copies of the parameter page. 
      *             This device has 3 copies. We try each copy until we find a valid one.
      *          2) The values of the parameter page are stored in little-endian
+     *          3) If the validation fails the function doesn't fail but
+     *             instead it produces a LOG message. This happens in order
+     *             to not brick the device in case of a bit flip during the mission.
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
-     * @retval NANDErrorCode::HARDWARE_FAILURE Device geometry mismatch or ONFI signature invalid
-     * @retval NANDErrorCode::BAD_PARAMETER_PAGE All 3 parameter page copies have invalid CRC
      */
     [[nodiscard]] etl::expected<void, NANDErrorCode> validateDeviceParameters();
 

@@ -255,30 +255,20 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
                                                    parametersPageData[OnfiBlocksPerLunOffset + 2U],
                                                    parametersPageData[OnfiBlocksPerLunOffset + 3U]);
 
-        if (readDataBytesPerPage != DataBytesPerPage) {
-            LOG_ERROR << "NAND: Geometry mismatch - DataBytesPerPage: expected " << DataBytesPerPage << ", got " << readDataBytesPerPage;
-            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-        }
+        const bool isGeometryValid = (readDataBytesPerPage == DataBytesPerPage)
+                                     and (readSpareBytesPerPage == SpareBytesPerPage)
+                                     and (readPagesPerBlock == PagesPerBlock)
+                                     and (readBlocksPerLun == BlocksPerLun);
 
-        if (readSpareBytesPerPage != SpareBytesPerPage) {
-            LOG_ERROR << "NAND: Geometry mismatch - SpareBytesPerPage: expected " << SpareBytesPerPage << ", got " << readSpareBytesPerPage;
-            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-        }
-
-        if (readPagesPerBlock != PagesPerBlock) {
-            LOG_ERROR << "NAND: Geometry mismatch - PagesPerBlock: expected " << static_cast<uint32_t>(PagesPerBlock) << ", got " << readPagesPerBlock;
-            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
-        }
-
-        if (readBlocksPerLun != BlocksPerLun) {
-            LOG_ERROR << "NAND: Geometry mismatch - BlocksPerLun: expected " << BlocksPerLun << ", got " << readBlocksPerLun;
-            return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
+        if (not isGeometryValid) {
+            continue;
         }
 
         return {};
     }
 
-    return etl::unexpected(NANDErrorCode::BAD_PARAMETER_PAGE);
+    LOG_ERROR << "NAND: All parameter page copies were invalid (possible bit flip). Will use the hardcoded geometry values";
+    return {};
 }
 
 
@@ -444,7 +434,6 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     if (not etl::equal(ExpectedDeviceId.begin(), ExpectedDeviceId.end(), deviceId.begin())) {
         LOG_ERROR << "NAND: Device ID mismatch";
-        return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
     constexpr etl::array<uint8_t, 4> expectedOnfi { 'O', 'N', 'F', 'I' };
@@ -455,7 +444,6 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
 
     if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), expectedOnfi.begin())) {
         LOG_ERROR << "NAND: ONFI signature verification failed";
-        return etl::unexpected(NANDErrorCode::HARDWARE_FAILURE);
     }
 
     if (auto parameterResult = validateDeviceParameters(); not parameterResult.has_value()) {
