@@ -5,13 +5,13 @@
 /* ============= Bad Block Management ============= */
 
 etl::expected<uint8_t, NANDErrorCode> MT29F::readBlockMarker(uint16_t block, uint8_t lun) {
-    const NANDAddress address { lun, block, 0, BlockMarkerOffset };
+    const NANDAddress Address { lun, block, 0, BlockMarkerOffset };
 
-    if (auto commandResult = executeReadCommandSequence(address); not commandResult.has_value()) {
+    if (auto commandResult = executeReadCommandSequence(Address); not commandResult.has_value()) {
         return etl::unexpected(commandResult.error());
     }
 
-    const uint8_t marker = readData();
+    uint8_t marker = readData();
     
     busyWaitNanoseconds(TrhwNs);
 
@@ -187,10 +187,10 @@ bool MT29F::validateParameterPageCRC(etl::span<const uint8_t, 256> parameterPage
         }
     }
 
-    const uint16_t storedCrc = static_cast<uint16_t>(parameterPage[StoredCrcLowByteOffset]) |
+    const uint16_t StoredCrc = static_cast<uint16_t>(parameterPage[StoredCrcLowByteOffset]) |
                                (static_cast<uint16_t>(parameterPage[StoredCrcHighByteOffset]) << BitsPerByte);
 
-    return crc == storedCrc;
+    return crc == StoredCrc;
 }
 
 etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
@@ -237,30 +237,30 @@ etl::expected<void, NANDErrorCode> MT29F::validateDeviceParameters() {
                    (static_cast<uint32_t>(byte2) << 16U) | (static_cast<uint32_t>(byte3) << 24U);
         };
 
-        const uint32_t readDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
+        const uint32_t ReadDataBytesPerPage = asUint32(parametersPageData[OnfiDataBytesPerPageOffset],
                                                        parametersPageData[OnfiDataBytesPerPageOffset + 1U],
                                                        parametersPageData[OnfiDataBytesPerPageOffset + 2U],
                                                        parametersPageData[OnfiDataBytesPerPageOffset + 3U]);
 
-        const uint16_t readSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
+        const uint16_t ReadSpareBytesPerPage = asUint16(parametersPageData[OnfiSpareBytesPerPageOffset],
                                                         parametersPageData[OnfiSpareBytesPerPageOffset + 1U]);
 
-        const uint32_t readPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
+        const uint32_t ReadPagesPerBlock = asUint32(parametersPageData[OnfiPagesPerBlockOffset],
                                                     parametersPageData[OnfiPagesPerBlockOffset + 1U],
                                                     parametersPageData[OnfiPagesPerBlockOffset + 2U],
                                                     parametersPageData[OnfiPagesPerBlockOffset + 3U]);
 
-        const uint32_t readBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
+        const uint32_t ReadBlocksPerLun = asUint32(parametersPageData[OnfiBlocksPerLunOffset],
                                                    parametersPageData[OnfiBlocksPerLunOffset + 1U],
                                                    parametersPageData[OnfiBlocksPerLunOffset + 2U],
                                                    parametersPageData[OnfiBlocksPerLunOffset + 3U]);
 
-        const bool isGeometryValid = (readDataBytesPerPage == DataBytesPerPage)
-                                     and (readSpareBytesPerPage == SpareBytesPerPage)
-                                     and (readPagesPerBlock == PagesPerBlock)
-                                     and (readBlocksPerLun == BlocksPerLun);
+        const bool IsGeometryValid = (ReadDataBytesPerPage == DataBytesPerPage)
+                                     and (ReadSpareBytesPerPage == SpareBytesPerPage)
+                                     and (ReadPagesPerBlock == PagesPerBlock)
+                                     and (ReadBlocksPerLun == BlocksPerLun);
 
-        if (not isGeometryValid) {
+        if (not IsGeometryValid) {
             continue;
         }
 
@@ -339,7 +339,7 @@ etl::expected<void, NANDErrorCode> MT29F::verifyWriteEnabled() {
 /* ============= Wait Policy ============= */
 
 etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
-    const bool usePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
+    const bool UsePureBusyWait = (timeoutUs <= BusyWaitThresholdUs);
     uint32_t elapsedUs = 0U;
     constexpr bool PinLevelBusy = static_cast<bool>(ActiveLowPin::ASSERTED);
 
@@ -349,7 +349,7 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
                 return etl::unexpected(NANDErrorCode::TIMEOUT);
             }
 
-            if (usePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
+            if (UsePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
                 busyWaitMicroseconds(BusyWaitPollIntervalUs);
                 elapsedUs += BusyWaitPollIntervalUs;
             } else {
@@ -370,7 +370,7 @@ etl::expected<void, NANDErrorCode> MT29F::waitForReady(uint32_t timeoutUs) {
             return etl::unexpected(NANDErrorCode::TIMEOUT);
         }
 
-        if (usePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
+        if (UsePureBusyWait or (elapsedUs < BusyWaitThresholdUs)) {
             busyWaitMicroseconds(BusyWaitPollIntervalUs);
             elapsedUs += BusyWaitPollIntervalUs;
         } else {
@@ -436,13 +436,13 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         LOG_ERROR << "NAND: Device ID mismatch";
     }
 
-    constexpr etl::array<uint8_t, 4> expectedOnfi { 'O', 'N', 'F', 'I' };
+    constexpr etl::array<uint8_t, 4> ExpectedOnfi { 'O', 'N', 'F', 'I' };
     
     etl::array<uint8_t, 4> onfiSignature;
 
     readONFISignature(onfiSignature);
 
-    if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), expectedOnfi.begin())) {
+    if (not etl::equal(onfiSignature.begin(), onfiSignature.end(), ExpectedOnfi.begin())) {
         LOG_ERROR << "NAND: ONFI signature verification failed";
     }
 
@@ -514,10 +514,10 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
     }
 
     if ((address.column <= BlockMarkerOffset) and ((address.column + data.size()) > BlockMarkerOffset)) {
-        const size_t markerIndex = BlockMarkerOffset - address.column;
-        const uint8_t markerValue = data[markerIndex];
+        const size_t MarkerIndex = BlockMarkerOffset - address.column;
+        const uint8_t MarkerValue = data[MarkerIndex];
 
-        if (markerValue != GoodBlockMarker) {
+        if (MarkerValue != GoodBlockMarker) {
             return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
         }
     }
@@ -581,9 +581,9 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         return readyResult;
     }
 
-    const NANDAddress address { lun, block, 0U, 0U };
+    const NANDAddress Address { lun, block, 0U, 0U };
     AddressCycles cycles;
-    buildAddressCycles(address, cycles);
+    buildAddressCycles(Address, cycles);
 
     {
         WriteEnableGuard guard(*this);
@@ -645,12 +645,12 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
         return readyResult;
     }
 
-    const NANDAddress address0 { lun, block0, 0U, 0U };
-    const NANDAddress address1 { lun, block1, 0U, 0U };
+    const NANDAddress Address0 { lun, block0, 0U, 0U };
+    const NANDAddress Address1 { lun, block1, 0U, 0U };
     AddressCycles cycles0;
     AddressCycles cycles1;
-    buildAddressCycles(address0, cycles0);
-    buildAddressCycles(address1, cycles1);
+    buildAddressCycles(Address0, cycles0);
+    buildAddressCycles(Address1, cycles1);
 
     {
         WriteEnableGuard guard(*this);
@@ -692,9 +692,8 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
 
 /* ==================== Copyback Operations ==================== */
 
-etl::expected<void, NANDErrorCode> MT29F::copyback(
-    const NANDAddress& sourceAddress,
-    const NANDAddress& destinationAddress) {
+etl::expected<void, NANDErrorCode> MT29F::copyback(const NANDAddress& sourceAddress,
+                                                   const NANDAddress& destinationAddress) {
 
     if (getPlane(sourceAddress.block) != getPlane(destinationAddress.block)) {
         return etl::unexpected(NANDErrorCode::PLANE_MISMATCH);
@@ -785,24 +784,23 @@ etl::expected<void, NANDErrorCode> MT29F::copybackProgram(const NANDAddress& des
     return {};
 }
 
-etl::expected<void, NANDErrorCode> MT29F::copybackViaHost(
-    const NANDAddress& sourceAddress,
-    const NANDAddress& destinationAddress,
-    etl::span<uint8_t> buffer) {
+etl::expected<void, NANDErrorCode> MT29F::copybackViaHost(const NANDAddress& sourceAddress,
+                                                          const NANDAddress& destinationAddress,
+                                                          etl::span<uint8_t> buffer) {
 
     if (buffer.size() < DataBytesPerPage) {
         return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
     }
 
-    const NANDAddress readAddress { sourceAddress.lun, sourceAddress.block, sourceAddress.page, 0U };
+    const NANDAddress ReadAddress { sourceAddress.lun, sourceAddress.block, sourceAddress.page, 0U };
 
-    if (auto readResult = readPage(readAddress, buffer.first(DataBytesPerPage)); not readResult.has_value()) {
+    if (auto readResult = readPage(ReadAddress, buffer.first(DataBytesPerPage)); not readResult.has_value()) {
         return readResult;
     }
 
-    const NANDAddress writeAddress { destinationAddress.lun, destinationAddress.block, destinationAddress.page, 0U };
+    const NANDAddress WriteAddress { destinationAddress.lun, destinationAddress.block, destinationAddress.page, 0U };
 
-    if (auto programResult = programPage(writeAddress, buffer.first(DataBytesPerPage)); not programResult.has_value()) {
+    if (auto programResult = programPage(WriteAddress, buffer.first(DataBytesPerPage)); not programResult.has_value()) {
         return programResult;
     }
 
