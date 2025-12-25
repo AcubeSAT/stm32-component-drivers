@@ -4,6 +4,7 @@
 #include <etl/expected.h>
 #include "etl/span.h"
 #include "Logger.hpp"
+#include "FreeRTOS.h"
 #include "task.h"
 #include "Peripheral_Definitions.hpp"
 
