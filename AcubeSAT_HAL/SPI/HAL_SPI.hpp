@@ -88,14 +88,14 @@ namespace HAL_SPI {
     bool internalWriteRegister(etl::span<uint8_t> data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_Write(data.data(), N);
+            return SPI0_Write(data.data(), data.size());
 #else
             return false;
 #endif
     }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_Write(data.data(), N);
+            return SPI1_Write(data.data(), data.size());
 #else
             return false;
 #endif
@@ -113,14 +113,14 @@ namespace HAL_SPI {
     bool internalReadRegister(etl::span<uint8_t> data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_Read(data.data(), N);
+            return SPI0_Read(data.data(), data.size());
 #else
             return false;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_Read(data.data(), N);
+            return SPI1_Read(data.data(), data.size());
 #else
             return false;
 #endif
@@ -138,14 +138,14 @@ namespace HAL_SPI {
     bool internalWriteReadRegister(etl::span<uint8_t> transmitData, etl::span<uint8_t> receiveData) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_WriteRead(TransmitData.data(), N, ReceiveData.data(), N);
+            return SPI0_WriteRead(transmitData.data(), transmitData.size(), receiveData.data(), receiveData.size());
 #else
             return false;
 #endif
     }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_WriteRead(TransmitData.data(), N, ReceiveData.data(), N);
+            return SPI1_WriteRead(transmitData.data(), transmitData.size(), receiveData.data(), receiveData.size());
 #else
             return false;
 #endif
