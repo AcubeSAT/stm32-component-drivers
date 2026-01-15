@@ -1,14 +1,15 @@
-
-
-#ifndef OBC_SOFTWARE_LM75_H
-#define OBC_SOFTWARE_LM75_H
+#pragma once
 #include <cstdint>
-
-#endif //OBC_SOFTWARE_LM75_H
+#include <etl/span.h>
 
 class LM75Sensor{
-    uint8_t data;
-    uint16_t temp;
+    etl::array<uint8_t, 4> buf;
+    constexpr static uint8_t LM45_ADDR = 0x48 << 1;
+    constexpr static uint8_t  LM45_REG = 0x00;
+    uint16_t tempRead;
+    float temp;
+    Error lastError;
+
     public:
     LM75Sensor();
     enum class Error {
