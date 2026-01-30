@@ -8,6 +8,7 @@ void LM75Sensor::updateTemp() {
     etl::span<uint8_t, 4> buf;
     write(buf);
     read(buf);
+    temp = parseTemperature(buf[0],buf[1]);
 }
 
 
@@ -37,4 +38,11 @@ LM75Sensor::Error switchErrorWrite(HAL_I2C::I2CError error) {
 
     default:return LM75Sensor::Error::UNKNOWN_ERROR;
     }
+}
+
+float LM75Sensor::parseTemperature(uint8_t msb, uint8_t lsb)
+{
+    int16_t raw = (msb << 8) | lsb;
+    raw >>= 7;              // remove unused bits
+    return raw * 0.5f;      // multiply by the value of LSB
 }
