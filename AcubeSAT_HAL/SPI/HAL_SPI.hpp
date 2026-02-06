@@ -1,5 +1,5 @@
 #pragma once
-
+#include <Peripheral_Definitions.hpp>
 #include <cstdint>
 #include <plib_pio.h>
 #include <plib_systick.h>
@@ -14,13 +14,12 @@ namespace HAL_SPI {
     /**
      * Enum containing the errors that can appear during SPI transfers.
      */
-    enum class SPIError : uint8_t {
+    enum class Error : uint8_t {
         NONE             = 0,
         INVALID_ARGUMENT = 1,
         TIMEOUT          = 2,
         WRITE_READ_ERROR = 3,
-        BUSY             = 4,
-        UNDEFINED        = 255
+        BUSY             = 4
     };
 
     /**
@@ -52,14 +51,13 @@ namespace HAL_SPI {
             return;
 #endif
         }
-        return;
     }
 
     /**
      * Helper function to map PeripheralNumber enum to the corresponding SPI function.
      *
      * @tparam peripheralNumber The SPI peripheral to check
-     * @return true if the operation was succesful; false otherwise.
+     * @return false only if the peripheral is ready
      */
     template <PeripheralNumber peripheralNumber>
     static bool isBusy() {
@@ -67,38 +65,37 @@ namespace HAL_SPI {
 #ifdef SPI0_ENABLED
             return SPI0_IsTransmitterBusy();
 #else
-            return false;
+            return true;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
             return SPI1_IsTransmitterBusy();
 #else
-            return false;
+            return true;
 #endif
         }
-        return false;
+        return true;
     }
 
     /**
      * Helper function to map PeripheralNumber enum to the corresponding SPI function.
      *
      * @tparam peripheralNumber The SPI peripheral to check.
-     * @tparam N Size of data array in bytes.
-     * @return true if the operation was succesful; false otherwise.
+     * @return true if the operation was successful; false otherwise.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    bool writeRegister(etl::array<uint8_t, N>& data) {
+    template<PeripheralNumber peripheralNumber>
+    bool internalWriteRegister(etl::span<uint8_t> data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_Write(data.data(), N);
+            return SPI0_Write(data.data(), data.size());
 #else
             return false;
 #endif
     }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_Write(data.data(), N);
+            return SPI1_Write(data.data(), data.size());
 #else
             return false;
 #endif
@@ -110,21 +107,20 @@ namespace HAL_SPI {
      * Helper function to map PeripheralNumber enum to the corresponding SPI function.
      *
      * @tparam peripheralNumber The SPI peripheral to check.
-     * @tparam N Size of data array in bytes.
      * @return true if the operation was succesful; false otherwise.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    bool readRegister(etl::array<uint8_t, N>& data) {
+    template<PeripheralNumber peripheralNumber>
+    bool internalReadRegister(etl::span<uint8_t> data) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_Read(data.data(), N);
+            return SPI0_Read(data.data(), data.size());
 #else
             return false;
 #endif
         }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_Read(data.data(), N);
+            return SPI1_Read(data.data(), data.size());
 #else
             return false;
 #endif
@@ -136,21 +132,20 @@ namespace HAL_SPI {
      * Helper function to map PeripheralNumber enum to the corresponding SPI function.
      *
      * @tparam peripheralNumber The SPI peripheral to check.
-     * @tparam N Size of transmit/receive data arrays in bytes.
-     * @return true if the operation was succesful; false otherwise.
+     * @return true if the operation was successful; false otherwise.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    bool writeReadRegister(etl::array<uint8_t, N>& TransmitData, etl::array<uint8_t, N>& ReceiveData) {
+    template<PeripheralNumber peripheralNumber>
+    bool internalWriteReadRegister(etl::span<uint8_t> transmitData, etl::span<uint8_t> receiveData) {
         if constexpr (peripheralNumber == PeripheralNumber::SPI0) {
 #ifdef SPI0_ENABLED
-            return SPI0_WriteRead(TransmitData.data(), N, ReceiveData.data(), N);
+            return SPI0_WriteRead(transmitData.data(), transmitData.size(), receiveData.data(), receiveData.size());
 #else
             return false;
 #endif
     }
         if constexpr (peripheralNumber == PeripheralNumber::SPI1) {
 #ifdef SPI1_ENABLED
-            return SPI1_WriteRead(TransmitData.data(), N, ReceiveData.data(), N);
+            return SPI1_WriteRead(transmitData.data(), transmitData.size(), receiveData.data(), receiveData.size());
 #else
             return false;
 #endif
@@ -166,42 +161,39 @@ namespace HAL_SPI {
      * @return NONE is the peripheral responded in time; TIMEOUT otherwise.
      */
     template<PeripheralNumber peripheralNumber>
-    SPIError waitForResponse(const uint32_t timeoutMs) {
+    Error waitForResponse(const uint32_t timeoutMs) {
         auto start = xTaskGetTickCount();
         while (isBusy<peripheralNumber>()) {
             if (xTaskGetTickCount() - start > timeoutMs) {
                 initialize<peripheralNumber>();
-                return SPIError::TIMEOUT;
+                return Error::TIMEOUT;
             }
             taskYIELD();
         }
-        return SPIError::NONE;
+        return Error::NONE;
     }
 
     /**
      * Function to only write data.
      *
      * @tparam peripheralNumber The chosen SPI peripheral.
-     * @tparam N Size of data array in bytes.
      * @param cs The pin used for chip select.
      * @param data An array containing the bytes to be written.
-     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     * @return A member of the SPIError enum; NONE it the transfer was successful.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    SPIError SPIwriteRegister(const PIO_PIN cs, etl::array<uint8_t, N>& data) {
-        static_assert(N > 0, "Array size must be greater than zero");
-
-        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
-            return SPIError::TIMEOUT;
+    template<PeripheralNumber peripheralNumber>
+    Error writeRegister(const PIO_PIN cs, etl::span<uint8_t> data) {
+        if (waitForResponse<peripheralNumber>(100) != Error::NONE) {
+            return Error::BUSY;
         }
 
         PIO_PinWrite(cs, false);
 
-        auto error = writeRegister<peripheralNumber, N>(data);
+        auto error = internalWriteRegister<peripheralNumber>(data);
 
         if (not error) {
             PIO_PinWrite(cs, true);
-            return SPIError::WRITE_READ_ERROR;
+            return Error::WRITE_READ_ERROR;
         }
 
         auto responseError = waitForResponse<peripheralNumber>(100);
@@ -215,26 +207,24 @@ namespace HAL_SPI {
      * Function to only read data.
      *
      * @tparam peripheralNumber The chosen SPI peripheral.
-     * @tparam N Size of data array in bytes.
      * @param cs The pin used for chip select.
      * @param data An array to which the read data is copied.
-     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     * @return A member of the SPIError enum; NONE it the transfer was successful.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    SPIError SPIReadRegister(const PIO_PIN cs, etl::array<uint8_t, N>& data) {
-        static_assert(N > 0, "Array size must be greater than zero");
+    template<PeripheralNumber peripheralNumber>
+    Error readRegister(const PIO_PIN cs, etl::span<uint8_t> data) {
 
-        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
-            return SPIError::TIMEOUT;
+        if (waitForResponse<peripheralNumber>(100) != Error::NONE) {
+            return Error::BUSY;
         }
 
         PIO_PinWrite(cs, false);
 
-        auto error = readRegister<peripheralNumber, N>(data);
+        auto error = internalReadRegister<peripheralNumber>(data);
 
         if (not error) {
             PIO_PinWrite(cs, true);
-            return SPIError::WRITE_READ_ERROR;
+            return Error::WRITE_READ_ERROR;
         }
 
         auto responseError = waitForResponse<peripheralNumber>(100);
@@ -248,27 +238,24 @@ namespace HAL_SPI {
      * Function to both write and read data on the same SPI transfer.
      *
      * @tparam peripheralNumber The chosen SPI peripheral.
-     * @tparam N Size of transmit/receive data arrays in bytes.
      * @param cs The pin used for chip select.
-     * @param TransmitData An array containing the bytes to be written.
-     * @param ReceiveData An array to which the read data is copied.
-     * @return A member of the SPIError enum; NONE it the transfer was succesful.
+     * @param transmitData An array containing the bytes to be written.
+     * @param receiveData An array to which the read data is copied.
+     * @return A member of the SPIError enum; NONE it the transfer was successful.
      */
-    template<PeripheralNumber peripheralNumber, size_t N>
-    SPIError SPIWriteReadRegister(const PIO_PIN cs, etl::array<uint8_t, N>& TransmitData, etl::array<uint8_t, N>& ReceiveData) {
-        static_assert(N > 0, "Array size must be greater than zero");
-
-        if (waitForResponse<peripheralNumber>(100) != SPIError::NONE) {
-            return SPIError::BUSY;
+    template<PeripheralNumber peripheralNumber>
+    Error writeReadRegister(const PIO_PIN cs, etl::span<uint8_t> transmitData, etl::span<uint8_t> receiveData) {
+        if (waitForResponse<peripheralNumber>(100) != Error::NONE) {
+            return Error::BUSY;
         }
 
         PIO_PinWrite(cs, false);
 
-        auto error = writeReadRegister<peripheralNumber, N>(TransmitData, ReceiveData);
+        auto error = internalWriteReadRegister<peripheralNumber>(transmitData, receiveData);
 
         if (not error) {
             PIO_PinWrite(cs, true);
-            return SPIError::WRITE_READ_ERROR;
+            return Error::WRITE_READ_ERROR;
         }
 
         auto responseError = waitForResponse<peripheralNumber>(100);
