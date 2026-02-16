@@ -7,6 +7,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "Peripheral_Definitions.hpp"
+#include "plib_twihs_master_common.h"
 
 #ifdef TWIHS0_ENABLED
 #include "plib_twihs0_master.h"
@@ -261,6 +262,10 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::TIMEOUT;
         }
+        if (Internal::errorGet<peripheralNumber>() != TWIHS_ERROR_NONE) {
+            return I2CError::OPERATION_ERROR;
+        }
+
         return I2CError::NONE;
     }
 
@@ -293,6 +298,10 @@ namespace HAL_I2C {
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::TIMEOUT;
         }
+        if (Internal::errorGet<peripheralNumber>() != TWIHS_ERROR_NONE) {
+            return I2CError::OPERATION_ERROR;
+        }
+
         return I2CError::NONE;
     }
 
@@ -326,6 +335,9 @@ namespace HAL_I2C {
 
         if (not Internal::waitForResponse<peripheralNumber>()) {
             return I2CError::TIMEOUT;
+        }
+        if (Internal::errorGet<peripheralNumber>() != TWIHS_ERROR_NONE) {
+            return I2CError::OPERATION_ERROR;
         }
 
         return I2CError::NONE;
