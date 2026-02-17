@@ -4,10 +4,12 @@ LM75Sensor::LM75Sensor() {
 };
 
 void LM75Sensor::updateTemp() {
-    etl::array<uint8_t, 4> buf{}:
+    etl::array<uint8_t, 4> buf{};
     buf[0] = Lm75Reg;
-    write(buf);
-    read(buf);
+    uint16_t combined =
+        (static_cast<uint16_t>(buf[0]) << 8) |buf[1];
+    write(buf[0]);
+    read(combined);
     temp = parseTemperature(buf[0],buf[1]);
 }
 
@@ -39,10 +41,10 @@ LM75Sensor::Error switchErrorWrite(HAL_I2C::I2CError error) {
     default:return LM75Sensor::Error::UNKNOWN_ERROR;
     }
 }
-
+/**Takes the 2 byte binary value and converts it to decimal*/
 float LM75Sensor::parseTemperature(uint8_t msb, uint8_t lsb)
 {
-    unt32_t raw = (static_cast<uint32_t>(msb) << 8) | lsb;
+    uint32_t raw = (static_cast<uint32_t>(msb) << 8) | lsb;
     raw >>= 7;
     return raw * 0.5f;
 }
