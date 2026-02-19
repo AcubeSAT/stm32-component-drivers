@@ -7,30 +7,45 @@ class LM75Sensor{
 public:
 
     enum class Error {
+        NONE,
         /**
-         * The sensor could not read any data at this time
+         * Internal error during I2C write or read
          */
-        NO_DATA_AVAILABLE,
+        OPERATION_ERROR,
         /**
-         * Sensor catastrophic failure, reset required
+         * Provided parameters were invalid
          */
-        HARDWARE_FAULT,
+        INVALID_PARAMS,
+        /**
+         * The operation took to long to complete
+         */
+        TIMEOUT,
+        /**
+         * A previous operation is still ongoing
+         */
+        BUSY,
+        /**
+         * Temperature value is out of boundary
+         */
+        INVALID_READ,
         UNKNOWN_ERROR
     };
 
     LM75Sensor();
+    etl::expected <float,Error> getTemp();
 
-    Error write(etl::span<uint8_t> i2cData);
-    Error read(etl::span<uint8_t> buf);
-    void updateTemp();
-    void logTemp();
-    float parseTemperature(uint8_t MSB, uint8_t LSB);
+    /**Takes the 2 byte binary value and converts it to decimal according to the datasheet
+     * @note Bits 7-15 contain the values to be converted, 0-6 are irrelevant.
+     */
+    float parseTemperature(uint8_t msb, uint8_t lsb);
 private:
     constexpr static uint8_t Lm75Addr = 0x48;
     constexpr static uint8_t  Lm75Reg = 0x00;
     uint16_t tempRead;
     float temp;
     Error lastError;
+    Error write(etl::span<uint8_t> buf);
+    Error read(etl::span<uint8_t> buf);
     Error switchErrorWrite(HAL_I2C::I2CError error);
     Error switchErrorRead(HAL_I2C::I2CError error);
 
