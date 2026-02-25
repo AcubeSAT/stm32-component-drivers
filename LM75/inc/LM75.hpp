@@ -34,10 +34,6 @@ public:
     LM75Sensor();
     etl::expected<float, Error> getTemperature();
 
-    /** Takes the 2 byte binary value and converts it to decimal according to the datasheet
-     * @note Bits 7-15 contain the values to be converted, 0-6 are irrelevant.
-     */
-
 private:
     /** Maximum temperature that can be measured by LM75 **/
     constexpr static uint8_t TempMax = 125;
@@ -47,9 +43,11 @@ private:
     constexpr static uint8_t Lm75Addr = 0x48;
     /** Address of register holding the temperature read **/
     constexpr static uint8_t Lm75Reg = 0x00;
-    constexpr static auto peripheralNumber = HAL_I2C::PeripheralNumber::TWIHS0;
-    uint16_t tempRead;
-    float temp;
+    constexpr static auto PeripheralNumber = HAL_I2C::PeripheralNumber::TWIHS0;
+
+    /** Takes the 2 byte binary value and converts it to decimal according to the datasheet
+     * @note Bits 7-15 contain the values to be converted, 0-6 are irrelevant.
+     */
     float parseTemperature(uint8_t msb, uint8_t lsb);
     Error write(etl::span<uint8_t> buf);
     Error read(etl::span<uint8_t> buf);
