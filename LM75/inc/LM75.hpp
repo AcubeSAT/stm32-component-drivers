@@ -3,7 +3,7 @@
 #include <HAL_I2C.hpp>
 #include <etl/span.h>
 
-class LM75Sensor{
+class LM75Sensor {
 public:
 
     enum class Error {
@@ -32,7 +32,7 @@ public:
     };
 
     LM75Sensor();
-    etl::expected <float,Error> getTemp();
+    etl::expected<float, Error> getTemp();
 
     /**Takes the 2 byte binary value and converts it to decimal according to the datasheet
      * @note Bits 7-15 contain the values to be converted, 0-6 are irrelevant.
@@ -40,10 +40,9 @@ public:
     float parseTemperature(uint8_t msb, uint8_t lsb);
 private:
     constexpr static uint8_t Lm75Addr = 0x48;
-    constexpr static uint8_t  Lm75Reg = 0x00;
+    constexpr static uint8_t Lm75Reg = 0x00;
     uint16_t tempRead;
     float temp;
-    Error lastError;
     Error write(etl::span<uint8_t> buf);
     Error read(etl::span<uint8_t> buf);
     Error switchErrorWrite(HAL_I2C::I2CError error);

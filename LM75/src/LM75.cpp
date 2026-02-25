@@ -3,7 +3,7 @@
 LM75Sensor::LM75Sensor() {
 };
 
-etl::expected <float,LM75Sensor::Error> LM75Sensor::getTemp() {
+etl::expected<float,LM75Sensor::Error> LM75Sensor::getTemp() {
     etl::array<uint8_t, 1> buf{};
     buf[0] = Lm75Reg;
     etl::array<uint8_t, 2> i2cData{};
@@ -13,7 +13,7 @@ etl::expected <float,LM75Sensor::Error> LM75Sensor::getTemp() {
     if (auto error = read(i2cData); error != Error::NONE) {
         return etl::unexpected(error);
     }
-    temp = parseTemperature(i2cData[0],i2cData[1]);
+    temp = parseTemperature(i2cData[0], i2cData[1]);
     if (temp < -55 || temp > 125) {
         return etl::unexpected(Error::INVALID_READ);
     }
@@ -44,7 +44,8 @@ LM75Sensor::Error switchErrorRead(HAL_I2C::I2CError error) {
         return LM75Sensor::Error::INVALID_PARAMS;
     case HAL_I2C::I2CError::OPERATION_ERROR:
         return LM75Sensor::Error::OPERATION_ERROR;
-    default:return LM75Sensor::Error::UNKNOWN_ERROR;
+    default:
+        return LM75Sensor::Error::UNKNOWN_ERROR;
     }
 }
 
@@ -64,11 +65,10 @@ LM75Sensor::Error switchErrorWrite(HAL_I2C::I2CError error) {
     }
 }
 
-float LM75Sensor::parseTemperature(uint8_t msb, uint8_t lsb)
-{
+float LM75Sensor::parseTemperature(uint8_t msb, uint8_t lsb) {
     uint32_t raw = (static_cast<uint32_t>(msb) << 8) | lsb;
-    bool sign = raw&(1<<15);
-    raw &= ~(1<<15);
+    bool sign = raw & (1 << 15);
+    raw &= ~(1 << 15);
     raw >>= 7;
     return ((static_cast<int8_t>(!sign) * 2) - 1) * raw * 0.5f;
 }
