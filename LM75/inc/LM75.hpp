@@ -38,7 +38,7 @@ private:
     /** Maximum temperature that can be measured by LM75 **/
     constexpr static uint8_t TempMax = 125;
     /** Minimum temperature that can be measured by LM75 **/
-    constexpr static uint8_t TempMin = -55;
+    constexpr static int8_t TempMin = -55;
     /** Address of LM75 device **/
     constexpr static uint8_t Lm75Addr = 0x48;
     /** Address of register holding the temperature read **/
