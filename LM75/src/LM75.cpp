@@ -13,8 +13,8 @@ etl::expected<float,LM75Sensor::Error> LM75Sensor::getTemperature() {
     if (auto error = read(i2cData); error != Error::NONE) {
         return etl::unexpected(error);
     }
-    temp = parseTemperature(i2cData[0], i2cData[1]);
-    if (temp < -55 || temp > 125) {
+    float temp = parseTemperature(i2cData[0], i2cData[1]);
+    if (temp < TempMin || temp > TempMax) {
         return etl::unexpected(Error::INVALID_READ);
     }
     return temp;

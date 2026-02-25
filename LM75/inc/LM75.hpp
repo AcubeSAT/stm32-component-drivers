@@ -43,6 +43,7 @@ private:
     constexpr static uint8_t Lm75Addr = 0x48;
     /** Address of register holding the temperature read **/
     constexpr static uint8_t Lm75Reg = 0x00;
+    /** The peripheral number used for calling the TWHIS read and write functions **/
     constexpr static auto PeripheralNumber = HAL_I2C::PeripheralNumber::TWIHS0;
 
     /** Takes the 2 byte binary value and converts it to decimal according to the datasheet
