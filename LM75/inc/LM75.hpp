@@ -54,7 +54,7 @@ private:
     float parseTemperature(uint8_t msb, uint8_t lsb);
 
     /** Implements the write I2C functionality **/
-    Error write(etl::span<uint8_t> buf);
+    Error write(etl::span<uint8_t> buffer);
 
     /** Implements the read I2C functionality **/
     Error read(etl::span<uint8_t> buf);
