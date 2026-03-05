@@ -32,6 +32,8 @@ public:
     };
 
     LM75Sensor();
+
+    /** Uses the read, write and parse function to implement the I2C logic **/
     etl::expected<float, Error> getTemperature();
 
 private:
@@ -50,8 +52,14 @@ private:
      * @note Bits 7-15 contain the values to be converted, 0-6 are irrelevant.
      */
     float parseTemperature(uint8_t msb, uint8_t lsb);
+
+    /** Implements the write I2C functionality **/
     Error write(etl::span<uint8_t> buf);
+
+    /** Implements the read I2C functionality **/
     Error read(etl::span<uint8_t> buf);
+
+    /** Wrapper function for converting the I2C error to LM75 enum class error **/
     Error convertI2cError(HAL_I2C::I2CError error);
 
 };
