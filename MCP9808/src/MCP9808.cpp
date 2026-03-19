@@ -1,20 +1,8 @@
 #include "MCP9808.hpp"
+#include "HAL_I2C.hpp"
 
 MCP9808::Error MCP9808::writeRegister(etl::span<uint8_t> data) {
-
-    if (MCP9808_TWIHS_Write(I2CBusAddress, data.data(), data.size())) {
-        if (auto responseError = waitForResponse(); responseError != Error::ERROR_NONE) {
-            return responseError;
-        }
-
-        error = MCP9808_TWIHS_ErrorGet();
-        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE))
-            return static_cast<Error>(error);
-
-        return Error::ERROR_NONE;
-    }
-
-    return Error::WRITE_REQUEST_FAILED;
+    return convertI2CError(HAL_I2C::readRegister<PeripheralNumber>(I2C_BUS_ADDRESS, data));
 }
 
 etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) {
@@ -22,10 +10,15 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
 
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
             static_cast<std::underlying_type_t<Register>>(address)};
-    const auto WriteError = writeRegister(addr);
-    if (WriteError != Error::ERROR_NONE) {
-        return etl::unexpected(WriteError);
+
+    if (auto error = writeRegister(addr); error != Error::NONE) {
+        return etl::unexpected(error);
     }
+
+    if (auto error = read(i2cData); error != Error::NONE) {
+        return etl::unexpected(error);
+    }
+
     if (MCP9808_TWIHS_Read(I2CBusAddress, buffer.data(), buffer.size())) {
         if (auto responseError = waitForResponse(); responseError != Error::ERROR_NONE) {
             return etl::unexpected{responseError};
@@ -252,3 +245,19 @@ uint16_t MCP9808::floatToCustomFormat(float value) {
            static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);
 }
 
+M75Sensor::Error convertI2cError(HAL_I2C::I2CError error) {
+    switch (error) {
+    case HAL_I2C::I2CError::NONE:
+        return LM75Sensor::Error::NONE;
+    case HAL_I2C::I2CError::BUSY:
+        return LM75Sensor::Error::BUSY;
+    case HAL_I2C::I2CError::TIMEOUT:
+        return LM75Sensor::Error::TIMEOUT;
+    case HAL_I2C::I2CError::INVALID_PARAMS:
+        return LM75Sensor::Error::INVALID_PARAMS;
+    case HAL_I2C::I2CError::OPERATION_ERROR:
+        return LM75Sensor::Error::OPERATION_ERROR;
+    default:
+        return LM75Sensor::Error::UNKNOWN_ERROR;
+    }
+}

@@ -7,6 +7,7 @@
 #include "Logger.hpp"
 #include "task.h"
 #include "Peripheral_Definitions.hpp"
+#inlcude "HAL_I2C.hpp"
 
 /**
  * The MCP9808_TWI_PORT definition is used to select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
@@ -458,6 +459,12 @@ private:
     static constexpr uint8_t FloatConvShift3 = 2;
 
     static constexpr uint8_t ByteShift = 8;
+
+    /**
+     * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
+     **/
+    constexpr static auto PeripheralNumber = HAL_I2C::PeripheralNumber::TWIHS2;
+
     /**
      * High Speed Two-Wired Interface transaction error
      */
