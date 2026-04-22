@@ -280,6 +280,9 @@ public:
      */
     inline uint8_t getI2CUserAddress() const {
         return I2cUserAddress;
+
+    Error convertI2cError(HAL_I2C::I2CError error);
+
     }
 
 private:
@@ -595,3 +598,4 @@ private:
     etl::expected<float, MCP9808::Error> getTemperature(Register reg);
 
 };
+

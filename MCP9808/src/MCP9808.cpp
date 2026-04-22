@@ -2,11 +2,15 @@
 #include "HAL_I2C.hpp"
 
 MCP9808::Error MCP9808::writeRegister(etl::span<uint8_t> data) {
-    return convertI2CError(HAL_I2C::readRegister<PeripheralNumber>(I2C_BUS_ADDRESS, data));
+    return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2C_BUS_ADDRESS, data));
 }
 
+MCP9808::Error MCP9808::read(etl::span<uint8_t> i2cData) {
+    return convertI2cError(HAL_I2C::readRegister<PeripheralNumber>(Lm75Addr, i2cData));
+};
+
 etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) {
-    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> buffer{0};
+    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> i2cData{0};
 
     etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
             static_cast<std::underlying_type_t<Register>>(address)};
@@ -19,19 +23,8 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
         return etl::unexpected(error);
     }
 
-    if (MCP9808_TWIHS_Read(I2CBusAddress, buffer.data(), buffer.size())) {
-        if (auto responseError = waitForResponse(); responseError != Error::ERROR_NONE) {
-            return etl::unexpected{responseError};
-        }
-        error = MCP9808_TWIHS_ErrorGet();
-        if (error != static_cast<std::underlying_type_t<Error>>(Error::ERROR_NONE)) {
-            return etl::unexpected(static_cast<Error>(error));
-        }
-        return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(buffer[0]) & 0x00FF : (
-                (static_cast<uint16_t>(buffer[0]) << 8) | static_cast<uint16_t>(buffer[1]));;
-    }
-
-    return etl::unexpected(Error::READ_REQUEST_FAILED);
+    return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(i2cData[0]) & 0x00FF : (
+                (static_cast<uint16_t>(i2cData[0]) << 8) | static_cast<uint16_t>(i2cData[1]));;
 }
 
 MCP9808::Error MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
@@ -245,19 +238,19 @@ uint16_t MCP9808::floatToCustomFormat(float value) {
            static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);
 }
 
-M75Sensor::Error convertI2cError(HAL_I2C::I2CError error) {
+MCP9808::Error convertI2cError(HAL_I2C::I2CError error) {
     switch (error) {
     case HAL_I2C::I2CError::NONE:
-        return LM75Sensor::Error::NONE;
+        return MCP9808::Error::NONE;
     case HAL_I2C::I2CError::BUSY:
-        return LM75Sensor::Error::BUSY;
+        return MCP9808::Error::BUSY;
     case HAL_I2C::I2CError::TIMEOUT:
-        return LM75Sensor::Error::TIMEOUT;
+        return MCP9808::Error::TIMEOUT;
     case HAL_I2C::I2CError::INVALID_PARAMS:
-        return LM75Sensor::Error::INVALID_PARAMS;
+        return MCP9808::Error::INVALID_PARAMS;
     case HAL_I2C::I2CError::OPERATION_ERROR:
-        return LM75Sensor::Error::OPERATION_ERROR;
+        return MCP9808::Error::OPERATION_ERROR;
     default:
-        return LM75Sensor::Error::UNKNOWN_ERROR;
+        return MCP9808::Error::UNKNOWN_ERROR;
     }
 }
