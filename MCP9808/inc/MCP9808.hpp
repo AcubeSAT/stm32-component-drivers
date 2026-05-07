@@ -350,14 +350,6 @@ private:
         ALERT_POLARITY_ACTIVE_LOW = 0x00
     };
 
-    /**
-     * The maximum number of bytes to write via High Speed Two-Wired Interface
-     */
-    enum NumOfBytesToTransfer : uint8_t {
-        TRANSFER_1BYTE = 1,
-        TRANSFER_2BYTES = 2,
-        TRANSFER_3BYTES = 3
-    };
 
     /**
      * Wait period before a sensor read is skipped

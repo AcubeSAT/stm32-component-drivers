@@ -9,11 +9,11 @@ MCP9808::Error MCP9808::read(etl::span<uint8_t> i2cData) {
     return convertI2cError(HAL_I2C::readRegister<PeripheralNumber>(Lm75Addr, i2cData));
 };
 
-etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) {
-    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> i2cData{0};
+etl::expected<etl::array<uint8_t>, MCP9808::Error> MCP9808::readRegister(Register address) {
+    etl::array<uint8_t, 2> i2cData{0};
 
-    etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_1BYTE> addr{
-            static_cast<std::underlying_type_t<Register>>(address)};
+    etl::array<uint8_t, 1> addr{
+            static_cast<uint8_t>(address)};
 
     if (auto error = writeRegister(addr); error != Error::NONE) {
         return etl::unexpected(error);
@@ -23,8 +23,10 @@ etl::expected<uint16_t, MCP9808::Error> MCP9808::readRegister(Register address) 
         return etl::unexpected(error);
     }
 
-    return address == Register::REG_RESOLUTION ? static_cast<uint16_t>(i2cData[0]) & 0x00FF : (
-                (static_cast<uint16_t>(i2cData[0]) << 8) | static_cast<uint16_t>(i2cData[1]));;
+    if (address == Register::REG_RESOLUTION)
+        return i2cData[0];
+    else
+        return i2cData;
 }
 
 MCP9808::Error MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
