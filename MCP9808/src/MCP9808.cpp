@@ -2,15 +2,15 @@
 #include "HAL_I2C.hpp"
 
 MCP9808::Error MCP9808::writeRegister(Register address) {
-    return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2C_BUS_ADDRESS, data));
+    return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2CBaseAddress, address));
 }
 
 MCP9808::Error MCP9808::readRegister(etl::span<uint8_t> i2cData) {
-    return convertI2cError(HAL_I2C::readRegister<PeripheralNumber>(Lm75Addr, i2cData));
+    return convertI2cError(HAL_I2C::readRegister<PeripheralNumber>(I2CBaseAddress, i2cData));
 };
 
 MCP9808::Error MCP9808::writeReadReg(Register address, etl::span<uint8_t> i2cData) {
-    return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(Lm75Addr, address, i2cData));
+    return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(I2CBaseAddress, address, i2cData));
 }
 
 etl::expected<etl::array<uint8_t, 2>, MCP9808::Error> MCP9808::writeReadRegister(Register address) {
