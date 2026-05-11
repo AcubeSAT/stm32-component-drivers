@@ -7,7 +7,7 @@
 #include "Logger.hpp"
 #include "task.h"
 #include "Peripheral_Definitions.hpp"
-#inlcude "HAL_I2C.hpp"
+#include "HAL_I2C.hpp"
 
 /**
  * The MCP9808_TWI_PORT definition is used to select which TWI peripheral of the ATSAMV71Q21B MCU will be used.
@@ -101,6 +101,8 @@ public:
         ID_READ_FAILED,
         TIMEOUT
     };
+
+
 
     /**
      * Enter low power mode (SHDN - shutdown mode)
@@ -280,9 +282,6 @@ public:
      */
     inline uint8_t getI2CUserAddress() const {
         return I2cUserAddress;
-
-    Error convertI2cError(HAL_I2C::I2CError error);
-
     }
 
 private:
@@ -531,7 +530,7 @@ private:
      * @param data the data octets to be written
      * @return an error code
      */
-    Error writeRegister(etl::span<uint8_t> data);
+    Error writeRegister(Register address);
 
     /**
      * Read a value from a register. About register reading operations
@@ -539,7 +538,23 @@ private:
      * @param address the address of the desired register
      * @return the result or an error
      */
-    etl::expected<uint16_t, Error> readRegister(Register address);
+    Error readRegister(etl::span<uint8_t> i2cData);
+
+    /**
+     * Completes a write operation and then a read operation
+     * @param address
+     * @param i2cData
+     * @return Error
+     */
+    Error writeReadReg(Register address, etl::span<uint8_t> i2cData);
+
+    /**
+     * Completes a write operation and then a read operation
+     * @param address
+     * @return Error if the I2C communication fails or data received is unprecedented.
+     * @return uint8_t array with either temperature or resolution data
+     */
+    etl::expected<etl::array<uint8_t, 2>, Error> writeReadRegister(Register address);
 
     /**
      * Safely change a setting on the register
@@ -588,6 +603,13 @@ private:
      * @return the temperature stored in the register
      */
     etl::expected<float, MCP9808::Error> getTemperature(Register reg);
+
+    /**
+     * Wrapper function for converting the I2C error to LM75 enum class error
+     * @param error
+     * @return Error
+     */
+    Error convertI2cError(HAL_I2C::I2CError error);
 
 };
 
