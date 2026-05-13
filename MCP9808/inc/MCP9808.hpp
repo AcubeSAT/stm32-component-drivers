@@ -92,7 +92,8 @@ public:
      * note : ID_READ_WAS_WRONG refers to when the Manufacturer ID was read but instead of 0x54,
      * a random non zero value is read, possibly due to a bit flip
      */
-    enum class Error : uint8_t {
+
+    /*enum class Error : uint8_t {
         ERROR_NONE = TWIHS_ERROR_NONE,
         ERROR_NACK = TWIHS_ERROR_NACK,
         READ_REQUEST_FAILED,
@@ -100,6 +101,35 @@ public:
         ID_READ_WAS_WRONG,
         ID_READ_FAILED,
         TIMEOUT
+    };*/
+
+    enum class Error {
+        NONE,
+        /**
+         * Internal error during I2C write or read
+         */
+        OPERATION_ERROR,
+        /**
+         * Provided parameters were invalid
+         */
+        INVALID_PARAMS,
+        /**
+         * The operation took to long to complete
+         */
+        TIMEOUT,
+        /**
+         *Manufacturer ID was read but instead of 0x54
+         */
+        ID_READ_WAS_WRONG,
+        /**
+         * A previous operation is still ongoing
+         */
+        BUSY,
+        /**
+         * Temperature value is out of boundary
+         */
+        INVALID_READ,
+        UNKNOWN_ERROR
     };
 
 
@@ -584,7 +614,7 @@ private:
                 return Error::TIMEOUT;
             }
         }
-        return Error::ERROR_NONE;
+        return Error::NONE;
     };
 
     /**

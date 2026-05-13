@@ -2,7 +2,8 @@
 #include "HAL_I2C.hpp"
 
 MCP9808::Error MCP9808::writeRegister(Register address) {
-    return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2CBaseAddress, address));
+    etl::array<uint8_t, 1> data{static_cast<uint8_t>(address)};
+    return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2CBaseAddress, data));
 }
 
 MCP9808::Error MCP9808::readRegister(etl::span<uint8_t> i2cData) {
@@ -10,7 +11,8 @@ MCP9808::Error MCP9808::readRegister(etl::span<uint8_t> i2cData) {
 };
 
 MCP9808::Error MCP9808::writeReadReg(Register address, etl::span<uint8_t> i2cData) {
-    return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(I2CBaseAddress, address, i2cData));
+    etl::array<uint8_t, 1> data{static_cast<uint8_t>(address)};
+    return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(I2CBaseAddress, data, i2cData));
 }
 
 etl::expected<etl::array<uint8_t, 2>, MCP9808::Error> MCP9808::writeReadRegister(Register address) {
@@ -28,7 +30,7 @@ etl::expected<etl::array<uint8_t, 2>, MCP9808::Error> MCP9808::writeReadRegister
         return i2cData[0];
     else
         return i2cData; */
-    etl::array<uint8_t, 2> i2cData{0};
+    etl::array<uint8_t, 2> i2cData;
 
     if (auto error = writeReadReg(address, i2cData); error != Error::NONE) {
         return etl::unexpected(error);
@@ -49,18 +51,18 @@ MCP9808::Error MCP9808::setRegister(Register address, Mask mask, uint16_t settin
     const uint16_t NewSetting = (static_cast<uint16_t>(mask) & Previous) | setting;
 
     if (address == Register::REG_RESOLUTION) {
-        etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_2BYTES> data = {static_cast<uint8_t>(address),
+        etl::array<uint8_t, 2> data = {static_cast<uint8_t>(address),
                                                                            static_cast<uint8_t>(NewSetting & 0x00FF)};
         const auto WriteError = writeRegister(etl::span<uint8_t>(data));
-        if (WriteError != Error::ERROR_NONE)
+        if (WriteError != Error::NONE)
             return WriteError;
     } else {
-        etl::array<uint8_t, NumOfBytesToTransfer::TRANSFER_3BYTES> data = {static_cast<uint8_t>(address),
+        etl::array<uint8_t, 3> data = {static_cast<uint8_t>(address),
                                                                            static_cast<uint8_t>((NewSetting >> 8) &
                                                                                                 0x00FF),
                                                                            static_cast<uint8_t>(NewSetting & 0x00FF)};
         const auto WriteError = writeRegister(etl::span<uint8_t>(data));
-        if (WriteError != Error::ERROR_NONE)
+        if (WriteError != Error::NONE)
             return WriteError;
     }
 
@@ -150,9 +152,9 @@ MCP9808::Error MCP9808::isDeviceConnected() {
     const auto ReadValue = readRegister(Register::REG_MFGID);
     if (ReadValue.has_value())
         if(ReadValue.value() == ManufacturerID)
-            return Error::ERROR_NONE;
+            return Error::NONE;
         else if(ReadValue.value() == FalseData)
-            return Error::ID_READ_FAILED;
+            return Error::OPERATION_ERROR;
         else
             return Error::ID_READ_WAS_WRONG;
     else
