@@ -342,5 +342,160 @@ namespace HAL_I2C {
 
         return I2CError::NONE;
     }
+    namespace BitBang {
+
+        /**
+         * @brief Configuration for the software bit-bang I2C fallback.
+         *
+         * Describes which GPIO pins to use and how fast to toggle them.
+         * The caller (e.g. AntS driver) provides the actual pin values —
+         * HAL_I2C stays generic and never hardcodes hardware specifics.
+         *
+         * @note Both pins must support open-drain mode. On our case PB4/PB5
+         * are open-drain capable and shared with TWIHS1.
+         */
+        struct Config {
+            PIO_PIN  sclPin;   ///< GPIO pin for SCL (clock line)
+            PIO_PIN  sdaPin;   ///< GPIO pin for SDA (data line)
+            uint32_t delayUs;  ///< Half-period delay in microseconds.
+
+        };
+        namespace Internal {
+
+            /**
+             * @brief Busy-wait delay in microseconds.
+             *
+             * Used to control SCL clock speed during bit-bang.
+             * On SAME70 at 300MHz, each NOP ≈ 3.3ns so we need
+             * roughly 300 NOPs per microsecond.
+             */
+            inline void delay(uint32_t us) {
+                volatile uint32_t count = us * 300;
+                while (count--) {
+                    __NOP();         ///< no operation
+                }
+            }
+
+            /**
+             * @brief Drive SCL high (release line — open drain).
+             */
+            inline void sclHigh(const Config& cfg) {
+                PIO_PinInputEnable(cfg.sclPin);  ///< open-drain: release = input = pulled high
+            }
+
+            /**
+             * @brief Drive SCL low.
+             */
+            inline void sclLow(const Config& cfg) {
+                PIO_PinOutputEnable(cfg.sclPin);
+                PIO_PinClear(cfg.sclPin);
+            }
+
+            /**
+             * @brief Drive SDA high (release line — open drain).
+             */
+            inline void sdaHigh(const Config& cfg) {
+                PIO_PinInputEnable(cfg.sdaPin);  ///< open-drain: release = input = pulled high
+            }
+
+            /**
+             * @brief Drive SDA low.
+             */
+            inline void sdaLow(const Config& cfg) {
+                PIO_PinOutputEnable(cfg.sdaPin);
+                PIO_PinClear(cfg.sdaPin);
+            }
+
+            /**
+             * @brief Read current SDA line state.
+             * @return true if SDA is high, false if low.
+             */
+            inline bool sdaRead(const Config& cfg) {
+                PIO_PinInputEnable(cfg.sdaPin);
+                return PIO_PinRead(cfg.sdaPin);
+            }
+
+            /**
+             * @brief Issue an I2C START condition.
+             *
+             * SDA falls while SCL is high — this is the START signal
+             * that tells all slaves a transaction is beginning.
+             *
+             *   SDA: ‾‾‾\___
+             *   SCL: ‾‾‾‾‾‾‾
+             */
+            inline void start(const Config& cfg) {
+                sdaHigh(cfg); delay(cfg.delayUs);
+                sclHigh(cfg); delay(cfg.delayUs);
+                sdaLow(cfg);  delay(cfg.delayUs);  ///< SDA falls while SCL high → START
+                sclLow(cfg);  delay(cfg.delayUs);
+            }
+
+            /**
+             * @brief Issue an I2C STOP condition.
+             *
+             * SDA rises while SCL is high — this tells all slaves
+             * the transaction is complete and the bus is free.
+             *
+             *   SDA: ___/‾‾‾
+             *   SCL: ‾‾‾‾‾‾‾
+             */
+            inline void stop(const Config& cfg) {
+                sdaLow(cfg);  delay(cfg.delayUs);
+                sclHigh(cfg); delay(cfg.delayUs);
+                sdaHigh(cfg); delay(cfg.delayUs);  ///< SDA rises while SCL high → STOP
+            }
+
+            /**
+             * @brief Write one byte over bit-bang I2C and check for ACK.
+             *
+             * Sends 8 bits MSB first, then releases SDA and checks
+             * whether the slave pulled it low (ACK) or left it high (NACK).
+             *
+             * @param byte the byte to send
+             * @return true if ACK received, false if NACK
+             */
+            inline bool writeByte(const Config& cfg, uint8_t byte) {
+                for (int8_t i = 7; i >= 0; i--) {
+                    (byte & (1 << i)) ? sdaHigh(cfg) : sdaLow(cfg);
+                    delay(cfg.delayUs);
+                    sclHigh(cfg); delay(cfg.delayUs);
+                    sclLow(cfg);  delay(cfg.delayUs);
+                }
+                // release SDA and read ACK from slave
+                sdaHigh(cfg);
+                sclHigh(cfg); delay(cfg.delayUs);
+                bool ack = !sdaRead(cfg);  ///< ACK = slave pulls SDA LOW
+                sclLow(cfg);  delay(cfg.delayUs);
+                return ack;
+            }
+
+            /**
+             * @brief Read one byte over bit-bang I2C.
+             *
+             * Releases SDA and clocks in 8 bits MSB first, then sends
+             * ACK or NACK depending on whether more bytes are expected.
+             *
+             * @param sendAck true if more bytes follow, false for last byte
+             * @return the byte read from the slave
+             */
+            inline uint8_t readByte(const Config& cfg, bool sendAck) {
+                uint8_t byte = 0;
+                sdaHigh(cfg);  // release SDA so slave can drive it
+                for (int8_t i = 7; i >= 0; i--) {
+                    sclHigh(cfg); delay(cfg.delayUs);
+                    if (PIO_PinRead(cfg.sdaPin)) byte |= (1 << i);
+                    sclLow(cfg);  delay(cfg.delayUs);
+                }
+                sendAck ? sdaLow(cfg) : sdaHigh(cfg);
+                sclHigh(cfg); delay(cfg.delayUs);
+                sclLow(cfg);  delay(cfg.delayUs);
+                sdaHigh(cfg);  // release SDA
+                return byte;
+            }
+
+        } // namespace Internal
+
+    } // namespace BitBang
 }
 
