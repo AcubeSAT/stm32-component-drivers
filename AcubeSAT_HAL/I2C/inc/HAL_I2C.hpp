@@ -484,7 +484,9 @@ namespace HAL_I2C {
                 sdaHigh(cfg);  // release SDA so slave can drive it
                 for (int8_t i = 7; i >= 0; i--) {
                     sclHigh(cfg); delay(cfg.delayUs);
-                    if (PIO_PinRead(cfg.sdaPin)) byte |= (1 << i);
+                    if (PIO_PinRead(cfg.sdaPin)) {
+                        byte |= (1 << i);
+                    }
                     sclLow(cfg);  delay(cfg.delayUs);
                 }
                 sendAck ? sdaLow(cfg) : sdaHigh(cfg);
