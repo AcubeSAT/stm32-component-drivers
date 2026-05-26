@@ -560,7 +560,7 @@ private:
      * @param data the data octets to be written
      * @return an error code
      */
-    Error writeRegister(Register address);
+    Error writeRegister(etl::span<uint8_t> data);
 
     /**
      * Read a value from a register. About register reading operations
@@ -572,6 +572,7 @@ private:
 
     /**
      * Completes a write operation and then a read operation
+     * Used only for reading from a register, not for changing a setting
      * @param address
      * @param i2cData
      * @return Error
@@ -584,7 +585,7 @@ private:
      * @return Error if the I2C communication fails or data received is unprecedented.
      * @return uint8_t array with either temperature or resolution data
      */
-    etl::expected<etl::array<uint8_t, 2>, Error> writeReadRegister(Register address);
+    Error writeReadRegister(Register address, etl::span<uint8_t> i2cData);
 
     /**
      * Safely change a setting on the register

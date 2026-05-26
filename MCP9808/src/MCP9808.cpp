@@ -1,8 +1,7 @@
 #include "MCP9808.hpp"
 #include "HAL_I2C.hpp"
 
-MCP9808::Error MCP9808::writeRegister(Register address) {
-    etl::array<uint8_t, 1> data{static_cast<uint8_t>(address)};
+MCP9808::Error MCP9808::writeRegister(etl::span<uint8_t> data) {
     return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(I2CBaseAddress, data));
 }
 
@@ -15,55 +14,38 @@ MCP9808::Error MCP9808::writeReadReg(Register address, etl::span<uint8_t> i2cDat
     return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(I2CBaseAddress, data, i2cData));
 }
 
-etl::expected<etl::array<uint8_t, 2>, MCP9808::Error> MCP9808::writeReadRegister(Register address) {
-    /*etl::array<uint8_t, 2> i2cData{0};
-
-    if (auto error = writeRegister(address); error != Error::NONE) {
-        return etl::unexpected(error);
-    }
-
-    if (auto error = read(i2cData); error != Error::NONE) {
-        return etl::unexpected(error);
-    }
-
-    if (address == Register::REG_RESOLUTION)
-        return i2cData[0];
-    else
-        return i2cData; */
-    etl::array<uint8_t, 2> i2cData;
-
+MCP9808::Error MCP9808::writeReadRegister(Register address, etl::span<uint8_t> i2cData) {
     if (auto error = writeReadReg(address, i2cData); error != Error::NONE) {
-        return etl::unexpected(error);
+        return error;
     }
 
-    if (address == Register::REG_RESOLUTION)
-        return i2cData[0];
-    else
-        return i2cData;
+    if (address == Register::REG_RESOLUTION) {
+        i2cData[1] = 0;
+    }
+    return Error::NONE;
 }
 
 
 MCP9808::Error MCP9808::setRegister(Register address, Mask mask, uint16_t setting) {
-    const auto Previous = readRegister(address);
-    if (!Previous.has_value())
-        return Previous.error();
-
-    const uint16_t NewSetting = (static_cast<uint16_t>(mask) & Previous) | setting;
+    etl::array<uint8_t, 2> data;
+    const auto writeReadError = writeReadRegister(address, data);
+    if (writeReadError != Error::NONE)
+        return writeReadError;
+    const uint16_t previous = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
+    const uint16_t NewSetting = (static_cast<uint16_t>(mask) & previous) | setting;
 
     if (address == Register::REG_RESOLUTION) {
         etl::array<uint8_t, 2> data = {static_cast<uint8_t>(address),
                                                                            static_cast<uint8_t>(NewSetting & 0x00FF)};
-        const auto WriteError = writeRegister(etl::span<uint8_t>(data));
-        if (WriteError != Error::NONE)
-            return WriteError;
+        if (auto error = writeRegister(etl::span<uint8_t>(data)); error != Error::NONE)
+            return error;
     } else {
         etl::array<uint8_t, 3> data = {static_cast<uint8_t>(address),
                                                                            static_cast<uint8_t>((NewSetting >> 8) &
                                                                                                 0x00FF),
                                                                            static_cast<uint8_t>(NewSetting & 0x00FF)};
-        const auto WriteError = writeRegister(etl::span<uint8_t>(data));
-        if (WriteError != Error::NONE)
-            return WriteError;
+        if (auto error = writeRegister(etl::span<uint8_t>(data)); error != Error::NONE)
+            return error;
     }
 
     return {};
@@ -122,12 +104,12 @@ etl::expected<float, MCP9808::Error> MCP9808::getTemperature() {
 }
 
 etl::expected<float, MCP9808::Error> MCP9808::getTemperature(Register reg) {
-    const auto Data = readRegister(reg);
-    if (!Data.has_value())
-        return etl::unexpected(Data.error());
+    etl::array<uint8_t, 2> data;
+    if (auto error = writeReadRegister(reg, data); error != Error::NONE)
+        return etl::unexpected(error);
 
-    uint8_t upperByte = (Data.value() >> ByteShift) & TempUpperByteMask;
-    const uint8_t LowerByte = Data.value() & TempLowerByteMask;
+    uint8_t upperByte = data[0] & TempUpperByteMask;
+    const uint8_t LowerByte = data[1] & TempLowerByteMask;
 
     if ((upperByte & TempSignBitMask) != 0) {
         upperByte &= TempValueMask;
@@ -148,17 +130,20 @@ etl::expected<float, MCP9808::Error> MCP9808::getUpperTemperatureLimit() {
 etl::expected<float, MCP9808::Error> MCP9808::getLowerTemperatureLimit() {
     return getTemperature(Register::REG_TLOWER);
 }
+
 MCP9808::Error MCP9808::isDeviceConnected() {
-    const auto ReadValue = readRegister(Register::REG_MFGID);
-    if (ReadValue.has_value())
-        if(ReadValue.value() == ManufacturerID)
-            return Error::NONE;
-        else if(ReadValue.value() == FalseData)
-            return Error::OPERATION_ERROR;
-        else
-            return Error::ID_READ_WAS_WRONG;
+    etl::array<uint8_t, 2> data = {};
+    if (auto error = writeReadRegister(Register::REG_MFGID, etl::span<uint8_t>(data)); error != Error::NONE)
+        return error;
+
+    const uint16_t readValue = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
+
+    if (readValue == ManufacturerID)
+        return Error::NONE;
+    else if (readValue == FalseData)
+        return Error::OPERATION_ERROR;
     else
-        return ReadValue.error();
+        return Error::ID_READ_WAS_WRONG;
 }
 
 MCP9808::Error MCP9808::setUpperTemperatureLimit(float temp) {
