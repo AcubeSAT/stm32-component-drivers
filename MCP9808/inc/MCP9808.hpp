@@ -119,6 +119,7 @@ public:
         TIMEOUT,
         /**
          *Manufacturer ID was read but instead of 0x54
+         *a random non zero value is read, possibly due to a bit flip
          */
         ID_READ_WAS_WRONG,
         /**
@@ -454,8 +455,6 @@ private:
      */
     static constexpr uint8_t ManufacturerID = 0x0054u;
 
-    static constexpr uint16_t FalseData =  0xFFFF;
-
     static constexpr uint8_t TempUpperByteMask = 0x1F;
 
     static constexpr uint8_t TempLowerByteMask = 0xFF;
@@ -585,7 +584,7 @@ private:
      * @return Error if the I2C communication fails or data received is unprecedented.
      * @return uint8_t array with either temperature or resolution data
      */
-    Error writeReadRegister(Register address, etl::span<uint8_t> i2cData);
+    Error writeReadRegister(Register address, etl::array<uint8_t, 2> i2cData);
 
     /**
      * Safely change a setting on the register

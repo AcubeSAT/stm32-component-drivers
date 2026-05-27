@@ -14,7 +14,7 @@ MCP9808::Error MCP9808::writeReadReg(Register address, etl::span<uint8_t> i2cDat
     return convertI2cError(HAL_I2C::writeReadRegister<PeripheralNumber>(I2CBaseAddress, data, i2cData));
 }
 
-MCP9808::Error MCP9808::writeReadRegister(Register address, etl::span<uint8_t> i2cData) {
+MCP9808::Error MCP9808::writeReadRegister(Register address, etl::array<uint8_t, 2> i2cData) {
     if (auto error = writeReadReg(address, i2cData); error != Error::NONE) {
         return error;
     }
@@ -48,7 +48,7 @@ MCP9808::Error MCP9808::setRegister(Register address, Mask mask, uint16_t settin
             return error;
     }
 
-    return {};
+    return Error::NONE;
 }
 
 MCP9808::Error MCP9808::setHysteresisTemperature(MCP9808::HysteresisTemperatureOptions option) {
@@ -133,15 +133,13 @@ etl::expected<float, MCP9808::Error> MCP9808::getLowerTemperatureLimit() {
 
 MCP9808::Error MCP9808::isDeviceConnected() {
     etl::array<uint8_t, 2> data = {};
-    if (auto error = writeReadRegister(Register::REG_MFGID, etl::span<uint8_t>(data)); error != Error::NONE)
+    if (auto error = writeReadRegister(Register::REG_MFGID, data); error != Error::NONE)
         return error;
 
     const uint16_t readValue = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
 
     if (readValue == ManufacturerID)
         return Error::NONE;
-    else if (readValue == FalseData)
-        return Error::OPERATION_ERROR;
     else
         return Error::ID_READ_WAS_WRONG;
 }
@@ -238,7 +236,6 @@ uint16_t MCP9808::floatToCustomFormat(float value) {
     return (value > 0.f ? data : ~data + 1) &
            static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);
 }
-
 MCP9808::Error MCP9808::convertI2cError(HAL_I2C::I2CError error) {
     switch (error) {
     case HAL_I2C::I2CError::NONE:
