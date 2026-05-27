@@ -239,7 +239,7 @@ uint16_t MCP9808::floatToCustomFormat(float value) {
            static_cast<std::underlying_type_t<Mask>>(Mask::TUPPER_TLOWER_TCRIT_MASK);
 }
 
-MCP9808::Error convertI2cError(HAL_I2C::I2CError error) {
+MCP9808::Error MCP9808::convertI2cError(HAL_I2C::I2CError error) {
     switch (error) {
     case HAL_I2C::I2CError::NONE:
         return MCP9808::Error::NONE;
