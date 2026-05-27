@@ -595,18 +595,6 @@ private:
      * Function that waits for the I2C operation to complete
      * @return NO_ERROR or error TIMEOUT
      */
-    [[nodiscard]] inline Error waitForResponse() const {
-        const auto Start = xTaskGetTickCount();
-        while (MCP9808_TWIHS_IsBusy()) {
-            if (xTaskGetTickCount() - Start > TimeoutTicks) {
-                LOG_ERROR << "Temperature sensor with address " << I2cUserAddress
-                          << " has timed out";
-                MCP9808_TWIHS_Initialize();
-                return Error::TIMEOUT;
-            }
-        }
-        return Error::NONE;
-    };
 
     /**
      * Converts floating point number to the binary representation
