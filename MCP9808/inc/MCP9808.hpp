@@ -93,13 +93,22 @@ public:
      * a random non zero value is read, possibly due to a bit flip
      */
 
+    /*enum class Error : uint8_t {
+        ERROR_NONE = TWIHS_ERROR_NONE,
+        ERROR_NACK = TWIHS_ERROR_NACK,
+        READ_REQUEST_FAILED,
+        WRITE_REQUEST_FAILED,
+        ID_READ_WAS_WRONG,
+        ID_READ_FAILED,
+        TIMEOUT
+    };*/
 
     enum class Error {
         NONE,
         /**
          * Internal error during I2C write or read
          */
-        OPERATION_ERROR,
+        I2C_OPERATION_ERROR,
         /**
          * Provided parameters were invalid
          */
@@ -107,7 +116,7 @@ public:
         /**
          * The operation took to long to complete
          */
-        TIMEOUT,
+        I2C_TIMEOUT,
         /**
          *Manufacturer ID was read but instead of 0x54
          *a random non zero value is read, possibly due to a bit flip
@@ -116,7 +125,7 @@ public:
         /**
          * A previous operation is still ongoing
          */
-        BUSY,
+        I2C_BUSY,
         /**
          * Temperature value is out of boundary
          */
@@ -444,7 +453,7 @@ private:
     /**
      * Manufacturer's ID.
      */
-    static constexpr uint8_t ManufacturerID = 0x0054u;
+    static constexpr uint8_t ManufacturerID = 0x54u;
 
     static constexpr uint8_t TempUpperByteMask = 0x1F;
 
@@ -550,7 +559,7 @@ private:
      * @param data the data octets to be written
      * @return an error code
      */
-    Error writeRegister(etl::span<uint8_t> data);
+    Error write(etl::span<uint8_t> data);
 
     /**
      * Read a value from a register. About register reading operations
@@ -558,24 +567,25 @@ private:
      * @param address the address of the desired register
      * @return the result or an error
      */
-    Error readRegister(etl::span<uint8_t> i2cData);
+    Error read(etl::span<uint8_t> i2cData);
 
     /**
      * Completes a write operation and then a read operation
      * Used only for reading from a register, not for changing a setting
      * @param address
      * @param i2cData
-     * @return Error
+     * @return Error if the I2C communication fails or data received is unprecedented.
      */
-    Error writeReadReg(Register address, etl::span<uint8_t> i2cData);
+    Error writeReadRaw(Register address, etl::span<uint8_t> i2cData);
 
     /**
      * Completes a write operation and then a read operation
+     * Used only for reading from a register, not for changing a setting
      * @param address
      * @return Error if the I2C communication fails or data received is unprecedented.
      * @return uint8_t array with either temperature or resolution data
      */
-    Error writeReadRegister(Register address, etl::array<uint8_t, 2> i2cData);
+    Error writeRead(Register address, etl::array<uint8_t, 2> i2cData);
 
     /**
      * Safely change a setting on the register
@@ -590,11 +600,6 @@ private:
      * @return an error code
      */
     Error setRegister(Register address, Mask mask, uint16_t setting);
-
-    /**
-     * Function that waits for the I2C operation to complete
-     * @return NO_ERROR or error TIMEOUT
-     */
 
     /**
      * Converts floating point number to the binary representation
