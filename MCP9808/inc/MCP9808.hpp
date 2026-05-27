@@ -93,15 +93,6 @@ public:
      * a random non zero value is read, possibly due to a bit flip
      */
 
-    /*enum class Error : uint8_t {
-        ERROR_NONE = TWIHS_ERROR_NONE,
-        ERROR_NACK = TWIHS_ERROR_NACK,
-        READ_REQUEST_FAILED,
-        WRITE_REQUEST_FAILED,
-        ID_READ_WAS_WRONG,
-        ID_READ_FAILED,
-        TIMEOUT
-    };*/
 
     enum class Error {
         NONE,

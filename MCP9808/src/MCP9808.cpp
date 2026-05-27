@@ -76,7 +76,7 @@ MCP9808::Error MCP9808::clearInterrupts() {
 }
 
 MCP9808::Error MCP9808::setAlertStatus(MCP9808::AlertStatus setting) {
-    return setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, static_cast<std::underlying_type_t<AlertStatus>>(setting));;
+    return setRegister(Register::REG_CONFIG, Mask::ALERT_STATUS_MASK, static_cast<std::underlying_type_t<AlertStatus>>(setting));
 }
 
 MCP9808::Error MCP9808::setAlertControl(MCP9808::AlertControl setting) {
