@@ -484,7 +484,7 @@ private:
     static constexpr uint8_t ByteShift = 8;
 
     /**
-     * For the ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
+     * For the OBC and ADCS microcontroller and ATSAMV71 development board, MCP9808_TWI_PORT = 2.
      **/
     constexpr static auto PeripheralNumber = HAL_I2C::PeripheralNumber::TWIHS2;
 
