@@ -20,35 +20,39 @@ LCLPWM<PWMPeripheral>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmCh
 }
 
 template<PeripheralNumber PWMPeripheral>
-bool LCLPWM<PWMPeripheral>::enableLCL() {
+etl::expected<void, LCLError> LCLPWM<PWMPeripheral>::enableLCL() {
     PIO_PinWrite(resetPin, true);
     HAL_PWM::PWM_ChannelsStart<PWMPeripheral>(pwmChannelMask);
 
     vTaskDelay(pdMS_TO_TICKS(10));
 
-    setCurrentThreshold(voltageSetting);
-    PIO_PinWrite(setPin, false);
-
-    vTaskDelay(pdMS_TO_TICKS(10));
-
-    PIO_PinWrite(setPin, true);
-    return true;
+    auto status = setCurrentThreshold(voltageSetting);
+    if (status){
+        PIO_PinWrite(setPin, false);
+        vTaskDelay(pdMS_TO_TICKS(10));
+        PIO_PinWrite(setPin, true);
+        return {};
+    } else {
+        return etl::unexpected<LCLError>(status.error());
+    }
 }
 
 template<PeripheralNumber PWMPeripheral>
-bool LCLPWM<PWMPeripheral>::disableLCL() {
+etl::expected<void, LCLError> LCLPWM<PWMPeripheral>::disableLCL() {
     HAL_PWM::PWM_ChannelsStop<PWMPeripheral>(pwmChannelMask);
     PIO_PinWrite(resetPin, false);
     PIO_PinWrite(setPin, true);
-    return true;
+    return {};
 }
 
 template<PeripheralNumber PWMPeripheral>
-void LCLPWM<PWMPeripheral>::setCurrentThreshold(uint16_t dutyCyclePercent) {
+etl::expected<void, LCLError> LCLPWM<PWMPeripheral>::setCurrentThreshold(uint16_t dutyCyclePercent) {
     if (dutyCyclePercent <= PWMDisableValue) {
         HAL_PWM::PWM_ChannelDutySet<PWMPeripheral>(pwmChannel,
                                                    dutyCyclePercent * ConstantInPWMRegister / PWMDisableValue);
+        return {};
     } else {
         LOG_ERROR << "dutyCyclePercent is out of bounds (0-100)";
+        return etl::unexpected<LCLError>(LCLError::OUT_OF_BOUNDS);
     }
 }

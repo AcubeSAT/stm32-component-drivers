@@ -64,24 +64,25 @@ public:
      * will be driven Low, cutting the power supply towards the protected IC and retain its state after the surge.
      * @note If a surge is detected and the power is cut, the MCU will have to call the @fn enableLCL to provide the IC
      * with power again.
-     * @return false on failure (note that the PWM implementation cannot fail so true is returned always)
+     * @return LCLError on failure (note that the PWM implementation cannot fail so void is returned always)
      */
-    bool enableLCL() override;
+    [[nodiscard]] etl::expected<void, LCLError> enableLCL() override;
 
     /**
      * Disable the LCL, cutting the supply voltage to the IC. To achieve this, the Reset Pin is driven Low to force the
      * SR Latch state to Low, cutting the power towards the IC and as an extra step, the PWM signal is closed, setting
      * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
      * @note Configure the default state of the PWM signal to be Low (instead of High) when the channel is turned off.
-     * @return false on failure (note that the PWM implementation cannot fail so true is returned always)
+     * @return LCLError on failure (note that the PWM implementation cannot fail so void is returned always)
      */
-    bool disableLCL() override;
+    [[nodiscard]] etl::expected<void, LCLError> disableLCL() override;
 
     /**
      * Sets the duty cycle% of the PWM signal.
      * @param dutyCyclePercent PWMThreshold
+     * @return LCLError on out of bounds
      */
-    void setCurrentThreshold(uint16_t dutyCyclePercent);
+    etl::expected<void, LCLError> setCurrentThreshold(uint16_t dutyCyclePercent);
 
 private:
     /**

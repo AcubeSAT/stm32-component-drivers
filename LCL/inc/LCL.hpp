@@ -4,6 +4,12 @@
 #include "peripheral/pio/plib_pio.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "etl/expected.h"
+
+enum class LCLError : uint8_t {
+    TIMEOUT,
+    OUT_OF_BOUNDS
+};
 
 /**
  * @class A Latch-up Current Limiter (LCL) driver providing all the functionality for these protection circuits.
@@ -36,13 +42,13 @@ protected:
 public:
     /**
      * Enable the LCL
-     * @return  false on failure
+     * @return LCLError on failure
      */
-    virtual bool enableLCL() = 0;
+    [[nodiscard]] virtual etl::expected<void, LCLError> enableLCL() = 0;
 
     /**
      * Disable the LCL
-     * @return false on failure
+     * @return LCLError on failure
      */
-    virtual bool disableLCL() = 0;
+    [[nodiscard]] virtual etl::expected<void, LCLError> disableLCL() = 0;
 };

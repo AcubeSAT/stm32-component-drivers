@@ -6,7 +6,7 @@ LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin,
                                                 voltageSetting(static_cast<std::underlying_type_t<DACThreshold>>(voltageSetting)) {
 }
 
-bool LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
+etl::expected<void, LCLError> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
     DACC_DataWrite(dacChannel, voltage);
     const TickType_t startTime = xTaskGetTickCount();
 
@@ -16,32 +16,35 @@ bool LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
         if ((currentTime - startTime) >= maxDelay) {
             LOG_ERROR << "LCL DAC channel " << static_cast<int>(dacChannel) << " timed out.";
             DACC_Initialize();
-            return false;
+            return etl::unexpected<LCLError>(LCLError::TIMEOUT);
         }
     }
-    return true;
+    return {};
 }
 
-bool LCLDACC::enableLCL() {
-    if (writeDACCDataWithTimeout(voltageSetting)) {
+etl::expected<void, LCLError> LCLDACC::enableLCL() {
+    auto status = writeDACCDataWithTimeout(voltageSetting);
+    if (status) {
         PIO_PinWrite(resetPin, true);
         PIO_PinWrite(setPin, false);
         vTaskDelay(pdMS_TO_TICKS(smallDelay));
         PIO_PinWrite(setPin, true);
-        return true;
+        return {};
+    } else {
+        LOG_ERROR << "Failed to enable LCL due to DACC timeout";
+        return etl::unexpected<LCLError>(status.error());
     }
-    LOG_ERROR<< "Failed to enable LCL due to DACC timeout";
-    return false;
-
 }
 
-bool LCLDACC::disableLCL() {
-    if (writeDACCDataWithTimeout(DACDisableValue)) {
+etl::expected<void, LCLError> LCLDACC::disableLCL() {
+    auto status = writeDACCDataWithTimeout(DACDisableValue);
+    if (status) {
         PIO_PinWrite(resetPin, false);
         PIO_PinWrite(setPin, true);
-        return true;
+        return {};
+    } else {
+        LOG_ERROR << "Failed to disable LCL due to DACC timeout";
+        return etl::unexpected<LCLError>(status.error());
     }
-    LOG_ERROR << "Failed to disable LCL due to DACC timeout";
-    return false;
 }
 
