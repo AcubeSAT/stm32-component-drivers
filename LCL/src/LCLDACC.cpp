@@ -29,6 +29,7 @@ etl::expected<void, LCLError> LCLDACC::enableLCL() {
         PIO_PinWrite(setPin, false);
         vTaskDelay(pdMS_TO_TICKS(smallDelay));
         PIO_PinWrite(setPin, true);
+        lclStatus = true;
         return {};
     } else {
         LOG_ERROR << "Failed to enable LCL due to DACC timeout";
@@ -41,6 +42,7 @@ etl::expected<void, LCLError> LCLDACC::disableLCL() {
     if (status) {
         PIO_PinWrite(resetPin, false);
         PIO_PinWrite(setPin, true);
+        lclStatus = false;
         return {};
     } else {
         LOG_ERROR << "Failed to disable LCL due to DACC timeout";
@@ -48,3 +50,13 @@ etl::expected<void, LCLError> LCLDACC::disableLCL() {
     }
 }
 
+etl::expected<void, LCLError> LCLDACC::changeCurrentThreshold(uint16_t voltage) {
+    auto status = writeDACCDataWithTimeout(voltage);
+    if (status) {
+        voltageSetting = voltage;
+        return {};
+    } else {
+        LOG_ERROR << "Failed to change current threshold due to DACC timeout";
+        return etl::unexpected<LCLError>(status.error());
+    }
+}

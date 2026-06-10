@@ -78,11 +78,11 @@ public:
     [[nodiscard]] etl::expected<void, LCLError> disableLCL() override;
 
     /**
-     * Sets the duty cycle% of the PWM signal.
+     * Sets the duty cycle% of the PWM signal, which changes the hardware current threshold.
      * @param dutyCyclePercent PWMThreshold
      * @return LCLError on out of bounds
      */
-    etl::expected<void, LCLError> setCurrentThreshold(uint16_t dutyCyclePercent);
+    etl::expected<void, LCLError> changeCurrentThreshold(uint16_t dutyCyclePercent);
 
 private:
     /**

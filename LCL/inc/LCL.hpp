@@ -33,6 +33,13 @@ protected:
     const PIO_PIN setPin = PIO_PIN_NONE;
 
     /**
+     * Variable to store the software state of the LCL.
+     * This keeps track of the intended state set by the MCU,
+     * it will not automatically reflect if a hardware latch-up has been triggered.
+     */
+    bool lclStatus = false;
+
+    /**
      * Constructor to set the necessary control pins for the LCL.
      * @param resetPin @see resetPin
      * @param setPin @see setPin
@@ -51,4 +58,12 @@ public:
      * @return LCLError on failure
      */
     [[nodiscard]] virtual etl::expected<void, LCLError> disableLCL() = 0;
+
+    /**
+     * Gets the expected software status of the LCL.
+     * @return true if the LCL has been enabled via software, false otherwise.
+     */
+    [[nodiscard]] bool returnLCLstatus() const {
+        return lclStatus;
+    }
 };

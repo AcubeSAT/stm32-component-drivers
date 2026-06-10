@@ -35,7 +35,7 @@ public:
      *   - where :
      *       Vref = 3.3V (exact measurement is required)
      *       resolution = 12 bit == 4096
-     * - Pull the Reset Pin High to allow SR Latch state of the TLC555 to be driven but the internal comparators
+     * - Pull the Reset Pin High to allow SR Latch state of the TLC555 to be driven by the internal comparators
      *   instead of being forced Low.
      * - Pull the Set Pin Low to force the SR Latch state of the TLC555 to logic High.
      * - After a brief delay that is necessary for the TLC555 to detect the pulse, pull the Set Pin High making the SR
@@ -45,15 +45,22 @@ public:
      *       with power again.
      * @return LCLError on failure
      */
-   [[nodiscard]] etl::expected<void, LCLError> enableLCL() override;
+    [[nodiscard]] etl::expected<void, LCLError> enableLCL() override;
 
     /**
      * Disable the LCL, cutting the supply voltage to the IC. To achieve this, the Reset Pin is driven Low to force the
-     * SR Latch state to Low, cutting the power towards the IC and as an extra step, the PWM signal is closed, setting
+     * SR Latch state to Low, cutting the power towards the IC and as an extra step, the DAC output is zeroed, setting
      * the current threshold to a small value, typically much smaller than the consumption of the protected IC.
      * @return LCLError on failure
      */
     [[nodiscard]] etl::expected<void, LCLError> disableLCL() override;
+
+    /**
+     * Changes the current threshold of the LCL by updating the DACC voltage output.
+     * @param voltage The new threshold voltage value
+     * @return LCLError on DACC timeout
+     */
+    etl::expected<void, LCLError> changeCurrentThreshold(uint16_t voltage);
 
     /**
      * This is a helper function that checks if the DACC data have been written successfully to the DACC channel.
