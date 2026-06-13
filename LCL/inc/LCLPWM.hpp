@@ -84,6 +84,27 @@ public:
      */
     etl::expected<void, LCLError> changeCurrentThreshold(uint16_t dutyCyclePercent);
 
+    /**
+     * Calculates the analogue voltage produced for a given duty cycle percentage.
+     * Because the duty cycle controls the delay of the High signal, the effective
+     * output voltage is: V = Vmax * (1 - dutyCyclePercent / 100)
+     * @param dutyCyclePercent The duty cycle percentage (0–100)
+     * @return The corresponding voltage threshold in volts
+     */
+    [[nodiscard]] static float calculateVoltageThreshold(uint16_t dutyCyclePercent) {
+        return VMax * (1.0f - static_cast<float>(dutyCyclePercent) / static_cast<float>(PWMDisableValue));
+    }
+
+    /**
+     * Calculates the overcurrent trip level for a given duty cycle percentage and sense resistance.
+     * @param dutyCyclePercent The duty cycle percentage (0–100)
+     * @param senseResistance The current-sense resistance in ohms
+     * @return The trip current threshold in amperes
+     */
+    [[nodiscard]] static float calculateCurrentThreshold(uint16_t dutyCyclePercent, float senseResistance) {
+        return calculateVoltageThreshold(dutyCyclePercent) / senseResistance;
+    }
+    
 private:
     /**
      * The Pulse Width Modulation (PWM) channel used for setting the CONT voltage of the LCL.
@@ -94,4 +115,9 @@ private:
      * The Pulse Width Modulation (PWM) channel mask used as a parameter for PWM peripheral functions.
      */
     const PWM_CHANNEL_MASK pwmChannelMask;
+
+    /**
+     * Maximum output voltage of the PWM signal in volts (VDDANA = 3.3 V).
+     */
+    static constexpr float VMax = 3.3f;
 };

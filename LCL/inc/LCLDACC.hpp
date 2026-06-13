@@ -70,6 +70,26 @@ public:
      */
    [[nodiscard]] etl::expected<void, LCLError> writeDACCDataWithTimeout(uint16_t voltage);
 
+    /**
+     * Calculates the analogue voltage produced for a given raw DAC value.
+     * Formula: V = Vref * (dacValue / DACResolution)
+     * @param dacValue The raw 12-bit DAC value
+     * @return The corresponding voltage threshold in volts
+     */
+    [[nodiscard]] static float calculateVoltageThreshold(uint16_t dacValue) {
+        return VRef * (static_cast<float>(dacValue) / static_cast<float>(DACResolution));
+    }
+
+    /**
+     * Calculates the overcurrent trip level for a given DAC raw value and sense resistance.
+     * @param dacValue The raw 12-bit DAC value
+     * @param senseResistance The current-sense resistance in ohms
+     * @return The trip current threshold in amperes
+     */
+    [[nodiscard]] static float calculateCurrentThreshold(uint16_t dacValue, float senseResistance) {
+        return calculateVoltageThreshold(dacValue) / senseResistance;
+    }
+    
 private:
     /**
      * The DACC channel used for setting the voltage of the LCL.
@@ -91,4 +111,14 @@ private:
      * A small delay to make sure signals have reached the pins before sending another signal to them
      */
     static constexpr TickType_t smallDelay = pdMS_TO_TICKS(10);
+
+    /**
+     * DAC reference voltage in volts (VDDANA / AVCC = 3.3 V).
+     */
+    static constexpr float VRef = 3.3f;
+
+    /**
+     * DAC resolution: 2^12 = 4096 steps for a 12-bit converter.
+     */
+    static constexpr uint16_t DACResolution = 4096U;
 };
