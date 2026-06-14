@@ -61,6 +61,7 @@ public:
 
     /**
      * Gets the expected software status of the LCL.
+     * @note This does not reflect the actual hardware status of the LCL, which may be disabled due to a latch-up event.
      * @return true if the LCL has been enabled via software, false otherwise.
      */
     [[nodiscard]] bool returnLCLstatus() const {

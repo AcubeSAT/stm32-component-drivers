@@ -26,7 +26,7 @@ public:
      * @param setPin @see setPin
      * @param dacVolts @see DACVolts
      */
-    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, DACThreshold dacVolts);
+    LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, uint16_t dacVolts);
 
     /**
      * Enable the LCL to monitor and protect the protected IC from over current.

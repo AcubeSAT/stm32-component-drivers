@@ -1,9 +1,8 @@
 #include "LCLDACC.hpp"
 #include "Logger.hpp"
 
-LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin,
-                 DACThreshold voltageSetting) : LCL(resetPin, setPin), dacChannel(dacChannel),
-                                                voltageSetting(static_cast<std::underlying_type_t<DACThreshold>>(voltageSetting)) {
+LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, uint16_t voltageSetting) : 
+                 LCL(resetPin, setPin), dacChannel(dacChannel), voltageSetting(voltageSetting) {
 }
 
 etl::expected<void, LCLError> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {

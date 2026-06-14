@@ -11,12 +11,13 @@ class LCLPWM<PeripheralNumber::Peripheral_1>;
 
 template<PeripheralNumber PWMPeripheral>
 LCLPWM<PWMPeripheral>::LCLPWM(PWM_CHANNEL_NUM pwmChannel, PWM_CHANNEL_MASK pwmChannelMask, PIO_PIN resetPin,
-                              PIO_PIN setPin,
-                              PWMThreshold dutyCyclePercent) : LCL(resetPin, setPin), pwmChannel(pwmChannel),
-                                                               pwmChannelMask(pwmChannelMask),
-                                                               voltageSetting(
-                                                                       static_cast<std::underlying_type_t<PWMThreshold>>(dutyCyclePercent)) {
-    disableLCL();
+                             PIO_PIN setPin, PWMThreshold dutyCyclePercent) : 
+                                 LCL(resetPin, setPin), pwmChannel(pwmChannel), pwmChannelMask(pwmChannelMask),
+                                 voltageSetting(static_cast<std::underlying_type_t<PWMThreshold>>(dutyCyclePercent)) {
+    auto status = disableLCL();
+    if (not status) {
+        LOG_ERROR << "Failed to disable LCL during construction";
+    }
 }
 
 template<PeripheralNumber PWMPeripheral>
