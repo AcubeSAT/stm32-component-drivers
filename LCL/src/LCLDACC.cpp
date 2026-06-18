@@ -2,7 +2,8 @@
 #include "Logger.hpp"
 
 LCLDACC::LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, uint16_t voltageSetting) : 
-                 LCL(resetPin, setPin), dacChannel(dacChannel), voltageSetting(voltageSetting) {
+                 LCL(resetPin, setPin), dacChannel(dacChannel),
+                 voltageSetting(voltageSetting > 4095 ? 4095 : voltageSetting) {
 }
 
 etl::expected<void, LCLError> LCLDACC::writeDACCDataWithTimeout(uint16_t voltage) {
