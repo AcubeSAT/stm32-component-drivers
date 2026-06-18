@@ -49,10 +49,15 @@ etl::expected<void, LCLError> LCLDACC::disableLCL() {
     }
 }
 
-etl::expected<void, LCLError> LCLDACC::changeCurrentThreshold(uint16_t voltage) {
-    auto status = writeDACCDataWithTimeout(voltage);
+etl::expected<void, LCLError> LCLDACC::changeCurrentThreshold(uint16_t dacVolts) {
+    if (dacVolts > DACResolution) {
+        LOG_ERROR << "Invalid DAC voltage value: " << dacVolts << ". Must be between 0 and " << DACResolution;
+        return etl::unexpected<LCLError>(LCLError::OUT_OF_BOUNDS);
+    }
+
+    auto status = writeDACCDataWithTimeout(dacVolts);
     if (status) {
-        voltageSetting = voltage;
+        voltageSetting = dacVolts;
         return {};
     } else {
         LOG_ERROR << "Failed to change current threshold due to DACC timeout";

@@ -24,7 +24,8 @@ public:
      * @param dacChannel @see dacChannel
      * @param resetPin @see resetPin
      * @param setPin @see setPin
-     * @param dacVolts @see DACVolts
+     * @param dacVolts @see DACVolts (0~4096 for 0~Vref(3.3V). For example, for 1.5V, dacVolts = (1.5/3.3)*4096 = 1861)
+     * 
      */
     LCLDACC(DACC_CHANNEL_NUM dacChannel, PIO_PIN resetPin, PIO_PIN setPin, uint16_t dacVolts);
 
@@ -57,10 +58,10 @@ public:
 
     /**
      * Changes the current threshold of the LCL by updating the DACC voltage output.
-     * @param voltage The new threshold voltage value
+     * @param dacVolts The new threshold voltage value (0~4096 for 0~Vref(3.3V). For example, for 1.5V, dacVolts = (1.5/3.3)*4096 = 1861)
      * @return LCLError on DACC timeout
      */
-    etl::expected<void, LCLError> changeCurrentThreshold(uint16_t voltage);
+    etl::expected<void, LCLError> changeCurrentThreshold(uint16_t dacVolts);
 
     /**
      * This is a helper function that checks if the DACC data have been written successfully to the DACC channel.
