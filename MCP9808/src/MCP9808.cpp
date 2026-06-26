@@ -15,7 +15,7 @@ MCP9808::Error MCP9808::writeReadRaw(Register address, etl::span<uint8_t> i2cDat
 }
 
 MCP9808::Error MCP9808::writeRead(Register address, etl::array<uint8_t, 2> i2cData) {
-    if (auto error = writeRead(address, i2cData); error != Error::NONE) {
+    if (auto error = writeReadRaw(address, i2cData); error != Error::NONE) {
         return error;
     }
 
