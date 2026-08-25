@@ -425,10 +425,14 @@ namespace HAL_I2C {
              *   SCL: ‾‾‾‾‾‾‾
              */
             inline void start(const Config& cfg) {
-                sdaHigh(cfg); delay(cfg.delayUs);
-                sclHigh(cfg); delay(cfg.delayUs);
-                sdaLow(cfg);  delay(cfg.delayUs);  ///< SDA falls while SCL high → START
-                sclLow(cfg);  delay(cfg.delayUs);
+                sdaHigh(cfg);
+                delay(cfg.delayUs);
+                sclHigh(cfg);
+                delay(cfg.delayUs);
+                sdaLow(cfg);
+                delay(cfg.delayUs);  ///< SDA falls while SCL high → START
+                sclLow(cfg);
+                delay(cfg.delayUs);
             }
 
             /**
@@ -441,9 +445,12 @@ namespace HAL_I2C {
              *   SCL: ‾‾‾‾‾‾‾
              */
             inline void stop(const Config& cfg) {
-                sdaLow(cfg);  delay(cfg.delayUs);
-                sclHigh(cfg); delay(cfg.delayUs);
-                sdaHigh(cfg); delay(cfg.delayUs);  ///< SDA rises while SCL high → STOP
+                sdaLow(cfg);
+                delay(cfg.delayUs);
+                sclHigh(cfg);
+                delay(cfg.delayUs);
+                sdaHigh(cfg);
+                delay(cfg.delayUs);  ///< SDA rises while SCL high → STOP
             }
 
             /**
@@ -457,16 +464,24 @@ namespace HAL_I2C {
              */
             inline bool writeByte(const Config& cfg, uint8_t byte) {
                 for (int8_t i = 7; i >= 0; i--) {
-                    (byte & (1 << i)) ? sdaHigh(cfg) : sdaLow(cfg);
+                    if (byte & (1 << i)) {
+                        sdaHigh(cfg);
+                    } else {
+                        sdaLow(cfg);
+                    }
                     delay(cfg.delayUs);
-                    sclHigh(cfg); delay(cfg.delayUs);
-                    sclLow(cfg);  delay(cfg.delayUs);
+                    sclHigh(cfg);
+                    delay(cfg.delayUs);
+                    sclLow(cfg);
+                    delay(cfg.delayUs);
                 }
                 // release SDA and read ACK from slave
                 sdaHigh(cfg);
-                sclHigh(cfg); delay(cfg.delayUs);
+                sclHigh(cfg);
+                delay(cfg.delayUs);
                 bool ack = !sdaRead(cfg);  ///< ACK = slave pulls SDA LOW
-                sclLow(cfg);  delay(cfg.delayUs);
+                sclLow(cfg);
+                delay(cfg.delayUs);
                 return ack;
             }
 
@@ -483,15 +498,21 @@ namespace HAL_I2C {
                 uint8_t byte = 0;
                 sdaHigh(cfg);  // release SDA so slave can drive it
                 for (int8_t i = 7; i >= 0; i--) {
-                    sclHigh(cfg); delay(cfg.delayUs);
-                    if (PIO_PinRead(cfg.sdaPin)) {
-                        byte |= (1 << i);
-                    }
-                    sclLow(cfg);  delay(cfg.delayUs);
+                    sclHigh(cfg);
+                    delay(cfg.delayUs);
+                    if (PIO_PinRead(cfg.sdaPin)) byte |= (1 << i);
+                    sclLow(cfg);
+                    delay(cfg.delayUs);
                 }
-                sendAck ? sdaLow(cfg) : sdaHigh(cfg);
-                sclHigh(cfg); delay(cfg.delayUs);
-                sclLow(cfg);  delay(cfg.delayUs);
+                if (sendAck) {
+                    sdaLow(cfg);
+                } else {
+                    sdaHigh(cfg);
+                }
+                sclHigh(cfg);
+                delay(cfg.delayUs);
+                sclLow(cfg);
+                delay(cfg.delayUs);
                 sdaHigh(cfg);  // release SDA
                 return byte;
             }
@@ -500,4 +521,3 @@ namespace HAL_I2C {
 
     } // namespace BitBang
 }
-
