@@ -363,17 +363,11 @@ namespace HAL_I2C {
         namespace Internal {
 
             /**
-             * @brief Busy-wait delay in microseconds.
-             *
-             * Used to control SCL clock speed during bit-bang.
-             * On SAME70 at 300MHz, each NOP ≈ 3.3ns so we need
-             * roughly 300 NOPs per microsecond.
-             */
+            * @brief Busy-wait delay in microseconds.
+            * Used to control SCL clock speed during bit-bang.
+            */
             inline void delay(uint32_t us) {
-                volatile uint32_t count = us * 300;
-                while (count--) {
-                    __NOP();         ///< no operation
-                }
+                SYSTICK_DelayUs(us);
             }
 
             /**
