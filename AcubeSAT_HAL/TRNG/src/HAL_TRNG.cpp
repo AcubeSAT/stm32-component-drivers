@@ -1,5 +1,5 @@
 #include "HAL_TRNG.h"
-#include "device.h"       // pulls in Trng.h via the correct inclusion chain
+#include "device.h"
 
 static constexpr uint32_t TrngTimeoutIterations = 1000000;
 

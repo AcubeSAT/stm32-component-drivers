@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-enum class TrngError : uint32_t {
+enum class TrngError : uint8_t {
     OK = 0,
     TIMEOUT,
 };
