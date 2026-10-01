@@ -375,39 +375,43 @@ namespace HAL_I2C {
              * @brief Drive SCL high (release line — open drain).
              *  open-drain: release = input = pulled high
              */
-            inline void setSclHigh(const Config& cfg) {
+            inline void releaseScl(const Config& cfg) {
                 PIO_PinInputEnable(cfg.sclPin);
             }
 
             /**
              * @brief Drive SCL low.
              */
-            inline void setSclLow(const Config& cfg) {
-                PIO_PinOutputEnable(cfg.sclPin);
+            inline void driveSclLow(const Config& cfg) {
                 PIO_PinClear(cfg.sclPin);
+                PIO_PinOutputEnable(cfg.sclPin);
             }
 
             /**
-             * @brief Drive SDA high (release line — open drain).
-             * open-drain: release = input = pulled high
+             * @brief Release SCL so the external pull-up pulls it high.
+             *
+             * The pin is switched to input, so SCL is never actively driven high (open-drain).
              */
-            inline void setSdaHigh(const Config& cfg) {
+            inline void releaseSda(const Config& cfg) {
                 PIO_PinInputEnable(cfg.sdaPin);
             }
 
             /**
              * @brief Drive SDA low.
+             *
+             * The output latch is cleared before enabling the output,
+             * so the pin never drives the line high, even briefly.
              */
-            inline void setSdaLow(const Config& cfg) {
-                PIO_PinOutputEnable(cfg.sdaPin);
+            inline void driveSdaLow(const Config& cfg) {
                 PIO_PinClear(cfg.sdaPin);
+                PIO_PinOutputEnable(cfg.sdaPin);
             }
 
             /**
              * @brief Read current SDA line state.
              * @return true if SDA is high, false if low.
              */
-            inline bool ReadSda(const Config& cfg) {
+            inline bool readSda(const Config& cfg) {
                 PIO_PinInputEnable(cfg.sdaPin);
                 return PIO_PinRead(cfg.sdaPin);
             }
@@ -420,16 +424,15 @@ namespace HAL_I2C {
              *
              *   SDA: ‾‾‾\___
              *   SCL: ‾‾‾‾‾‾‾
-             *   SDA falls while SCL high → START
              */
             inline void start(const Config& cfg) {
-                setSdaHigh(cfg);
+                releaseSda(cfg);
                 delay(cfg.delayUs);
-                setSclHigh(cfg);
+                releaseScl(cfg);
                 delay(cfg.delayUs);
-                setSdaLow(cfg);
+                driveSdaLow(cfg);
                 delay(cfg.delayUs);
-                setSclLow(cfg);
+                driveSclLow(cfg);
                 delay(cfg.delayUs);
             }
 
@@ -440,15 +443,14 @@ namespace HAL_I2C {
              * the transaction is complete and the bus is free.
              *
              *   SDA: ___/‾‾‾
-             *   SCL: ‾‾‾‾‾‾‾
-             *   SDA rises while SCL high → STOP
+             *   SCL: ‾‾‾‾‾‾
              */
             inline void stop(const Config& cfg) {
-                setSdaLow(cfg);
+                driveSdaLow(cfg);
                 delay(cfg.delayUs);
-                setSclHigh(cfg);
+                releaseScl(cfg);
                 delay(cfg.delayUs);
-                setSdaHigh(cfg);
+                releaseSda(cfg);
                 delay(cfg.delayUs);
             }
 
@@ -457,28 +459,28 @@ namespace HAL_I2C {
              *
              * Sends 8 bits MSB first, then releases SDA and checks
              * whether the slave pulled it low (ACK) or left it high (NACK).
-             * release SDA and read ACK from slave if ACK = slave => pulls SDA LOW
+             * release SDA and read ACK from slave if ACK = slave then it pulls SDA LOW
              * @param byte the byte to send
              * @return true if ACK received, false if NACK
              */
             inline bool writeByte(const Config& cfg, uint8_t byte) {
                 for (int8_t i = 7; i >= 0; i--) {
                     if (byte & (1 << i)) {
-                        setSdaHigh(cfg);
+                        releaseSda(cfg);
                     } else {
-                        setSdaLow(cfg);
+                        driveSdaLow(cfg);
                     }
                     delay(cfg.delayUs);
-                    setSclHigh(cfg);
+                    releaseScl(cfg);
                     delay(cfg.delayUs);
-                    setSclLow(cfg);
+                    driveSclLow(cfg);
                     delay(cfg.delayUs);
                 }
-                setSdaHigh(cfg);
-                setSclHigh(cfg);
+                releaseSda(cfg);
+                releaseScl(cfg);
                 delay(cfg.delayUs);
-                bool ack = !ReadSda(cfg);
-                setSclLow(cfg);
+                bool ack = !readSda(cfg);
+                driveSclLow(cfg);
                 delay(cfg.delayUs);
                 return ack;
             }
@@ -494,24 +496,26 @@ namespace HAL_I2C {
              */
             inline uint8_t readByte(const Config& cfg, bool sendAck) {
                 uint8_t byte = 0;
-                setSdaHigh(cfg);
+                releaseSda(cfg);
                 for (int8_t i = 7; i >= 0; i--) {
-                    setSclHigh(cfg);
+                    releaseScl(cfg);
                     delay(cfg.delayUs);
-                    if (PIO_PinRead(cfg.sdaPin)) byte |= (1 << i);
-                    setSclLow(cfg);
+                    if (PIO_PinRead(cfg.sdaPin)) {
+                        byte |= (1 << i);
+                    }
+                    driveSclLow(cfg);
                     delay(cfg.delayUs);
                 }
                 if (sendAck) {
-                    setSdaLow(cfg);
+                    driveSdaLow(cfg);
                 } else {
-                    setSdaHigh(cfg);
+                    releaseSda(cfg);
                 }
-                setSclHigh(cfg);
+                releaseScl(cfg);
                 delay(cfg.delayUs);
-                setSclLow(cfg);
+                driveSclLow(cfg);
                 delay(cfg.delayUs);
-                setSdaHigh(cfg);
+                releaseSda(cfg);
                 return byte;
             }
 
