@@ -353,12 +353,13 @@ namespace HAL_I2C {
          *
          * @note Both pins must support open-drain mode. On our case PB4/PB5
          * are open-drain capable and shared with TWIHS1.
+         * The struct consists of : GPIO pin for SCL, GPIO pin for SDA
+         * and a Half-period delay in microseconds.
          */
         struct Config {
-            PIO_PIN  sclPin;   ///< GPIO pin for SCL (clock line)
-            PIO_PIN  sdaPin;   ///< GPIO pin for SDA (data line)
-            uint32_t delayUs;  ///< Half-period delay in microseconds.
-
+            PIO_PIN  sclPin;
+            PIO_PIN  sdaPin;
+            uint32_t delayUs;
         };
         namespace Internal {
 
@@ -373,29 +374,30 @@ namespace HAL_I2C {
             /**
              * @brief Drive SCL high (release line — open drain).
              */
-            inline void sclHigh(const Config& cfg) {
+            inline void setSclHigh(const Config& cfg) {
                 PIO_PinInputEnable(cfg.sclPin);  ///< open-drain: release = input = pulled high
             }
 
             /**
              * @brief Drive SCL low.
              */
-            inline void sclLow(const Config& cfg) {
+            inline void setSclLow(const Config& cfg) {
                 PIO_PinOutputEnable(cfg.sclPin);
                 PIO_PinClear(cfg.sclPin);
             }
 
             /**
              * @brief Drive SDA high (release line — open drain).
+             * open-drain: release = input = pulled high
              */
-            inline void sdaHigh(const Config& cfg) {
-                PIO_PinInputEnable(cfg.sdaPin);  ///< open-drain: release = input = pulled high
+            inline void setSdaHigh(const Config& cfg) {
+                PIO_PinInputEnable(cfg.sdaPin);
             }
 
             /**
              * @brief Drive SDA low.
              */
-            inline void sdaLow(const Config& cfg) {
+            inline void setSdaLow(const Config& cfg) {
                 PIO_PinOutputEnable(cfg.sdaPin);
                 PIO_PinClear(cfg.sdaPin);
             }
@@ -404,7 +406,7 @@ namespace HAL_I2C {
              * @brief Read current SDA line state.
              * @return true if SDA is high, false if low.
              */
-            inline bool sdaRead(const Config& cfg) {
+            inline bool ReadSda(const Config& cfg) {
                 PIO_PinInputEnable(cfg.sdaPin);
                 return PIO_PinRead(cfg.sdaPin);
             }
@@ -419,13 +421,13 @@ namespace HAL_I2C {
              *   SCL: ‾‾‾‾‾‾‾
              */
             inline void start(const Config& cfg) {
-                sdaHigh(cfg);
+                setSdaHigh(cfg);
                 delay(cfg.delayUs);
-                sclHigh(cfg);
+                setSclHigh(cfg);
                 delay(cfg.delayUs);
-                sdaLow(cfg);
+                setSdaLow(cfg);
                 delay(cfg.delayUs);  ///< SDA falls while SCL high → START
-                sclLow(cfg);
+                setSclLow(cfg);
                 delay(cfg.delayUs);
             }
 
@@ -439,11 +441,11 @@ namespace HAL_I2C {
              *   SCL: ‾‾‾‾‾‾‾
              */
             inline void stop(const Config& cfg) {
-                sdaLow(cfg);
+                setSdaLow(cfg);
                 delay(cfg.delayUs);
-                sclHigh(cfg);
+                setSclHigh(cfg);
                 delay(cfg.delayUs);
-                sdaHigh(cfg);
+                setSdaHigh(cfg);
                 delay(cfg.delayUs);  ///< SDA rises while SCL high → STOP
             }
 
@@ -459,22 +461,22 @@ namespace HAL_I2C {
             inline bool writeByte(const Config& cfg, uint8_t byte) {
                 for (int8_t i = 7; i >= 0; i--) {
                     if (byte & (1 << i)) {
-                        sdaHigh(cfg);
+                        setSdaHigh(cfg);
                     } else {
-                        sdaLow(cfg);
+                        setSdaLow(cfg);
                     }
                     delay(cfg.delayUs);
-                    sclHigh(cfg);
+                    setSclHigh(cfg);
                     delay(cfg.delayUs);
-                    sclLow(cfg);
+                    setSclLow(cfg);
                     delay(cfg.delayUs);
                 }
                 // release SDA and read ACK from slave
-                sdaHigh(cfg);
-                sclHigh(cfg);
+                setSdaHigh(cfg);
+                setSclHigh(cfg);
                 delay(cfg.delayUs);
-                bool ack = !sdaRead(cfg);  ///< ACK = slave pulls SDA LOW
-                sclLow(cfg);
+                bool ack = !ReadSda(cfg);  ///< ACK = slave pulls SDA LOW
+                setSclLow(cfg);
                 delay(cfg.delayUs);
                 return ack;
             }
@@ -490,24 +492,24 @@ namespace HAL_I2C {
              */
             inline uint8_t readByte(const Config& cfg, bool sendAck) {
                 uint8_t byte = 0;
-                sdaHigh(cfg);  // release SDA so slave can drive it
+                setSdaHigh(cfg);  // release SDA so slave can drive it
                 for (int8_t i = 7; i >= 0; i--) {
-                    sclHigh(cfg);
+                    setSclHigh(cfg);
                     delay(cfg.delayUs);
                     if (PIO_PinRead(cfg.sdaPin)) byte |= (1 << i);
-                    sclLow(cfg);
+                    setSclLow(cfg);
                     delay(cfg.delayUs);
                 }
                 if (sendAck) {
-                    sdaLow(cfg);
+                    setSdaLow(cfg);
                 } else {
-                    sdaHigh(cfg);
+                    setSdaHigh(cfg);
                 }
-                sclHigh(cfg);
+                setSclHigh(cfg);
                 delay(cfg.delayUs);
-                sclLow(cfg);
+                setSclLow(cfg);
                 delay(cfg.delayUs);
-                sdaHigh(cfg);  // release SDA
+                setSdaHigh(cfg);  // release SDA
                 return byte;
             }
 
