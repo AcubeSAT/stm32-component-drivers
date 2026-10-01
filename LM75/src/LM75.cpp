@@ -27,7 +27,6 @@ LM75Sensor::Error LM75Sensor::read(etl::span<uint8_t> i2cData) {
 };
 
 LM75Sensor::Error LM75Sensor::write(etl::span<uint8_t> buffer) {
-
     return convertI2cError(HAL_I2C::writeRegister<PeripheralNumber>(Lm75Addr, buffer));
 };
 
