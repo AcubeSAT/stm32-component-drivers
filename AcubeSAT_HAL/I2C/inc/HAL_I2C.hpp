@@ -373,9 +373,10 @@ namespace HAL_I2C {
 
             /**
              * @brief Drive SCL high (release line — open drain).
+             *  open-drain: release = input = pulled high
              */
             inline void setSclHigh(const Config& cfg) {
-                PIO_PinInputEnable(cfg.sclPin);  ///< open-drain: release = input = pulled high
+                PIO_PinInputEnable(cfg.sclPin);
             }
 
             /**
@@ -419,6 +420,7 @@ namespace HAL_I2C {
              *
              *   SDA: ‾‾‾\___
              *   SCL: ‾‾‾‾‾‾‾
+             *   SDA falls while SCL high → START
              */
             inline void start(const Config& cfg) {
                 setSdaHigh(cfg);
@@ -426,7 +428,7 @@ namespace HAL_I2C {
                 setSclHigh(cfg);
                 delay(cfg.delayUs);
                 setSdaLow(cfg);
-                delay(cfg.delayUs);  ///< SDA falls while SCL high → START
+                delay(cfg.delayUs);
                 setSclLow(cfg);
                 delay(cfg.delayUs);
             }
@@ -439,6 +441,7 @@ namespace HAL_I2C {
              *
              *   SDA: ___/‾‾‾
              *   SCL: ‾‾‾‾‾‾‾
+             *   SDA rises while SCL high → STOP
              */
             inline void stop(const Config& cfg) {
                 setSdaLow(cfg);
@@ -446,7 +449,7 @@ namespace HAL_I2C {
                 setSclHigh(cfg);
                 delay(cfg.delayUs);
                 setSdaHigh(cfg);
-                delay(cfg.delayUs);  ///< SDA rises while SCL high → STOP
+                delay(cfg.delayUs);
             }
 
             /**
@@ -454,7 +457,7 @@ namespace HAL_I2C {
              *
              * Sends 8 bits MSB first, then releases SDA and checks
              * whether the slave pulled it low (ACK) or left it high (NACK).
-             *
+             * release SDA and read ACK from slave if ACK = slave => pulls SDA LOW
              * @param byte the byte to send
              * @return true if ACK received, false if NACK
              */
@@ -471,11 +474,10 @@ namespace HAL_I2C {
                     setSclLow(cfg);
                     delay(cfg.delayUs);
                 }
-                // release SDA and read ACK from slave
                 setSdaHigh(cfg);
                 setSclHigh(cfg);
                 delay(cfg.delayUs);
-                bool ack = !ReadSda(cfg);  ///< ACK = slave pulls SDA LOW
+                bool ack = !ReadSda(cfg);
                 setSclLow(cfg);
                 delay(cfg.delayUs);
                 return ack;
@@ -492,7 +494,7 @@ namespace HAL_I2C {
              */
             inline uint8_t readByte(const Config& cfg, bool sendAck) {
                 uint8_t byte = 0;
-                setSdaHigh(cfg);  // release SDA so slave can drive it
+                setSdaHigh(cfg);
                 for (int8_t i = 7; i >= 0; i--) {
                     setSclHigh(cfg);
                     delay(cfg.delayUs);
@@ -509,11 +511,11 @@ namespace HAL_I2C {
                 delay(cfg.delayUs);
                 setSclLow(cfg);
                 delay(cfg.delayUs);
-                setSdaHigh(cfg);  // release SDA
+                setSdaHigh(cfg);
                 return byte;
             }
 
-        } // namespace Internal
+        }
 
-    } // namespace BitBang
+    }
 }
