@@ -23,7 +23,6 @@ etl::expected<float,LM75Sensor::Error> LM75Sensor::getTemperature() {
 
 
 LM75Sensor::Error LM75Sensor::read(etl::span<uint8_t> i2cData) {
-
     return convertI2cError(HAL_I2C::readRegister<PeripheralNumber>(Lm75Addr, i2cData));
 };
 
