@@ -351,6 +351,10 @@ namespace HAL_I2C {
          * The caller (e.g. AntS driver) provides the actual pin values —
          * HAL_I2C stays generic and never hardcodes hardware specifics.
          *
+         *  delayUs: delay in microseconds between line transitions, sets the
+         * SCL speed. Defaults to 5 us, callers can pass a larger value
+         * for a slower, more tolerant bus.
+         *
          * @note Both pins must support open-drain mode. On our case PB4/PB5
          * are open-drain capable and shared with TWIHS1.
          * The struct consists of : GPIO pin for SCL, GPIO pin for SDA
@@ -359,7 +363,7 @@ namespace HAL_I2C {
         struct Config {
             PIO_PIN  sclPin;
             PIO_PIN  sdaPin;
-            uint32_t delayUs;
+            uint32_t delayUs= 5;
         };
         namespace Internal {
 
