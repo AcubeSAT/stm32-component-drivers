@@ -348,10 +348,10 @@ namespace HAL_I2C {
          * @brief Configuration for the software bit-bang I2C fallback.
          *
          * Describes which GPIO pins to use and how fast to toggle them.
-         * The caller (e.g. AntS driver) provides the actual pin values —
-         * HAL_I2C stays generic and never hardcodes hardware specifics.
+         * The caller (e.g. AntS driver) provides the actual pin values,
+         * so HAL_I2C stays generic and never hardcodes hardware specifics.
          *
-         *  delayUs: delay in microseconds between line transitions, sets the
+         * delayUs: delay in microseconds between line transitions, sets the
          * SCL speed. Defaults to 5 us, callers can pass a larger value
          * for a slower, more tolerant bus.
          *
@@ -363,7 +363,7 @@ namespace HAL_I2C {
         struct Config {
             PIO_PIN  sclPin;
             PIO_PIN  sdaPin;
-            uint32_t delayUs= 5;
+            uint8_t delayUs = 5;
         };
         namespace Internal {
 
@@ -371,7 +371,7 @@ namespace HAL_I2C {
             * @brief Busy-wait delay in microseconds.
             * Used to control SCL clock speed during bit-bang.
             */
-            inline void delay(uint32_t us) {
+            inline void delay(uint8_t us) {
                 SYSTICK_DelayUs(us);
             }
 
