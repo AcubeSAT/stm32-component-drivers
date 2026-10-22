@@ -1,10 +1,9 @@
 #include "MR4A08BUYS45.hpp"
 
-bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
-    if (isIDOperationInProgress) {
-        return true;
-    }
+volatile XDMAC_TRANSFER_EVENT MRAM::lastTransferStatus = XDMAC_TRANSFER_NONE;
+volatile bool MRAM::transferPending = false;
 
+bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
     if (startAddress > MaxWriteableAddress ||
         size > MaxWriteableAddress ||
         (startAddress + size - 1) > MaxWriteableAddress) {
@@ -15,131 +14,128 @@ bool MRAM::isAddressRangeValid(uint32_t startAddress, size_t size) const {
     return endAddress <= moduleEndAddress;
 }
 
-MRAMError MRAM::mramWriteByte(uint32_t dataAddress, uint8_t data) {
-    if (!isAddressRangeValid(dataAddress, 1)) {
-        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
-        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
-    }
-
-    uint32_t writeAddress = moduleBaseAddress | dataAddress;
-    smcWriteByte(writeAddress, data);
-    return MRAMError::NONE;
-}
-
-MRAMError MRAM::mramReadByte(uint32_t dataAddress, uint8_t &data) {
-    if (!isAddressRangeValid(dataAddress, 1)) {
-        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
-        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
-    }
-
-    uint32_t readAddress = moduleBaseAddress | dataAddress;
-    data = smcReadByte(readAddress);
-    return MRAMError::NONE;
-}
-
-MRAMError MRAM::mramWriteData(uint32_t startAddress, etl::span<const uint8_t> data) {
-    if (data.empty()) {
+MRAMError MRAM::startCopyFromRAM(void *dest, const void *src, size_t count) {
+    if (count == 0) {
         return MRAMError::INVALID_ARGUMENT;
     }
 
-    if (!isAddressRangeValid(startAddress, data.size())) {
-        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
+    const uint32_t destOffset = reinterpret_cast<uint32_t>(dest) - moduleBaseAddress;
+    if (!isAddressRangeValid(destOffset, count)) {
         return MRAMError::ADDRESS_OUT_OF_BOUNDS;
     }
 
-    for (size_t i = 0; i < data.size(); i++) {
-        MRAMError error = mramWriteByte(startAddress + i, data[i]);
-        if (error != MRAMError::NONE) {
-            return error;
-        }
+    if (transferPending) {
+        return MRAMError::DMA_IN_PROGRESS;
     }
+
+    transferPending = true;
+    const bool started = XDMAC_ChannelTransfer(DmaChannel, src, dest, count);
+    if (!started) {
+        transferPending = false;
+        return MRAMError::DMA_IN_PROGRESS;
+    }
+
     return MRAMError::NONE;
 }
 
-MRAMError MRAM::mramReadData(uint32_t startAddress, etl::span<uint8_t> data) {
-    if (data.empty()) {
-        return MRAMError::INVALID_ARGUMENT;
+MRAMError MRAM::checkDMACompletion() {
+    if (transferPending) {
+        return MRAMError::DMA_IN_PROGRESS;
     }
 
-    if (!isAddressRangeValid(startAddress, data.size())) {
-        errorHandler(MRAMError::ADDRESS_OUT_OF_BOUNDS);
-        return MRAMError::ADDRESS_OUT_OF_BOUNDS;
-    }
-
-    for (size_t i = 0; i < data.size(); i++) {
-        MRAMError error = mramReadByte(startAddress + i, data[i]);
-        if (error != MRAMError::NONE) {
-            return error;
-        }
-    }
-    return MRAMError::NONE;
-}
-
-void MRAM::writeID() {
-    for (size_t i = 0; i < CustomIDSize; i++) {
-        uint32_t address = moduleBaseAddress | (CustomMRAMIDAddress + i);
-        smcWriteByte(address, CustomID[i]);
-    }
-}
-
-bool MRAM::checkID(etl::span<const uint8_t> idArray) const {
-    if (idArray.size() != CustomIDSize) {
-        return false;
-    }
-
-    for (size_t i = 0; i < CustomIDSize; i++) {
-        if (idArray[i] != CustomID[i]) {
-            return false;
-        }
-    }
-    return true;
+    return (lastTransferStatus == XDMAC_TRANSFER_ERROR)
+               ? MRAMError::DMA_TRANSFER_ERROR
+               : MRAMError::NONE;
 }
 
 MRAMError MRAM::isMRAMAlive() {
-    IdAccessGuard guard(*this);
-    etl::array<uint8_t, CustomIDSize> readId{};
-    etl::span<uint8_t> readIDspan(readId.data(), readId.size());
-
-    MRAMError error = mramReadData(CustomMRAMIDAddress, readIDspan);
-    if (error != MRAMError::NONE) {
-        return error;
+    // Direct, non-DMA access
+    uint8_t readId[CustomIDSize] = {};
+    for (size_t i = 0; i < CustomIDSize; i++) {
+        uint32_t address = moduleBaseAddress | (CustomMRAMIDAddress + i);
+        readId[i] = smcReadByte(address);
     }
 
-    const etl::span<const uint8_t> constReadIDSpan(readId.data(), readId.size());
-    if (checkID(constReadIDSpan)) {
+    auto matches = [&readId]() -> bool {
+        for (size_t i = 0; i < CustomIDSize; i++) {
+            if (readId[i] != CustomID[i]) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    if (matches()) {
         return MRAMError::READY;
     }
 
-    // Try writing the ID since it might be the first boot
-    writeID();
-
-    error = mramReadData(CustomMRAMIDAddress, readIDspan);
-    if (error != MRAMError::NONE) {
-        return error;
+    // Try writing the ID since it might be the first boot.
+    for (size_t i = 0; i < CustomIDSize; i++) {
+        uint32_t address = moduleBaseAddress | (CustomMRAMIDAddress + i);
+        smcWriteByte(address, CustomID[i]);
+        readId[i] = smcReadByte(address);
     }
 
-    if (checkID(constReadIDSpan)) {
-        return MRAMError::READY;
-    }
-
-    return MRAMError::NOT_READY;
+    return matches() ? MRAMError::READY : MRAMError::NOT_READY;
 }
 
-void MRAM::errorHandler(MRAMError error) {
-    switch (error) {
-        case MRAMError::TIMEOUT:
-            break;
+namespace {
+    constexpr uint32_t SmcPeripheralClockHz = 150'000'000;
 
-        case MRAMError::ADDRESS_OUT_OF_BOUNDS:
-            break;
-
-        case MRAMError::NOT_READY:
-            break;
-
-        case MRAMError::INVALID_ARGUMENT:
-            break;
-
-        default:
-            break;
+    constexpr uint32_t nsToCycles(uint32_t nanoseconds) {
+        return static_cast<uint32_t>(
+            (static_cast<uint64_t>(nanoseconds) * SmcPeripheralClockHz + 999'999'999ULL)
+            / 1'000'000'000ULL);
     }
+}
+
+void MRAM::configureSmcTiming() {
+    // MR4A08BUYS45 datasheet: Table 11 (read), Table 12 (write, W-controlled).
+    constexpr uint32_t readCycle  = nsToCycles(45); // t_AVAV (read cycle time)
+    constexpr uint32_t writeCycle = nsToCycles(45); // t_AVAV (write cycle time)
+    constexpr uint32_t writePulse = nsToCycles(15); // t_WLWH (write pulse width)
+    constexpr uint32_t writeHold  = nsToCycles(12); // t_WHAX (write recovery time)
+    constexpr uint32_t writeSetup =
+        (writeCycle > writePulse + writeHold) ? (writeCycle - writePulse - writeHold) : 1;
+
+    const uint32_t setupReg =
+          SMC_SETUP_NRD_SETUP(0)
+        | SMC_SETUP_NCS_RD_SETUP(0)
+        | SMC_SETUP_NWE_SETUP(writeSetup)
+        | SMC_SETUP_NCS_WR_SETUP(0);
+
+    const uint32_t pulseReg =
+          SMC_PULSE_NRD_PULSE(readCycle)
+        | SMC_PULSE_NCS_RD_PULSE(readCycle)
+        | SMC_PULSE_NWE_PULSE(writePulse)
+        | SMC_PULSE_NCS_WR_PULSE(writeCycle);
+
+    const uint32_t cycleReg =
+          SMC_CYCLE_NRD_CYCLE(readCycle)
+        | SMC_CYCLE_NWE_CYCLE(writeCycle);
+
+    const uint32_t modeReg =
+          SMC_MODE_READ_MODE
+        | SMC_MODE_WRITE_MODE
+        | SMC_MODE_EXNW_MODE(SMC_MODE_EXNW_MODE_DISABLED_Val)
+        | SMC_MODE_DBW(SMC_MODE_DBW_BIT_8_Val)
+        | SMC_MODE_TDF_CYCLES(1)
+        | SMC_MODE_TDF_MODE;
+
+    SMC_REGS->SMC_CS_NUMBER[chipSelectNumber].SMC_SETUP = setupReg;
+    SMC_REGS->SMC_CS_NUMBER[chipSelectNumber].SMC_PULSE = pulseReg;
+    SMC_REGS->SMC_CS_NUMBER[chipSelectNumber].SMC_CYCLE = cycleReg;
+    // SMC_MODE last: writing it triggers SMC's "reload configuration wait
+    // state", which is how the new setup/pulse/cycle values take effect.
+    SMC_REGS->SMC_CS_NUMBER[chipSelectNumber].SMC_MODE  = modeReg;
+}
+
+void MRAM::configureDmaChannel() {
+    XDMAC_ChannelCallbackRegister(DmaChannel,
+        [](const XDMAC_TRANSFER_EVENT status, uintptr_t context) -> void {
+            (void)context;
+            lastTransferStatus = status;
+            transferPending = false;
+        },
+        reinterpret_cast<uintptr_t>(nullptr));
 }

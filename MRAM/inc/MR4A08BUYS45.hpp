@@ -1,153 +1,128 @@
 #pragma once
 
 #include "SMC.hpp"
-#include "etl/span.h"
-#include "etl/array.h"
+#include "xdmac/plib_xdmac.h"
+#include <cstdint>
+#include <cstddef>
 
-/**
- * Error codes for MRAM operations
- */
 enum class MRAMError : uint8_t {
-    NONE = 0, ///< Operation completed successfully
-    TIMEOUT = 1, ///< Operation timed out
-    ADDRESS_OUT_OF_BOUNDS = 2, ///< Attempted to access invalid address
-    READY = 3, ///< Device is ready for operation
-    NOT_READY = 4, ///< Device is not ready for operation
-    INVALID_ARGUMENT = 5, ///< Invalid argument provided
-    DATA_MISMATCH = 6 ///< Unexpected read value
+    NONE = 0,
+    TIMEOUT = 1,
+    ADDRESS_OUT_OF_BOUNDS = 2,
+    READY = 3,
+    NOT_READY = 4,
+    INVALID_ARGUMENT = 5,
+    DATA_MISMATCH = 6,
+    DMA_IN_PROGRESS = 7,
+    DMA_TRANSFER_ERROR = 8,
 };
 
 /**
- * Driver for MR4A08BUYS45 MRAM device.
- * This class provides an interface to the MRAM device which has 2,097,152 (2^21) words of 8 bits each.
- * The device can store data from address 0 to 2^21-1.
- * 
- * This class inherits from SMC to utilize the underlying Static Memory Controller interface.
- * 
- * @see https://gr.mouser.com/datasheet/MR4A08B_Datasheet-1511665.pdf
+ * Hard-coded MRAM memory map, per ASAT_DDJF_OBSW Section 4.2.4 ("OBC MRAM"), Figure 9.
+ * Region sizes sum to 2048 KiB, matching the MR4A08BUYS45's full capacity.
+ */
+namespace MRAMLayout {
+    constexpr uint32_t ParameterPoolAddress      = 0x000000;
+    constexpr size_t    ParameterPoolSize         = 32 * 1024;
+
+    constexpr uint32_t ServiceConfigStateAddress = 0x008000;
+    constexpr size_t    ServiceConfigStateSize    = 32 * 1024;
+
+    constexpr uint32_t CriticalVariablesAddress  = 0x010000;
+    constexpr size_t    CriticalVariablesSize     = 8 * 1024;
+
+    constexpr uint32_t PatchUncompressedAddress  = 0x012000;
+    constexpr size_t    PatchUncompressedSize     = 1016 * 1024;
+
+    constexpr uint32_t PatchCompressedAddress    = 0x110000;
+    constexpr size_t    PatchCompressedSize       = 960 * 1024;
+
+    constexpr uint32_t TotalBytes =
+        ParameterPoolSize + ServiceConfigStateSize + CriticalVariablesSize +
+        PatchUncompressedSize + PatchCompressedSize;
+
+    static_assert(TotalBytes == 2u * 1024u * 1024u,
+                  "MRAM layout regions must sum to the device's full 2 MiB capacity");
+    static_assert(PatchCompressedAddress + PatchCompressedSize - 1 == 0x1FFFFF,
+                  "Layout must end exactly at the device's top address");
+}
+
+/**
+ * Driver for MR4A08BUYS45 MRAM device (2,097,152 bytes, x8).
+ *
+ * Access to MRAM data is done by the caller
+ * directly, via pointers/references into this device's mapped address range
+ * (or, preferably, via linker-defined variables placed in MRAM) — not
+ * through this class. This class owns only:
+ *   - this chip select's SMC timing configuration,
+ *   - this device's address bounds,
+ *   - an async bulk copy (RAM -> MRAM) via DMA
+ *
+ * Errors are reported directly via MRAMError return values
  */
 class MRAM final : public SMC {
 public:
-    /**
-     * Initializes the MRAM device.
-     * @param chipSelect Chip Select signal used for this device
-     */
-    explicit MRAM(ChipSelect chipSelect) : SMC(chipSelect) {
+    explicit MRAM(ChipSelect chipSelect)
+        : SMC(chipSelect), chipSelectNumber(static_cast<uint8_t>(chipSelect)) {
+        configureSmcTiming();
+        configureDmaChannel();
     }
 
     /**
-     * Writes a single byte to the specified address.
-     * @param dataAddress Address to write to
-     * @param data Byte to write
-     * @return NONE if successful, error code otherwise
+     * Starts an asynchronous copy from a RAM buffer into MRAM. Returns
+     * immediately; does not block the CPU while the transfer runs.
+     * @param dest  Destination address, must fall within this device's
+     *              mapped, writeable range.
+     * @param src   Source buffer in RAM.
+     * @param count Number of bytes to copy.
+     * @return NONE if the transfer was started, an error otherwise.
      */
-    MRAMError mramWriteByte(uint32_t dataAddress, uint8_t data);
+    MRAMError startCopyFromRAM(void *dest, const void *src, size_t count);
 
     /**
-     * Reads a single byte from the specified address.
-     * @param dataAddress Address to read from
-     * @param[out] data Buffer to store read byte
-     * @return NONE if successful, error code otherwise
+     * Non-blocking poll for the status of the last transfer started with
+     * startCopyFromRAM().
+     * @return DMA_IN_PROGRESS while running, NONE on success,
+     *         DMA_TRANSFER_ERROR if the channel reported a bus/overflow
+     *         error.
      */
-    MRAMError mramReadByte(uint32_t dataAddress, uint8_t &data);
+    MRAMError checkDMACompletion();
 
     /**
-     * Writes multiple bytes starting at the specified address.
-     * @param startAddress Starting address for write operation
-     * @param data Span containing bytes to write
-     * @return NONE if successful, error code otherwise
-     */
-    MRAMError mramWriteData(uint32_t startAddress, etl::span<const uint8_t> data);
-
-    /**
-     * Reads multiple bytes starting at the specified address.
-     * @param startAddress Starting address for read operation
-     * @param[out] data Span to store read bytes
-     * @return NONE if successful, error code otherwise
-     */
-    MRAMError mramReadData(uint32_t startAddress, etl::span<uint8_t> data);
-
-    /**
-     * Handles errors that occur during device operations.
-     * @param error The error code to be handled
-     */
-    void errorHandler(MRAMError error);
-
-    /**
-     * Checks if the device is responding correctly.
-     * @return READY if device is working correctly, error code otherwise
+     * Checks if the device is responding correctly. Performs a small,
+     * direct (non-DMA) read/write at a fixed internal address
+     * @return READY if device is working correctly, error code otherwise.
      */
     MRAMError isMRAMAlive();
 
 private:
-    /// Variable that allows specific address checks to pass
-    bool isIDOperationInProgress = false;
+    /// This instance's chip select number (0-3)
+    const uint8_t chipSelectNumber;
 
-    /**
-     * @brief RAII guard class that temporarily enables access to the MRAM ID section.
-     *
-     * This guard enables access to the protected ID memory region during its lifetime.
-     * Access is automatically revoked when the guard is destroyed.
-     * Only used internally by isMRAMAlive().
-     *
-     * Usage example:
-     * @code
-     * void MRAM::someFunction() {
-     *     IdAccessGuard guard(*this);
-     *     // ID section access is now allowed
-     * } // Access is automatically revoked here
-     * @endcode
-     */
-    class IdAccessGuard {
-        MRAM& mram;
-    public:
-        explicit IdAccessGuard(MRAM& m) : mram(m) {
-            mram.isIDOperationInProgress = true;
-        }
-        ~IdAccessGuard() {
-            mram.isIDOperationInProgress = false;
-        }
-    };
+    /// XDMAC channel reserved for RAM -> MRAM bulk transfers. Channel 2 is
+    /// configured for memory-to-memory transfers in plib_xdmac.c's
+    /// XDMAC_Initialize(); channels 0-1 remain reserved for UART.
+    static constexpr XDMAC_CHANNEL DmaChannel = XDMAC_CHANNEL_2;
 
-    friend class IdAccessGuard;
-
-    /// Size of the device identification signature in bytes
     static constexpr uint8_t CustomIDSize = 4;
-
-    /// Device identification signature used to verify correct device
     static constexpr uint8_t CustomID[CustomIDSize] = {0xDE, 0xAD, 0xBE, 0xEF};
-
-    /// Maximum valid address (2^21-1)
     static constexpr uint32_t MaxAllowedAddress = 0x1FFFFF;
-
-    /// Address where device ID is stored
     static constexpr uint32_t CustomMRAMIDAddress = MaxAllowedAddress - CustomIDSize;
-
-    /// Maximum address available for user data
     static constexpr uint32_t MaxWriteableAddress = CustomMRAMIDAddress - 1;
 
-    /// Word size in bits
-    static constexpr uint8_t WordSizeBits = 8;
-
-    /**
-     * Writes the custom identification signature to the device.
-     * This should typically only be called once during device initialization.
-     */
-    void writeID();
-
-    /**
-     * Verifies the device identification signature.
-     * @param idArray Span containing the ID to verify
-     * @return true if ID matches expected value, false otherwise
-     * @pre idArray must be of size CustomIDSize
-     */
-    bool checkID(etl::span<const uint8_t> idArray) const;
-
-    /**
-     * Validates if an address range is within bounds
-     * @param startAddress Starting address of range
-     * @param size Size of range in bytes
-     * @return true if range is valid, false otherwise
-     */
+    /// Validates that [startAddress, startAddress+size) lies within this
+    /// device's writeable range. Runs before every DMA transfer is started.
     bool isAddressRangeValid(uint32_t startAddress, size_t size) const;
+
+    /// Programs SMC_SETUP/PULSE/CYCLE/MODE for this chip select from the
+    /// MR4A08BUYS45's AC timing table
+    void configureSmcTiming();
+
+    /// Configures XDMAC channel 2 for memory-to-memory transfers, and
+    /// registers this instance's completion callback.
+    void configureDmaChannel();
+
+    /// Set by the DMA completion callback; read by checkDMACompletion().
+    static volatile XDMAC_TRANSFER_EVENT lastTransferStatus;
+    static volatile bool transferPending;
 };
