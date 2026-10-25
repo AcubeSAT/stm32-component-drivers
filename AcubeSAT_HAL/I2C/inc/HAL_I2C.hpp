@@ -21,7 +21,7 @@
 #endif
 
 /**
- * Set to 1 to make the ...WithFallback functions always use bit-bang, for bench testing.
+ * Set to 1 to make the ...WithFallback functions always use bit-bang, for testing.
  * Only the ...WithFallback functions are affected. Define it for the whole build, e.g.
  * add_compile_definitions(HAL_I2C_FORCE_BITBANG=1), never in a single file: files built
  * with different values would get different versions of the same inline functions.
@@ -692,7 +692,7 @@ namespace HAL_I2C {
                         return etl::unexpected<I2CError>(I2CError::TIMEOUT);
                     }
                     delay(cfg.delayUs);
-                    if (PIO_PinRead(cfg.sdaPin)) {
+                    if (readSda(cfg))  {
                         byte |= (1 << i);
                     }
                     driveSclLow(cfg);
