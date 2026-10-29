@@ -24,6 +24,9 @@ enum class NANDErrorCode : uint8_t {
     MULTIPLANE_FAILED,      /*!< Multi-plane operation failed (FAIL bit set in status) */
     PLANE_MISMATCH,         /*!< Blocks not in different planes (multi-plane erase requires one even + one odd block) */
     ALREADY_INITIALIZED,    /*!< Driver already initialized (initialize() called twice) */
+    PROGRAM_TIMEOUT,        /*!< Timeout after a program has been requested (the page has undefined state) */
+    ERASE_TIMEOUT,          /*!< Timeout after an erase has been requested (the block has undefined state) */
+    BLOCK_MARKER_READ_FAILED, /*!< Factory scan could not read a block's marker after all the retries */
 };
 
 /**
@@ -91,11 +94,10 @@ public:
      */
     MT29F(ChipSelect chipSelect, PIO_PIN readyBusyPin, PIO_PIN writeProtectPin, YieldDelegate yieldMs)
         : SMC{chipSelect}
+        , nandChipSelect{chipSelect}
         , nandReadyBusyPin{readyBusyPin}
         , nandWriteProtectPin{writeProtectPin}
-        , yieldMilliseconds{yieldMs} {
-        enableNandFlashMode(chipSelect);
-    }
+        , yieldMilliseconds{yieldMs} {}
 
     MT29F(const MT29F&) = delete;
     MT29F& operator=(const MT29F&) = delete;
@@ -111,6 +113,7 @@ public:
      * @brief Initialize the NAND flash driver and validate the device.
      *
      * @pre Driver must not already be initialized
+     * @pre SYS_Initialize() has run
      * @post If successful, driver is reset
      * @post Bad block table is populated with factory-marked bad blocks
      * @post Write protection is enabled if a WP# pin has been provided (WP# asserted)
@@ -118,6 +121,8 @@ public:
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ALREADY_INITIALIZED Driver already initialized
      * @retval NANDErrorCode::TIMEOUT Device not responding
+     * @retval NANDErrorCode::BLOCK_MARKER_READ_FAILED The factory bad block
+     *         scan could not read a marker
      *
      * @note Parameter page and device ID validations are non-fatal. If all three ONFI 
      *       parameter page copies or the ID fail validation (e.g. due to bit flips),
@@ -204,7 +209,8 @@ public:
      *                                          or invalid block marker value at column 8192
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::PROGRAM_TIMEOUT Device not finished executing the command after is has been issued
      * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
      *
      * @warning The block marker is located at column address 8192 (BlockMarkerOffset).
@@ -226,6 +232,61 @@ public:
     [[nodiscard]] etl::expected<void, NANDErrorCode> programPage(const NANDAddress& address, etl::span<const uint8_t> data);
 
     /**
+     * @brief Read the full data area and the spare area in one operation and 
+     *        separate the data into two discrete buffers.
+     *
+     * @param address NAND address of the page. Column MUST be 0.
+     * @param[out] data Buffer for the data area. Size MUST be exactly DataBytesPerPage.
+     * @param[out] spare Buffer for the spare area starting at column DataBytesPerPage.
+     *                   Size must be 1 to SpareBytesPerPage.
+     *
+     * @pre Driver must be initialized
+     *
+     * @return Success (empty expected) or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Column not 0, data size not DataBytesPerPage,
+     *                                          or spare size 0 or above SpareBytesPerPage
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::DEVICE_BUSY Device busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+     *
+     * @note Thread Safety: Caller must hold external mutex for duration of read operation.
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> readPageWithSpare(const NANDAddress& address,
+                                                                       etl::span<uint8_t> data,
+                                                                       etl::span<uint8_t> spare);
+
+    /**
+     * @brief Program the full data area and the spare area in one operation by using two discrete buffers.
+     *
+     * @param address NAND address of the page. Column MUST be 0.
+     * @param data Data area contents. Size MUST be exactly DataBytesPerPage.
+     * @param spare Spare area contents starting at column DataBytesPerPage.
+     *              Size must be 1 to SpareBytesPerPage. spare[0] lands on the bad-block
+     *              marker (BlockMarkerOffset) and MUST be 0xFF.
+     *
+     * @pre Driver must be initialized
+     * @pre Target page must be in erased state (all 0xFF)
+     *
+     * @return Success (empty expected) or specific error code
+     * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
+     * @retval NANDErrorCode::INVALID_PARAMETER Column not 0, data size not DataBytesPerPage,
+     *                                          spare size 0 or above SpareBytesPerPage,
+     *                                          or spare[0] not 0xFF
+     * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address validation failed
+     * @retval NANDErrorCode::DEVICE_BUSY Device busy
+     * @retval NANDErrorCode::TIMEOUT Device not ready BEFORE the command was issued (no state change)
+     * @retval NANDErrorCode::PROGRAM_TIMEOUT Device not ready AFTER the confirm command: page state
+     *                                        indeterminate, treat like PROGRAM_FAILED
+     * @retval NANDErrorCode::PROGRAM_FAILED Status register indicates program failure
+     *
+     * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
+     */
+    [[nodiscard]] etl::expected<void, NANDErrorCode> programPageWithSpare(const NANDAddress& address,
+                                                                          etl::span<const uint8_t> data,
+                                                                          etl::span<const uint8_t> spare);
+
+    /**
      * @brief Erase a block.
      *
      * @param block Block number to erase
@@ -238,7 +299,8 @@ public:
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of bounds
      * @retval NANDErrorCode::DEVICE_BUSY Device busy
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+    * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::ERASE_TIMEOUT Device not finished executing the command after is has been issued
      * @retval NANDErrorCode::ERASE_FAILED Status register indicates erase failure (block marked as bad)
      *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
@@ -330,7 +392,8 @@ public:
      * @retval NANDErrorCode::PLANE_MISMATCH Both blocks in same plane
      * @retval NANDErrorCode::MULTIPLANE_FAILED Erase operation failed
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Block or LUN out of range
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+    * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::ERASE_TIMEOUT Device not finished executing the command after is has been issued
      *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      *
@@ -357,7 +420,8 @@ public:
      * @retval NANDErrorCode::PLANE_MISMATCH Source and destination in different planes
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
      * @retval NANDErrorCode::COPYBACK_FAILED Programming failed
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+    * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::PROGRAM_TIMEOUT Device not finished executing the command after is has been issued
      *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      *
@@ -383,7 +447,8 @@ public:
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
      * @retval NANDErrorCode::INVALID_PARAMETER Buffer too small
      * @retval NANDErrorCode::PROGRAM_FAILED Programming failed
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+    * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::PROGRAM_TIMEOUT Device not finished executing the command after is has been issued
      *
      * @note Thread Safety: Caller must hold external mutex. Modifies device array state.
      */
@@ -539,7 +604,10 @@ private:
      * @details Based on the datasheet the bad block marker is guaranteed to be stored
      *          in the first page of each block in byte 0 of the spare area.
      *          Retries failed reads up to BlockMarkerReadRetries times.
-     *          Blocks that fail to read after all retries are marked as bad.
+     *          A block whose marker still cannot be READ after all the retries is
+     *          NOT marked bad. Is is considered a bus/driver fault and the block state unknown,
+     *          so the scan aborts with BLOCK_MARKER_READ_FAILED and the caller
+     *          retries initialization.
      *          Yields to other tasks periodically during the scan (every BlockScanYieldInterval blocks)
      *          if a delegate has been provided during initialization.
      *          This is done to prevent task starvation.
@@ -548,6 +616,8 @@ private:
      *
      * @return Success (empty expected) or specific error code
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS LUN out of bounds
+     * @retval NANDErrorCode::BLOCK_MARKER_READ_FAILED A marker could not be
+     *         read after all the retries
      *
      * @see MT29F datasheet section "Error Management"
      */
@@ -606,6 +676,8 @@ private:
         ASSERTED = false,    /*!< Active-low signal driven LOW (active state) */
         DEASSERTED = true,   /*!< Active-low signal driven HIGH (inactive state) */
     };
+
+    const ChipSelect nandChipSelect; /*!< SMC chip select of this die */
 
     const PIO_PIN nandReadyBusyPin; /*!< GPIO pin for monitoring R/B# (Ready/Busy) signal */
 
@@ -706,7 +778,8 @@ private:
      * @retval NANDErrorCode::NOT_INITIALIZED Driver not initialized
      * @retval NANDErrorCode::ADDRESS_OUT_OF_BOUNDS Address out of bounds
      * @retval NANDErrorCode::COPYBACK_FAILED Programming failed
-     * @retval NANDErrorCode::TIMEOUT Device not ready within timeout
+    * @retval NANDErrorCode::TIMEOUT Device not ready before the command was issued
+     * @retval NANDErrorCode::PROGRAM_TIMEOUT Device not finished executing the command after is has been issued
      *
      * @warning Same-plane constraint: source and destination blocks must
      *          both be even (plane 0) or both be odd (plane 1).

@@ -42,7 +42,14 @@ etl::expected<void, NANDErrorCode> MT29F::scanFactoryBadBlocks(uint8_t lun) {
             }
         }
 
-        if ((not readSucceeded) or (readResult.value() == BadBlockMarker)) {
+        if (not readSucceeded) {
+            LOG_ERROR << "NAND: Block marker read failed on LUN " << static_cast<uint32_t>(lun) << " block "
+                      << static_cast<uint32_t>(block) << " after " << static_cast<uint32_t>(BlockMarkerReadRetries)
+                      << " attempts";
+            return etl::unexpected(NANDErrorCode::BLOCK_MARKER_READ_FAILED);
+        }
+
+        if (readResult.value() != GoodBlockMarker) {
             if (auto markResult = markBadBlock(block, lun); not markResult.has_value()) {
                 return markResult;
             }
@@ -413,6 +420,8 @@ etl::expected<void, NANDErrorCode> MT29F::initialize() {
         return etl::unexpected(NANDErrorCode::ALREADY_INITIALIZED);
     }
 
+    enableNandFlashMode(nandChipSelect);
+
     if (nandWriteProtectPin == PIO_PIN_NONE) {
         LOG_INFO << "NAND: Write protection pin not provided. Hardware write protection disabled";
     } else {
@@ -557,7 +566,106 @@ etl::expected<void, NANDErrorCode> MT29F::programPage(const NANDAddress& address
         busyWaitNanoseconds(TwbNs);
 
         if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
-            return waitResult;
+            return etl::unexpected(NANDErrorCode::PROGRAM_TIMEOUT);
+        }
+    }
+
+    if (hasOperationFailed(readStatusRegister())) {
+        return etl::unexpected(NANDErrorCode::PROGRAM_FAILED);
+    }
+
+    return {};
+}
+
+etl::expected<void, NANDErrorCode> MT29F::readPageWithSpare(const NANDAddress& address, etl::span<uint8_t> data, etl::span<uint8_t> spare) {
+    if (not isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if ((address.column != 0U) or (data.size() != DataBytesPerPage) or
+        spare.empty() or (spare.size() > SpareBytesPerPage)) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    if (auto validateResult = validateAddress(address); not validateResult.has_value()) {
+        return validateResult;
+    }
+
+    if (auto readyResult = ensureDeviceReady(); not readyResult.has_value()) {
+        return readyResult;
+    }
+
+    if (auto commandResult = executeReadCommandSequence(address); not commandResult.has_value()) {
+        return commandResult;
+    }
+
+    for (auto& byte : data) {
+        byte = readData();
+    }
+
+    for (auto& byte : spare) {
+        byte = readData();
+    }
+
+    busyWaitNanoseconds(TrhwNs);
+
+    return {};
+}
+
+etl::expected<void, NANDErrorCode> MT29F::programPageWithSpare(const NANDAddress& address, etl::span<const uint8_t> data, etl::span<const uint8_t> spare) {
+    if (not isInitialized) {
+        return etl::unexpected(NANDErrorCode::NOT_INITIALIZED);
+    }
+
+    if ((address.column != 0U) or (data.size() != DataBytesPerPage) or
+        spare.empty() or (spare.size() > SpareBytesPerPage)) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    if (spare[0] != GoodBlockMarker) {
+        return etl::unexpected(NANDErrorCode::INVALID_PARAMETER);
+    }
+
+    if (auto validateResult = validateAddress(address); not validateResult.has_value()) {
+        return validateResult;
+    }
+
+    if (auto readyResult = ensureDeviceReady(); not readyResult.has_value()) {
+        return readyResult;
+    }
+
+    AddressCycles cycles;
+    buildAddressCycles(address, cycles);
+
+    {
+        WriteEnableGuard guard(*this);
+
+        if (auto writeEnabledResult = verifyWriteEnabled(); not writeEnabledResult.has_value()) {
+            return writeEnabledResult;
+        }
+
+        sendCommand(Commands::PAGE_PROGRAM);
+
+        for (const auto& cycle : cycles) {
+            sendAddress(cycle);
+        }
+
+        busyWaitNanoseconds(TadlNs);
+
+        for (const auto& byte : data) {
+            sendData(byte);
+        }
+
+        for (const auto& byte : spare) {
+            sendData(byte);
+        }
+
+        sendCommand(Commands::PAGE_PROGRAM_CONFIRM);
+
+        busyWaitNanoseconds(TwbNs);
+
+        if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
+            return etl::unexpected(NANDErrorCode::PROGRAM_TIMEOUT);
         }
     }
 
@@ -603,7 +711,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlock(uint16_t block, uint8_t lun
         busyWaitNanoseconds(TwbNs);
 
         if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
-            return waitResult;
+            return etl::unexpected(NANDErrorCode::ERASE_TIMEOUT);
         }
     }
 
@@ -678,7 +786,7 @@ etl::expected<void, NANDErrorCode> MT29F::eraseBlockMultiPlane(uint16_t block0, 
         busyWaitNanoseconds(TwbNs);
 
         if (auto waitResult = waitForReady(TimeoutEraseUs); not waitResult.has_value()) {
-            return waitResult;
+            return etl::unexpected(NANDErrorCode::ERASE_TIMEOUT);
         }
     }
 
@@ -773,7 +881,7 @@ etl::expected<void, NANDErrorCode> MT29F::copybackProgram(const NANDAddress& des
         busyWaitNanoseconds(TwbNs);
 
         if (auto waitResult = waitForReady(TimeoutProgramUs); not waitResult.has_value()) {
-            return waitResult;
+            return etl::unexpected(NANDErrorCode::PROGRAM_TIMEOUT);
         }
     }
 
