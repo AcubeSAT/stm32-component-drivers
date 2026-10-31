@@ -8,7 +8,7 @@
 #include <etl/delegate.h>
 #include <etl/expected.h>
 #include <etl/span.h>
-#include <optional>
+#include <etl/vector.h>
 
 /**
  * @brief Error codes for NandBlockDevice operations.
@@ -19,13 +19,11 @@ enum class BlockDeviceError : uint8_t {
     MISMATCHED_BUS_DELEGATES,  /*!< Only one of lockBus/unlockBus is bound */
     OUT_OF_BOUNDS,             /*!< Die index exceeds the configured geometry */
     INVALID_PARAMETER,         /*!< Block index, offset, size or alignment outside the geometry (page/block operations) */
-    ANCHOR_BLOCK_BAD,          /*!< A superblock anchor block (logical 0 or 1) is marked bad */
-    ANCHOR_QUERY_FAILED,       /*!< The anchor bad block lookup itself failed */
-    DRIVER_ERROR,              /*!< An underlying MT29F management operation (initialize/reset) failed */
+    DRIVER_ERROR,              /*!< An underlying MT29F management operation (initialize/reset/bad block lookup) failed */
     IO,                        /*!< Transient bus/driver fault with no device state change (pre-command timeout, read failure) */
     BAD_BLOCK,                 /*!< Program/erase failed or timed out after confirm or erase of a known bad block */
     UNCORRECTABLE,             /*!< The page failed ECC correction  */
-    INCOMPATIBLE_FORMAT,       /*!< The page has a valid spare area layout version of another ECC implementation */
+    INCOMPATIBLE_LAYOUT,       /*!< The page has a valid spare area layout version of another ECC implementation */
 };
 
 /**
@@ -126,7 +124,7 @@ public:
      * @note 0 if the DieConfig span size was invalid.
      */
     [[nodiscard]] uint32_t blockCount() const {
-        return static_cast<uint32_t>(dieCount) * BlocksPerDie;
+        return static_cast<uint32_t>(dies.size()) * BlocksPerDie;
     }
 
     /**
@@ -140,7 +138,7 @@ public:
      * @retval BlockDeviceError::INVALID_PARAMETER Bounds/alignment violated
      * @retval BlockDeviceError::IO Driver read failure
      * @retval BlockDeviceError::UNCORRECTABLE A page failed ECC correction
-     * @retval BlockDeviceError::INCOMPATIBLE_FORMAT A page carries a valid spare area layout version 
+     * @retval BlockDeviceError::INCOMPATIBLE_LAYOUT A page carries a valid spare area layout version 
      *         of another ECC version
      */
     [[nodiscard]] etl::expected<void, BlockDeviceError> readPages(uint32_t block, size_t offset, etl::span<uint8_t> buffer);
@@ -174,14 +172,16 @@ public:
     [[nodiscard]] etl::expected<void, BlockDeviceError> eraseBlock(uint32_t block);
 
     /**
-     * @brief Verify that the filesystem superblock anchor blocks are usable.
+     * @brief Whether a block of the flat address space is marked bad (factory or runtime).
      *
-     * @return Success (empty expected) or specific error code
+     * @param block Flat block index
+     *
+     * @return true if the block is marked bad, or specific error code
      * @retval BlockDeviceError::NOT_INITIALIZED initialize() has not succeeded
-     * @retval BlockDeviceError::ANCHOR_BLOCK_BAD Block 0 or 1 is marked bad
-     * @retval BlockDeviceError::ANCHOR_QUERY_FAILED The lookup itself failed
+     * @retval BlockDeviceError::INVALID_PARAMETER Block out of range
+     * @retval BlockDeviceError::DRIVER_ERROR The lookup itself failed
      */
-    [[nodiscard]] etl::expected<void, BlockDeviceError> validateSuperblockAnchors() const;
+    [[nodiscard]] etl::expected<bool, BlockDeviceError> isBlockBad(uint32_t block) const;
 
     /**
      * @brief Number of blocks currently marked bad on one die (factory + runtime).
@@ -195,15 +195,15 @@ public:
     [[nodiscard]] etl::expected<uint32_t, BlockDeviceError> badBlockCount(size_t dieIndex) const;
 
     /**
-     * @brief Number of page reads so far that failed with INCOMPATIBLE_FORMAT.
+     * @brief Number of page reads so far that failed with INCOMPATIBLE_LAYOUT.
      *
      * @details It never resets after initialize(). It is read before mounting.
      *          If the mount fails because the pages it read were unusable 
      *          AND the counter incremented, the flash holds a volume written 
      *          by another ECC firmware.
      */
-    [[nodiscard]] uint32_t incompatibleFormatCount() const {
-        return incompatibleFormatReads;
+    [[nodiscard]] uint32_t incompatibleLayoutCount() const {
+        return incompatibleLayoutReads;
     }
 
     /**
@@ -252,23 +252,47 @@ private:
      * @brief The die that holds a block of the flat address space.
      */
     [[nodiscard]] MT29F& die(uint32_t block) {
-        return *dies[block / BlocksPerDie];
+        return dies[block / BlocksPerDie];
+    }
+
+    [[nodiscard]] const MT29F& die(uint32_t block) const {
+        return dies[block / BlocksPerDie];
     }
 
     /**
      * @brief The block index within its die.
      */
-    [[nodiscard]] static uint32_t localBlock(uint32_t block) {
-        return block % BlocksPerDie;
+    [[nodiscard]] static uint16_t localBlock(uint32_t block) {
+        return static_cast<uint16_t>(block % BlocksPerDie);
+    }
+
+    /**
+     * @brief The MT29F address of one page of a page aligned range.
+     *
+     * @param block Flat block index 
+     * @param offset Byte offset of the range within the block as a multiple of PageSize
+     * @param pageIndex Index of the page within the range
+     */
+    [[nodiscard]] static MT29F::NANDAddress pageAddress(uint32_t block, size_t offset, size_t pageIndex) {
+        return MT29F::NANDAddress{0U, localBlock(block), static_cast<uint32_t>((offset / PageSize) + pageIndex), 0U};
+    }
+
+    /**
+     * @brief The PageSize bytes of a page aligned buffer that belong to one page.
+     *
+     * @tparam Byte uint8_t for a read buffer, const uint8_t for a program buffer
+     */
+    template <typename Byte>
+    [[nodiscard]] static etl::span<Byte, PageSize> pageSpan(etl::span<Byte> buffer, size_t pageIndex) {
+        return etl::span<Byte, PageSize>{buffer.data() + (pageIndex * PageSize), PageSize};
     }
 
     /* ============= State ============= */
 
-    etl::array<std::optional<MT29F>, MaxDieCount> dies; /*!< One driver per DieConfig */
-    size_t dieCount;                                    /*!< 0 if the DieConfig span size was invalid */
+    etl::vector<MT29F, MaxDieCount> dies;               /*!< One driver per DieConfig */
     bool hasMismatchedBusDelegates;                     /*!< Only one of lockBus/unlockBus was bound at construction */
     bool isInitialized = false;
-    uint32_t incompatibleFormatReads = 0U;              /*!< Page reads that failed with INCOMPATIBLE_FORMAT */
+    uint32_t incompatibleLayoutReads = 0U;              /*!< Page reads that failed with INCOMPATIBLE_LAYOUT */
 
     BusLockDelegate lockBus;   /*!< Acquires the shared bus lock */
     BusLockDelegate unlockBus; /*!< Releases the shared bus lock */

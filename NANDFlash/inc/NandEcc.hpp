@@ -49,7 +49,7 @@ namespace NandEcc {
      */
     enum class EccError : uint8_t {
         CORRUPT = 1U,          /*!< Uncorrectable page */
-        INCOMPATIBLE_FORMAT,   /*!< Valid version field from a different ECC version */
+        INCOMPATIBLE_LAYOUT,   /*!< Valid version field from a different ECC version */
     };
 
     /**

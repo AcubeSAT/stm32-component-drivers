@@ -9,6 +9,16 @@ namespace NandEcc {
 
         /**
          * @brief True if every byte of the span is ErasedByte.
+         *
+         * @details The scan compares 32-bit words rather than bytes because the
+         *          cost is per loop iteration. Currently with the code in
+         *          flash and no instruction cache every taken branch refetches
+         *          the loop body so four times fewer iterations is close to
+         *          four times less time. The word is assembled with memcpy because the
+         *          span carries no alignment guarantee and a uint32_t* cast
+         *          would violate both alignment and strict aliasing. The byte wise
+         *          tail handles spans whose length is not a multiple of four
+         *          (the 335-byte parity field).
          */
         bool allBytesErased(etl::span<const uint8_t> bytes) {
             constexpr size_t WordBytes = sizeof(uint32_t);
@@ -74,7 +84,7 @@ namespace NandEcc {
             return etl::unexpected(EccError::CORRUPT);
         }
 
-        return etl::unexpected(EccError::INCOMPATIBLE_FORMAT);
+        return etl::unexpected(EccError::INCOMPATIBLE_LAYOUT);
     }
 
 } // namespace NandEcc
