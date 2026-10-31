@@ -7,7 +7,7 @@ NandBlockDevice::NandBlockDevice(etl::span<const DieConfig> dieConfigs, YieldDel
     : hasMismatchedBusDelegates{lockBus.is_valid() != unlockBus.is_valid()},
       lockBus{lockBus},
       unlockBus{unlockBus} {
-    if (dieConfigs.size() < 1U or dieConfigs.size() > MaxDieCount) {
+    if ((dieConfigs.size() < 1U) or (dieConfigs.size() > MaxDieCount)) {
         return;
     }
 
@@ -36,7 +36,7 @@ etl::expected<void, BlockDeviceError> NandBlockDevice::initialize() {
         BusGuard lock{*this};
 
         if (auto initResult = die.initialize();
-            not initResult.has_value() and initResult.error() != NANDErrorCode::ALREADY_INITIALIZED) {
+            (not initResult.has_value()) and (initResult.error() != NANDErrorCode::ALREADY_INITIALIZED)) {
             return etl::unexpected(BlockDeviceError::DRIVER_ERROR);
         }
     }
